@@ -353,7 +353,7 @@ character_config:
     translator_config:
       # Like... you speak and read the subtitles in English, and the TTS speaks Japanese or that kind of things
       translate_audio: False # Warning: you need to deploy DeeplX to use this. Otherwise it's going to crash
-      translate_provider: "deeplx"
+      translate_provider: "deeplx" # deeplx or tencent
 
       deeplx:
         deeplx_target_lang: "JA"
