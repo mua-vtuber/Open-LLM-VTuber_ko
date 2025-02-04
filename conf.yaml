@@ -358,3 +358,13 @@ character_config:
       deeplx:
         deeplx_target_lang: "JA"
         deeplx_api_endpoint: "http://localhost:1188/v2/translate"
+      
+      #  Tencent Text Translation  5 million characters per month  Remember to turn off post-payment, need to manually go to Machine Translation Console > System Settings to disable
+      #   https://cloud.tencent.com/document/product/551/35017
+      #   https://console.cloud.tencent.com/cam/capi
+      tencent:
+        secret_id: ""
+        secret_key: ""
+        region: "ap-guangzhou"
+        source_lang: "zh"
+        target_lang: "ja"
