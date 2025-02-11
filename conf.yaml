@@ -348,6 +348,20 @@ character_config:
       speed: 1.0 # Speech speed (1.0 is normal)
       debug: false # Enable debug mode (True/False)
 
+  # =================== Voice Activity Detection ===================
+
+  vad_config:
+    vad_model: "silero_vad"
+
+    silero_vad:
+      orig_sr: 16000 # Original Audio Sample Rate
+      target_sr: 16000 # Target Audio Sample Rate
+      prob_threshold: 0.4 # Probability Threshold for VAD
+      db_threshold: 60 # Decibel Threshold for VAD
+      required_hits: 3 # Number of consecutive hits required to consider speech
+      required_misses: 24 # Number of consecutive misses required to consider silence
+      smoothing_window: 5 # Smoothing window size for VAD
+
   tts_preprocessor_config:
     # settings regarding preprocessing for text that goes into TTS
 
