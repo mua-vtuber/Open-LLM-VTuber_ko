@@ -34,6 +34,7 @@ class LLMFactory:
                 llm_api_key=kwargs.get("llm_api_key"),
                 organization_id=kwargs.get("organization_id"),
                 project_id=kwargs.get("project_id"),
+                temperature=kwargs.get("temperature"),
             )
         if llm_provider == "ollama_llm":
             return OllamaLLM(
