@@ -1,37 +1,60 @@
 import os
 import shutil
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import Response
+from starlette.responses import Response, FileResponse
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
 from .routes import init_client_ws_route, init_webtool_routes
 from .service_context import ServiceContext
 from .config_manager.utils import Config
 
 
-class CustomStaticFiles(StaticFiles):
-    async def get_response(self, path, scope):
+# Create a custom StaticFiles class that adds CORS headers
+class CORSStaticFiles(StarletteStaticFiles):
+    """
+    Static files handler that adds CORS headers to all responses
+    """
+    async def get_response(self, path: str, scope):
         response = await super().get_response(path, scope)
+        
+        # Add CORS headers to all responses
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        
         if path.endswith(".js"):
             response.headers["Content-Type"] = "application/javascript"
+            
         return response
 
 
-class AvatarStaticFiles(StaticFiles):
+class CustomStaticFiles(CORSStaticFiles):
+    """
+    Static files handler with custom content type settings
+    """
+    pass
+
+
+class AvatarStaticFiles(CORSStaticFiles):
+    """
+    Avatar files handler with security restrictions and CORS headers
+    """
     async def get_response(self, path: str, scope):
         allowed_extensions = (".jpg", ".jpeg", ".png", ".gif", ".svg")
         if not any(path.lower().endswith(ext) for ext in allowed_extensions):
             return Response("Forbidden file type", status_code=403)
-        return await super().get_response(path, scope)
+        response = await super().get_response(path, scope)
+        return response
 
 
 class WebSocketServer:
     def __init__(self, config: Config):
         self.app = FastAPI()
 
-        # Add CORS
+        # Add global CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -39,6 +62,15 @@ class WebSocketServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        
+        # Add a middleware to ensure CORS headers are set on all responses
+        @self.app.middleware("http")
+        async def add_cors_headers(request: Request, call_next):
+            response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            return response
 
         # Load configurations and initialize the default context cache
         default_context_cache = ServiceContext()
@@ -57,19 +89,19 @@ class WebSocketServer:
             os.makedirs("cache")
         self.app.mount(
             "/cache",
-            StaticFiles(directory="cache"),
+            CORSStaticFiles(directory="cache"),
             name="cache",
         )
 
-        # Mount static files
+        # Mount static files with CORS-enabled handlers
         self.app.mount(
             "/live2d-models",
-            StaticFiles(directory="live2d-models"),
+            CORSStaticFiles(directory="live2d-models"),
             name="live2d-models",
         )
         self.app.mount(
             "/bg",
-            StaticFiles(directory="backgrounds"),
+            CORSStaticFiles(directory="backgrounds"),
             name="backgrounds",
         )
         self.app.mount(
