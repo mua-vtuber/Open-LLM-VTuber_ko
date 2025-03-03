@@ -55,7 +55,7 @@ class ProxyHandler:
                 logger.info(f"Proxy connected to server at {self.server_url}")
                 
                 # Initialize message queue with our forward function
-                self.message_queue.initialize(self.forward_to_server)
+                self.message_queue.initialize(self.forward_with_broadcast)
                 
                 # Start heartbeat task
                 self._heartbeat_task = asyncio.create_task(self._maintain_connection())
@@ -281,3 +281,18 @@ class ProxyHandler:
         # Clean up disconnected clients
         for client_id in disconnected_clients:
             await self.handle_client_disconnect(client_id) 
+
+    async def forward_with_broadcast(self, message: dict, sender_id: Optional[str] = None):
+        """
+        Forward message to server and handle any necessary broadcasting
+        
+        Args:
+            message: The message to forward
+            sender_id: ID of the client sending the message
+        """
+        # Forward to server
+        await self.forward_to_server(message, sender_id)
+        
+        # For transcription messages, broadcast to other clients
+        if message.get("type") == "user-input-transcription":
+            await self.broadcast_to_clients(message, exclude_client=sender_id) 
