@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response, FileResponse
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
-from .routes import init_client_ws_route, init_webtool_routes
+from .routes import init_client_ws_route, init_webtool_routes, init_proxy_route
 from .service_context import ServiceContext
 from .config_manager.utils import Config
 
@@ -53,6 +53,7 @@ class AvatarStaticFiles(CORSStaticFiles):
 class WebSocketServer:
     def __init__(self, config: Config):
         self.app = FastAPI()
+        self.config = config
 
         # Add global CORS middleware
         self.app.add_middleware(
@@ -83,6 +84,17 @@ class WebSocketServer:
         self.app.include_router(
             init_webtool_routes(default_context_cache=default_context_cache),
         )
+        
+        # Initialize and include proxy routes if proxy is enabled
+        system_config = config.system_config
+        if hasattr(system_config, 'enable_proxy') and system_config.enable_proxy:
+            # Construct the server URL for the proxy
+            host = system_config.host
+            port = system_config.port
+            server_url = f"ws://{host}:{port}/client-ws"
+            self.app.include_router(
+                init_proxy_route(server_url=server_url),
+            )
 
         # Mount cache directory first (to ensure audio file access)
         if not os.path.exists("cache"):

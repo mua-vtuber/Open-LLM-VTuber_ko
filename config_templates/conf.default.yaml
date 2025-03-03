@@ -12,6 +12,7 @@ system_config:
     live2d_expression_prompt: 'live2d_expression_prompt'
     # Enable think_tag_prompt to let LLMs without thinking output show inner thoughts, mental activities and actions (in parentheses format) without voice synthesis. See think_tag_prompt for more details.
     # think_tag_prompt: 'think_tag_prompt'
+    # live_prompt: 'live_prompt'
   group_conversation_prompt: 'group_conversation_prompt' # When using group conversation, this prompt will be added to the memory of each AI participant.
 
 # configuration for the default character
@@ -404,3 +405,11 @@ character_config:
         region: 'ap-guangzhou'
         source_lang: 'zh'
         target_lang: 'ja'
+
+# Live Streaming Integration
+live_config:
+  bilibili_live:
+    # List of BiliBili live room IDs to monitor
+    room_ids: [1991478060]
+    # SESSDATA cookie value (optional, for authenticated requests)
+    sessdata: ""
