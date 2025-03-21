@@ -93,6 +93,17 @@ character_config:
       # a configuration pool for the credentials and connection details for
       # all of the stateless llm providers that will be used in different agents
 
+      # Stateless LLM with Template
+      stateless_llm_with_template:
+        base_url: 'http://localhost:8080/v1'
+        llm_api_key: 'somethingelse'
+        organization_id: 'org_eternity'
+        project_id: 'project_glass'
+        model: 'qwen2.5:latest'
+        template: 'CHATML'
+        temperature: 1.0 # value between 0 to 2
+        interrupt_method: 'user'
+
       # OpenAI Compatible inference backend
       openai_compatible_llm:
         base_url: 'http://localhost:11434/v1'
