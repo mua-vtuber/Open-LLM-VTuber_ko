@@ -1,8 +1,9 @@
 # ===========================
-# 这是配置文件, conf.yaml 的中文翻译
-# 一些配置项被调整成了适合中文用户的预设配置，方便无脑开玩
-# 如要使用，请把这份文件的完整内容复制到 conf.yaml 文件中，替换掉conf.yaml
+# 这是中文版本的配置文件。
+# 一些配置项被调整成了适合中文用户的预设配置，方便无脑开玩。
+# 如果你希望使用英文版本，请用 config_templates/conf.default.yaml 的内容替换本文件。
 # ===========================
+
 # 系统设置：与服务器初始化相关的设置
 system_config:
   conf_version: 'v1.1.1' # 配置文件版本
@@ -13,6 +14,7 @@ system_config:
     live2d_expression_prompt: 'live2d_expression_prompt' # 将追加到系统提示末尾，让 LLM（大型语言模型）包含控制面部表情的关键字。支持的关键字将自动加载到 `[<insert_emomap_keys>]` 的位置。
     # 启用 think_tag_prompt 可让不具备思考输出的 LLM 也能展示内心想法、心理活动和动作（以括号形式呈现），但不会进行语音合成。更多详情请参考 think_tag_prompt。
     # think_tag_prompt: 'think_tag_prompt'
+    # live_prompt: 'live_prompt'
   group_conversation_prompt: 'group_conversation_prompt' # 当使用群聊时，此提示词将添加到每个 AI 参与者的记忆中。
 
 # 默认角色的配置
@@ -396,3 +398,11 @@ character_config:
         region: 'ap-guangzhou'
         source_lang: 'zh'
         target_lang: 'ja'
+
+# 直播平台集成
+live_config:
+  bilibili_live:
+    # 要监控的B站直播间ID列表（直播间URL中的数字）
+    room_ids: [1991478060]
+    # SESSDATA cookie值（可选，用于认证请求，可以查看发送弹幕用户名）
+    sessdata: ""
