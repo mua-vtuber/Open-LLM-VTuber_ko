@@ -15,6 +15,7 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
     """Configuration for the basic memory agent."""
 
     llm_provider: Literal[
+        "stateless_llm_with_template",
         "openai_compatible_llm",
         "claude_llm",
         "llama_cpp_llm",
