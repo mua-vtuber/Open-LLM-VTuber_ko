@@ -308,6 +308,7 @@ class OpenAITTSConfig(I18nMixin):
     voice: Optional[str] = Field(None, alias="voice")
     api_key: Optional[str] = Field(None, alias="api_key")
     base_url: Optional[str] = Field(None, alias="base_url")
+    file_extension: Literal["mp3", "wav"] = Field("mp3", alias="file_extension")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "model": Description(
@@ -325,6 +326,10 @@ class OpenAITTSConfig(I18nMixin):
         "base_url": Description(
             en="Base URL of the TTS server (overrides default)",
             zh="TTS 服务器的基础 URL（覆盖默认值）",
+        ),
+        "file_extension": Description(
+            en="Audio file format (mp3 or wav, defaults to mp3)",
+            zh="音频文件格式（mp3 或 wav，默认为 mp3）",
         ),
     }
 
