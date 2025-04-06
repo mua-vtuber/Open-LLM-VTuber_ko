@@ -132,6 +132,29 @@ class HumeAIConfig(I18nMixin, BaseModel):
         ),
     }
 
+# =================================
+
+
+class LettaConfig(I18nMixin, BaseModel):
+    """Configuration for the Letta agent."""
+    host: str = Field("localhost", alias="host")
+    port: int = Field(8283, alias="port")
+    id: str = Field(..., alias="id")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+    "host": Description(
+        en="Host address for the Letta server", zh="Letta服务器的主机地址"
+    ),
+    "port": Description(
+        en="Port number for the Letta server (default: 8283)", zh="Letta服务器的端口号（默认：8283）"
+    ),
+    "id": Description(
+        en="Agent instance ID running on the Letta server", zh="指定Letta服务器上运行的Agent实例id"
+    ),
+    }
+
+
+
 
 class AgentSettings(I18nMixin, BaseModel):
     """Settings for different types of agents."""
@@ -141,6 +164,7 @@ class AgentSettings(I18nMixin, BaseModel):
     )
     mem0_agent: Optional[Mem0Config] = Field(None, alias="mem0_agent")
     hume_ai_agent: Optional[HumeAIConfig] = Field(None, alias="hume_ai_agent")
+    letta_agent: Optional[LettaConfig] = Field(None, alias="letta_agent")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "basic_memory_agent": Description(
@@ -150,6 +174,9 @@ class AgentSettings(I18nMixin, BaseModel):
         "hume_ai_agent": Description(
             en="Configuration for Hume AI agent", zh="Hume AI 代理配置"
         ),
+        "letta_agent": Description(
+            en="Configuration for Letta agent", zh="Letta 代理配置"
+        )
     }
 
 
@@ -157,7 +184,7 @@ class AgentConfig(I18nMixin, BaseModel):
     """This class contains all of the configurations related to agent."""
 
     conversation_agent_choice: Literal[
-        "basic_memory_agent", "mem0_agent", "hume_ai_agent"
+        "basic_memory_agent", "mem0_agent", "hume_ai_agent", "letta_agent"
     ] = Field(..., alias="conversation_agent_choice")
     agent_settings: AgentSettings = Field(..., alias="agent_settings")
     llm_configs: StatelessLLMConfigs = Field(..., alias="llm_configs")
