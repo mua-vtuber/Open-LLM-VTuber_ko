@@ -112,6 +112,17 @@ class TTSFactory:
             from .sherpa_onnx_tts import TTSEngine as SherpaOnnxTTSEngine
 
             return SherpaOnnxTTSEngine(**kwargs)
+        elif engine_type == "openai_tts":
+            from .openai_tts import TTSEngine as OpenAITTSEngine
+
+            # Pass relevant config options, allowing defaults in openai_tts.py if not provided
+            return OpenAITTSEngine(
+                model=kwargs.get("model"), # Will use default "kokoro" if not in kwargs
+                voice=kwargs.get("voice"), # Will use default "af_sky+af_bella" if not in kwargs
+                api_key=kwargs.get("api_key"), # Will use default "not-needed" if not in kwargs
+                base_url=kwargs.get("base_url"), # Will use default "http://localhost:8880/v1" if not in kwargs
+                file_extension=kwargs.get("file_extension") # Will use default "mp3" if not in kwargs
+            )
 
         else:
             raise ValueError(f"Unknown TTS engine type: {engine_type}")

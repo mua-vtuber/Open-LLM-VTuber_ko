@@ -301,6 +301,39 @@ class SherpaOnnxTTSConfig(I18nMixin):
     }
 
 
+class OpenAITTSConfig(I18nMixin):
+    """Configuration for OpenAI-compatible TTS client."""
+
+    model: Optional[str] = Field(None, alias="model")
+    voice: Optional[str] = Field(None, alias="voice")
+    api_key: Optional[str] = Field(None, alias="api_key")
+    base_url: Optional[str] = Field(None, alias="base_url")
+    file_extension: Literal["mp3", "wav"] = Field("mp3", alias="file_extension")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "model": Description(
+            en="Model name for the TTS server (overrides default)",
+            zh="TTS 服务器的模型名称（覆盖默认值）",
+        ),
+        "voice": Description(
+            en="Voice name(s) for the TTS server (overrides default)",
+            zh="TTS 服务器的语音名称（覆盖默认值）",
+        ),
+        "api_key": Description(
+            en="API key if required by the TTS server (overrides default)",
+            zh="TTS 服务器所需的 API 密钥（覆盖默认值）",
+        ),
+        "base_url": Description(
+            en="Base URL of the TTS server (overrides default)",
+            zh="TTS 服务器的基础 URL（覆盖默认值）",
+        ),
+        "file_extension": Description(
+            en="Audio file format (mp3 or wav, defaults to mp3)",
+            zh="音频文件格式（mp3 或 wav，默认为 mp3）",
+        ),
+    }
+
+
 class TTSConfig(I18nMixin):
     """Configuration for Text-to-Speech."""
 
@@ -316,6 +349,7 @@ class TTSConfig(I18nMixin):
         "gpt_sovits_tts",
         "fish_api_tts",
         "sherpa_onnx_tts",
+        "openai_tts", # Add openai_tts here
     ] = Field(..., alias="tts_model")
 
     azure_tts: Optional[AzureTTSConfig] = Field(None, alias="azure_tts")
@@ -331,6 +365,8 @@ class TTSConfig(I18nMixin):
     sherpa_onnx_tts: Optional[SherpaOnnxTTSConfig] = Field(
         None, alias="sherpa_onnx_tts"
     )
+    openai_tts: Optional[OpenAITTSConfig] = Field(None, alias="openai_tts")
+    
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "tts_model": Description(
@@ -356,6 +392,9 @@ class TTSConfig(I18nMixin):
         ),
         "sherpa_onnx_tts": Description(
             en="Configuration for Sherpa Onnx TTS", zh="Sherpa Onnx TTS 配置"
+        ),
+        "openai_tts": Description(
+            en="Configuration for OpenAI-compatible TTS", zh="OpenAI 兼容 TTS 配置"
         ),
     }
 
@@ -386,5 +425,7 @@ class TTSConfig(I18nMixin):
             values.fish_api_tts.model_validate(values.fish_api_tts.model_dump())
         elif tts_model == "sherpa_onnx_tts" and values.sherpa_onnx_tts is not None:
             values.sherpa_onnx_tts.model_validate(values.sherpa_onnx_tts.model_dump())
+        elif tts_model == "openai_tts" and values.openai_tts is not None:
+            values.openai_tts.model_validate(values.openai_tts.model_dump())
 
         return values

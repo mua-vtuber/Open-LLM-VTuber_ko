@@ -375,6 +375,14 @@ character_config:
       speed: 1.0 # Speech speed (1.0 is normal)
       debug: false # Enable debug mode (True/False)
 
+    openai_tts: # Configuration for OpenAI-compatible TTS endpoints
+      # These settings override the defaults in the openai_tts.py file if provided
+      model: 'kokoro' # Model name expected by the server (e.g., 'tts-1', 'kokoro')
+      voice: 'af_sky+af_bella' # Voice name(s) expected by the server (e.g., 'alloy', 'af_sky+af_bella')
+      api_key: 'not-needed' # API key if required by the server
+      base_url: 'http://localhost:8880/v1' # Base URL of the TTS server
+      file_extension: 'mp3' # Audio file format ('mp3' or 'wav')
+
 
   # =================== Voice Activity Detection ===================
   vad_config:
