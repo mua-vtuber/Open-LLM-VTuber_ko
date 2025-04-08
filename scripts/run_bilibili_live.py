@@ -2,13 +2,13 @@ import asyncio
 import sys
 import os
 from loguru import logger
+from src.open_llm_vtuber.live.bilibili_live import BiliBiliLivePlatform
+from src.open_llm_vtuber.config_manager.utils import read_yaml, validate_config
 
 # Add project root to path to enable imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.open_llm_vtuber.live.bilibili_live import BiliBiliLivePlatform
-from src.open_llm_vtuber.config_manager.utils import read_yaml, validate_config
 
 
 async def main():

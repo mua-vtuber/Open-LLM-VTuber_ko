@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
-from typing import Callable, Optional, List, Dict, Any
-from loguru import logger
+from typing import Callable, Dict, Any
 
 
 class LivePlatformInterface(ABC):

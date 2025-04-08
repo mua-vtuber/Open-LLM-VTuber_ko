@@ -1,12 +1,11 @@
 import asyncio
 import json
 import uuid
-from typing import Dict, Set, Optional, List, Deque
+from typing import Dict, Optional
 from fastapi import WebSocket
 from loguru import logger
 import aiohttp
 from starlette.websockets import WebSocketDisconnect
-from collections import deque
 
 from .proxy_message_queue import ProxyMessageQueue
 

@@ -1,7 +1,6 @@
 from typing import AsyncIterator, List, Dict, Any
-from loguru import logger
 from .agent_interface import AgentInterface
-from ..output_types import SentenceOutput, DisplayText
+from ..output_types import SentenceOutput
 from ..transformers import (
     sentence_divider,
     actions_extractor,

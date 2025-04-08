@@ -3,7 +3,7 @@ import http.cookies
 import random
 import traceback
 import json
-from typing import Callable, Dict, Any, List, Optional, Set
+from typing import Callable, Dict, Any, List, Optional
 from loguru import logger
 import aiohttp
 import websockets
