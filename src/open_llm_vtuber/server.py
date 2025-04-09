@@ -3,8 +3,7 @@ import shutil
 
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from starlette.responses import Response, FileResponse
+from starlette.responses import Response
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
 from .routes import init_client_ws_route, init_webtool_routes, init_proxy_route
