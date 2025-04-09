@@ -123,6 +123,16 @@ class OllamaConfig(OpenAICompatibleConfig):
     }
 
 
+class LmStudioConfig(OpenAICompatibleConfig):
+    """Configuration for LM Studio."""
+
+    llm_api_key: str = Field("default_api_key", alias="llm_api_key")
+    base_url: str = Field("http://localhost:1234/v1", alias="base_url")
+    interrupt_method: Literal["system", "user"] = Field(
+        "system", alias="interrupt_method"
+    )
+
+
 class OpenAIConfig(OpenAICompatibleConfig):
     """Configuration for Official OpenAI API."""
 
@@ -230,6 +240,7 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
         None, alias="openai_compatible_llm"
     )
     ollama_llm: OllamaConfig | None = Field(None, alias="ollama_llm")
+    lmstudio_llm: LmStudioConfig | None = Field(None, alias="lmstudio_llm")
     openai_llm: OpenAIConfig | None = Field(None, alias="openai_llm")
     gemini_llm: GeminiConfig | None = Field(None, alias="gemini_llm")
     zhipu_llm: ZhipuConfig | None = Field(None, alias="zhipu_llm")
@@ -248,6 +259,9 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
             zh="OpenAI兼容的语言模型提供者配置",
         ),
         "ollama_llm": Description(en="Configuration for Ollama", zh="Ollama 配置"),
+        "lmstudio_llm": Description(
+            en="Configuration for LM Studio", zh="LM Studio 配置"
+        ),
         "openai_llm": Description(
             en="Configuration for Official OpenAI API", zh="官方 OpenAI API 配置"
         ),

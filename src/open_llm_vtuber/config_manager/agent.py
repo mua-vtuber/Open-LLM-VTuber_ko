@@ -20,6 +20,7 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
         "claude_llm",
         "llama_cpp_llm",
         "ollama_llm",
+        "lmstudio_llm",
         "openai_llm",
         "gemini_llm",
         "zhipu_llm",
