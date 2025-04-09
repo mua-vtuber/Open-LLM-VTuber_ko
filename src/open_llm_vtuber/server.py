@@ -16,17 +16,18 @@ class CORSStaticFiles(StarletteStaticFiles):
     """
     Static files handler that adds CORS headers to all responses
     """
+
     async def get_response(self, path: str, scope):
         response = await super().get_response(path, scope)
-        
+
         # Add CORS headers to all responses
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "*"
-        
+
         if path.endswith(".js"):
             response.headers["Content-Type"] = "application/javascript"
-            
+
         return response
 
 
@@ -34,6 +35,7 @@ class CustomStaticFiles(CORSStaticFiles):
     """
     Static files handler with custom content type settings
     """
+
     pass
 
 
@@ -41,6 +43,7 @@ class AvatarStaticFiles(CORSStaticFiles):
     """
     Avatar files handler with security restrictions and CORS headers
     """
+
     async def get_response(self, path: str, scope):
         allowed_extensions = (".jpg", ".jpeg", ".png", ".gif", ".svg")
         if not any(path.lower().endswith(ext) for ext in allowed_extensions):
@@ -62,7 +65,7 @@ class WebSocketServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        
+
         # Add a middleware to ensure CORS headers are set on all responses
         @self.app.middleware("http")
         async def add_cors_headers(request: Request, call_next):
@@ -83,10 +86,10 @@ class WebSocketServer:
         self.app.include_router(
             init_webtool_routes(default_context_cache=default_context_cache),
         )
-        
+
         # Initialize and include proxy routes if proxy is enabled
         system_config = config.system_config
-        if hasattr(system_config, 'enable_proxy') and system_config.enable_proxy:
+        if hasattr(system_config, "enable_proxy") and system_config.enable_proxy:
             # Construct the server URL for the proxy
             host = system_config.host
             port = system_config.port

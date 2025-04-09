@@ -22,12 +22,12 @@ class TTSEngine(TTSInterface):
 
     def __init__(
         self,
-        model="kokoro", # Default model based on user example
-        voice="af_sky+af_bella", # Default voice based on user example
-        api_key="not-needed", # Default for local/compatible servers that don't require auth
-        base_url="http://localhost:8880/v1", # Default to the specified endpoint
-        file_extension: str = "mp3", # Configurable file extension
-        **kwargs, # Allow passing additional args to OpenAI client
+        model="kokoro",  # Default model based on user example
+        voice="af_sky+af_bella",  # Default voice based on user example
+        api_key="not-needed",  # Default for local/compatible servers that don't require auth
+        base_url="http://localhost:8880/v1",  # Default to the specified endpoint
+        file_extension: str = "mp3",  # Configurable file extension
+        **kwargs,  # Allow passing additional args to OpenAI client
     ):
         """
         Initializes the OpenAI TTS engine.
@@ -40,12 +40,14 @@ class TTSEngine(TTSInterface):
         """
         self.model = model
         self.voice = voice
-        self.file_extension = file_extension.lower() # Use configured extension
+        self.file_extension = file_extension.lower()  # Use configured extension
         if self.file_extension not in ["mp3", "wav"]:
-            logger.warning(f"Unsupported file extension '{self.file_extension}' configured for OpenAI TTS. Defaulting to 'mp3'.")
+            logger.warning(
+                f"Unsupported file extension '{self.file_extension}' configured for OpenAI TTS. Defaulting to 'mp3'."
+            )
             self.file_extension = "mp3"
         self.new_audio_dir = "cache"
-        self.temp_audio_file = "temp_openai" # Use a different temp name
+        self.temp_audio_file = "temp_openai"  # Use a different temp name
 
         if not os.path.exists(self.new_audio_dir):
             os.makedirs(self.new_audio_dir)
@@ -54,12 +56,14 @@ class TTSEngine(TTSInterface):
             # Initialize OpenAI client
             # Initialize OpenAI client to connect to the specified base_url
             self.client = OpenAI(api_key=api_key, base_url=base_url, **kwargs)
-            logger.info(f"OpenAI-compatible TTS Engine initialized, targeting endpoint: {base_url}")
+            logger.info(
+                f"OpenAI-compatible TTS Engine initialized, targeting endpoint: {base_url}"
+            )
             # Optional: Add a check here to list models or voices if needed
             # self.client.models.list() # Example check
         except Exception as e:
             logger.critical(f"Failed to initialize OpenAI client: {e}")
-            self.client = None # Ensure client is None if init fails
+            self.client = None  # Ensure client is None if init fails
 
     def generate_audio(self, text, file_name_no_ext=None, speed=1.0):
         """
@@ -80,22 +84,30 @@ class TTSEngine(TTSInterface):
         # Use the configured file extension
         # self.file_extension = response_format # Removed: Use configured extension
         file_name = self.generate_cache_file_name(file_name_no_ext, self.file_extension)
-        speech_file_path = Path(file_name) # generate_cache_file_name likely includes the cache dir already
+        speech_file_path = Path(
+            file_name
+        )  # generate_cache_file_name likely includes the cache dir already
 
         try:
-            logger.debug(f"Generating audio via {self.client.base_url} for text: '{text[:50]}...' with voice '{self.voice}' model '{self.model}'")
+            logger.debug(
+                f"Generating audio via {self.client.base_url} for text: '{text[:50]}...' with voice '{self.voice}' model '{self.model}'"
+            )
             # Use with_streaming_response for potentially better handling of large audio files or network issues
-            with self.client.audio.speech.with_streaming_response.create(
-                model=self.model, # Model name expected by the compatible server (e.g., "kokoro")
-                voice=self.voice, # Voice name(s) expected by the compatible server (e.g., "af_sky+af_bella")
-                input=text,
-                response_format=self.file_extension, # Use configured extension
-                speed=speed,
-            ) as response:
+            with (
+                self.client.audio.speech.with_streaming_response.create(
+                    model=self.model,  # Model name expected by the compatible server (e.g., "kokoro")
+                    voice=self.voice,  # Voice name(s) expected by the compatible server (e.g., "af_sky+af_bella")
+                    input=text,
+                    response_format=self.file_extension,  # Use configured extension
+                    speed=speed,
+                ) as response
+            ):
                 # Stream the audio content to the file
                 response.stream_to_file(speech_file_path)
 
-            logger.info(f"Successfully generated audio file via compatible endpoint: {speech_file_path}")
+            logger.info(
+                f"Successfully generated audio file via compatible endpoint: {speech_file_path}"
+            )
 
         except Exception as e:
             logger.critical(f"Error: OpenAI TTS unable to generate audio: {e}")
@@ -104,10 +116,13 @@ class TTSEngine(TTSInterface):
                 try:
                     os.remove(speech_file_path)
                 except OSError as rm_err:
-                    logger.error(f"Could not remove incomplete file {speech_file_path}: {rm_err}")
+                    logger.error(
+                        f"Could not remove incomplete file {speech_file_path}: {rm_err}"
+                    )
             return None
 
         return str(speech_file_path)
+
 
 # Example usage (optional, for testing with the compatible endpoint)
 # if __name__ == '__main__':

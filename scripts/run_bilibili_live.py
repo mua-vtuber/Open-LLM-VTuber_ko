@@ -17,37 +17,39 @@ async def main():
     Connects to BiliBili Live room and forwards danmaku messages to the VTuber.
     """
     logger.info("Starting BiliBili Live platform client")
-    
+
     try:
         # Load configuration
         config_path = os.path.join(project_root, "conf.yaml")
         config_data = read_yaml(config_path)
         config = validate_config(config_data)
-        
+
         # Extract BiliBili Live configuration
         bilibili_config = config.live_config.bilibili_live
-                
+
         # Check if room IDs are provided
         if not bilibili_config.room_ids:
-            logger.error("No BiliBili room IDs specified in configuration. Please add at least one room ID.")
+            logger.error(
+                "No BiliBili room IDs specified in configuration. Please add at least one room ID."
+            )
             return
-        
+
         logger.info(f"Connecting to BiliBili Live rooms: {bilibili_config.room_ids}")
-        
+
         # Initialize and run the BiliBili Live platform
         platform = BiliBiliLivePlatform(
-            room_ids=bilibili_config.room_ids,
-            sessdata=bilibili_config.sessdata
+            room_ids=bilibili_config.room_ids, sessdata=bilibili_config.sessdata
         )
-        
+
         await platform.run()
-        
+
     except ImportError as e:
         logger.error(f"Failed to import required modules: {e}")
         logger.error("Make sure you have installed blivedm with: pip install blivedm")
     except Exception as e:
         logger.error(f"Error starting BiliBili Live client: {e}")
         import traceback
+
         logger.debug(traceback.format_exc())
 
 

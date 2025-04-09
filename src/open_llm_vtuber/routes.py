@@ -48,16 +48,16 @@ def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
 def init_proxy_route(server_url: str) -> APIRouter:
     """
     Create and return API routes for handling proxy connections.
-    
+
     Args:
         server_url: The WebSocket URL of the actual server
-        
+
     Returns:
         APIRouter: Configured router with proxy WebSocket endpoint
     """
     router = APIRouter()
     proxy_handler = ProxyHandler(server_url)
-    
+
     @router.websocket("/proxy-ws")
     async def proxy_endpoint(websocket: WebSocket):
         """WebSocket endpoint for proxy connections"""
@@ -66,7 +66,7 @@ def init_proxy_route(server_url: str) -> APIRouter:
         except Exception as e:
             logger.error(f"Error in proxy connection: {e}")
             raise
-            
+
     return router
 
 
@@ -99,8 +99,7 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
         live2d_dir = "live2d-models"
         if not os.path.exists(live2d_dir):
             return JSONResponse(
-                {"error": "Live2D models directory not found"}, 
-                status_code=404
+                {"error": "Live2D models directory not found"}, status_code=404
             )
 
         valid_characters = []
@@ -109,28 +108,36 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
         for entry in os.scandir(live2d_dir):
             if entry.is_dir():
                 folder_name = entry.name.replace("\\", "/")
-                model3_file = os.path.join(live2d_dir, folder_name, f"{folder_name}.model3.json").replace("\\", "/")
-                
+                model3_file = os.path.join(
+                    live2d_dir, folder_name, f"{folder_name}.model3.json"
+                ).replace("\\", "/")
+
                 if os.path.isfile(model3_file):
                     # Find avatar file if it exists
                     avatar_file = None
                     for ext in supported_extensions:
-                        avatar_path = os.path.join(live2d_dir, folder_name, f"{folder_name}{ext}")
+                        avatar_path = os.path.join(
+                            live2d_dir, folder_name, f"{folder_name}{ext}"
+                        )
                         if os.path.isfile(avatar_path):
                             avatar_file = avatar_path.replace("\\", "/")
                             break
 
-                    valid_characters.append({
-                        "name": folder_name,
-                        "avatar": avatar_file,
-                        "model_path": model3_file
-                    })
-        return JSONResponse({
-            "type": "live2d-models/info",
-            "count": len(valid_characters),
-            "characters": valid_characters,
-        })
-    
+                    valid_characters.append(
+                        {
+                            "name": folder_name,
+                            "avatar": avatar_file,
+                            "model_path": model3_file,
+                        }
+                    )
+        return JSONResponse(
+            {
+                "type": "live2d-models/info",
+                "count": len(valid_characters),
+                "characters": valid_characters,
+            }
+        )
+
     @router.post("/asr")
     async def transcribe_audio(file: UploadFile = File(...)):
         """

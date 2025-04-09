@@ -554,12 +554,14 @@ class WebSocketHandler:
         """Handle group info request"""
         await self.send_group_update(websocket, client_uid)
 
-    async def _handle_init_config_request(self, websocket: WebSocket, client_uid: str, data: WSMessage) -> None:
+    async def _handle_init_config_request(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
         """Handle request for initialization configuration"""
         context = self.client_contexts.get(client_uid)
         if not context:
             context = self.default_context_cache
-        
+
         await websocket.send_text(
             json.dumps(
                 {
@@ -572,7 +574,9 @@ class WebSocketHandler:
             )
         )
 
-    async def _handle_heartbeat(self, websocket: WebSocket, client_uid: str, data: WSMessage) -> None:
+    async def _handle_heartbeat(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
         """Handle heartbeat messages from clients"""
         try:
             await websocket.send_json({"type": "heartbeat-ack"})

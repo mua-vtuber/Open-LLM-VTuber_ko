@@ -11,21 +11,22 @@ from ...config_manager import TTSPreprocessorConfig
 from ..input_types import BatchInput, TextSource
 from letta_client import Letta
 
+
 class LettaAgent(AgentInterface):
     """
     Custom Letta class to interface with the Letta server.
     """
 
     def __init__(
-            self,
-            live2d_model,
-            id,
-            tts_preprocessor_config: TTSPreprocessorConfig = None,
-            faster_first_response: bool = True,
-            segment_method: str = "pysbd",
-            host: str = "localhost",
-            port: int = 8283
-                 ):
+        self,
+        live2d_model,
+        id,
+        tts_preprocessor_config: TTSPreprocessorConfig = None,
+        faster_first_response: bool = True,
+        segment_method: str = "pysbd",
+        host: str = "localhost",
+        port: int = 8283,
+    ):
         super().__init__()
         self.url = f"http://{host}:{port}"
         self.client = Letta(base_url=self.url)
@@ -55,26 +56,28 @@ class LettaAgent(AgentInterface):
 
     def handle_interrupt(self, heard_response: str) -> None:
         pass
-    
+
     async def generator_to_async(self, gen):
         for item in gen:
             yield item
 
     async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
         messages = self._to_messages(input_data)
-        stream = self.generator_to_async(self.client.agents.messages.create_stream(
-            agent_id=self.id,
-            messages=messages,
-            stream_tokens=True,
-        ))
+        stream = self.generator_to_async(
+            self.client.agents.messages.create_stream(
+                agent_id=self.id,
+                messages=messages,
+                stream_tokens=True,
+            )
+        )
 
         complete_response = ""
         async for token in stream:
-            if token.message_type == 'reasoning_message':
+            if token.message_type == "reasoning_message":
                 # This part is reasoning information and should not be displayed
                 token = token.reasoning
                 continue
-            elif token.message_type == 'assistant_message':
+            elif token.message_type == "assistant_message":
                 # This part is the result that needs to be displayed, it is the final result
                 # logger.info('Test message')
                 # logger.info(token)

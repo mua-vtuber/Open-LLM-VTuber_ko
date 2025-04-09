@@ -15,31 +15,37 @@ from .stateless_llm_interface import StatelessLLMInterface
 
 TEMPLATES = {
     "LLAMA3": {
-        "template": "".join([
-            "{{ bos_token }}",
-            "{% for message in messages %}",
-            "    {{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' }}",
-            "{% endfor %}",
-            "{% if add_generation_prompt %}",
-            "    {{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}",
-            "{% endif %}"
-        ]),
-        "eot_token": "<|eot_id|>"
+        "template": "".join(
+            [
+                "{{ bos_token }}",
+                "{% for message in messages %}",
+                "    {{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' }}",
+                "{% endfor %}",
+                "{% if add_generation_prompt %}",
+                "    {{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}",
+                "{% endif %}",
+            ]
+        ),
+        "eot_token": "<|eot_id|>",
     },
     "CHATML": {
-        "template": "".join([
-            "{{ bos_token }}",
-            "{% for message in messages %}",
-            "    {{ '<|im_start|>' + message['role'] + '\n' + message['content'] | trim + '<|im_end|>\n' }}",
-            "{% endfor %}",
-            "{% if add_generation_prompt %}",
-            "    {{ '<|im_start|>assistant\n' }}",
-            "{% endif %}"
-        ]),
-        "eot_token": "<|im_end|>"
+        "template": "".join(
+            [
+                "{{ bos_token }}",
+                "{% for message in messages %}",
+                "    {{ '<|im_start|>' + message['role'] + '\n' + message['content'] | trim + '<|im_end|>\n' }}",
+                "{% endfor %}",
+                "{% if add_generation_prompt %}",
+                "    {{ '<|im_start|>assistant\n' }}",
+                "{% endif %}",
+            ]
+        ),
+        "eot_token": "<|im_end|>",
     },
     "ALPACA": {
-        "template": "".join(["""
+        "template": "".join(
+            [
+                """
 {{ (messages|selectattr('role', 'equalto', 'system')|list|last).content|trim if (messages|selectattr('role', 'equalto', 'system')|list) else '' }}
 
 {% for message in messages %}
@@ -69,9 +75,11 @@ TEMPLATES = {
 {% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}
 ### Response:
 {% endif %}
-        """]),
-        "eot_token": "###"
-    }
+        """
+            ]
+        ),
+        "eot_token": "###",
+    },
 }
 
 
@@ -101,9 +109,11 @@ class AsyncLLMWithTemplate(StatelessLLMInterface):
         self.completion_url = base_url
         self.model = model
         self.temperature = temperature
-        self.template = Template(TEMPLATES[template]['template'])
-        self.eot_token = TEMPLATES[template]['eot_token']
-        self.prompt_headers = {"Authorization": llm_api_key or "Bearer your_api_key_here"}
+        self.template = Template(TEMPLATES[template]["template"])
+        self.eot_token = TEMPLATES[template]["eot_token"]
+        self.prompt_headers = {
+            "Authorization": llm_api_key or "Bearer your_api_key_here"
+        }
         logger.info(
             f"Initialized AsyncLLM with the parameters: {self.completion_url} ({template})"
         )
@@ -140,18 +150,15 @@ class AsyncLLMWithTemplate(StatelessLLMInterface):
             prompt = self.template.render(
                 messages=messages_with_system,
                 bos_token=bos_token,
-                add_generation_prompt=True
+                add_generation_prompt=True,
             )
             data: Dict = {
                 "stream": True,
                 "temperature": self.temperature,
-                "prompt": prompt
+                "prompt": prompt,
             }
             with requests.post(
-                self.completion_url,
-                headers=self.prompt_headers,
-                json=data,
-                stream=True
+                self.completion_url, headers=self.prompt_headers, json=data, stream=True
             ) as response:
                 for line in response.iter_lines():
                     if line:
@@ -183,6 +190,6 @@ class AsyncLLMWithTemplate(StatelessLLMInterface):
         return line
 
     def _process_line(self, line):
-        if not (('stop' in line) and (line['stop'])):
-            token = line['content']
+        if not (("stop" in line) and (line["stop"])):
+            token = line["content"]
             return token

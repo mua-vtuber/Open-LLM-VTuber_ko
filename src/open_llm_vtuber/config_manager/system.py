@@ -27,7 +27,7 @@ class SystemConfig(I18nMixin):
         ),
         "enable_proxy": Description(
             en="Enable proxy mode for multiple clients",
-            zh="启用代理模式以支持多个客户端使用一个 ws 连接"
+            zh="启用代理模式以支持多个客户端使用一个 ws 连接",
         ),
     }
 

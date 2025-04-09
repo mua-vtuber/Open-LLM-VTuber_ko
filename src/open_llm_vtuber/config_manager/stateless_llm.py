@@ -55,7 +55,6 @@ class StatelessLLMWithTemplate(StatelessLLMBaseConfig):
     }
 
 
-
 class OpenAICompatibleConfig(StatelessLLMBaseConfig):
     """Configuration for OpenAI-compatible LLM providers."""
 
@@ -242,8 +241,7 @@ class StatelessLLMConfigs(I18nMixin, BaseModel):
 
     DESCRIPTIONS: ClassVar[dict[str, Description]] = {
         "stateless_llm_with_template": Description(
-            en="Stateless LLM with Template",
-            zh=""
+            en="Stateless LLM with Template", zh=""
         ),
         "openai_compatible_llm": Description(
             en="Configuration for OpenAI-compatible LLM providers",

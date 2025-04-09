@@ -349,7 +349,7 @@ class TTSConfig(I18nMixin):
         "gpt_sovits_tts",
         "fish_api_tts",
         "sherpa_onnx_tts",
-        "openai_tts", # Add openai_tts here
+        "openai_tts",  # Add openai_tts here
     ] = Field(..., alias="tts_model")
 
     azure_tts: Optional[AzureTTSConfig] = Field(None, alias="azure_tts")
@@ -366,7 +366,6 @@ class TTSConfig(I18nMixin):
         None, alias="sherpa_onnx_tts"
     )
     openai_tts: Optional[OpenAITTSConfig] = Field(None, alias="openai_tts")
-    
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "tts_model": Description(

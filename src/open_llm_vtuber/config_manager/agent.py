@@ -132,11 +132,13 @@ class HumeAIConfig(I18nMixin, BaseModel):
         ),
     }
 
+
 # =================================
 
 
 class LettaConfig(I18nMixin, BaseModel):
     """Configuration for the Letta agent."""
+
     host: str = Field("localhost", alias="host")
     port: int = Field(8283, alias="port")
     id: str = Field(..., alias="id")
@@ -144,18 +146,18 @@ class LettaConfig(I18nMixin, BaseModel):
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
-    "host": Description(
-        en="Host address for the Letta server", zh="Letta服务器的主机地址"
-    ),
-    "port": Description(
-        en="Port number for the Letta server (default: 8283)", zh="Letta服务器的端口号（默认：8283）"
-    ),
-    "id": Description(
-        en="Agent instance ID running on the Letta server", zh="指定Letta服务器上运行的Agent实例id"
-    ),
+        "host": Description(
+            en="Host address for the Letta server", zh="Letta服务器的主机地址"
+        ),
+        "port": Description(
+            en="Port number for the Letta server (default: 8283)",
+            zh="Letta服务器的端口号（默认：8283）",
+        ),
+        "id": Description(
+            en="Agent instance ID running on the Letta server",
+            zh="指定Letta服务器上运行的Agent实例id",
+        ),
     }
-
-
 
 
 class AgentSettings(I18nMixin, BaseModel):
@@ -178,7 +180,7 @@ class AgentSettings(I18nMixin, BaseModel):
         ),
         "letta_agent": Description(
             en="Configuration for Letta agent", zh="Letta 代理配置"
-        )
+        ),
     }
 
 
