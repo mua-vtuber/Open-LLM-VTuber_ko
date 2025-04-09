@@ -140,6 +140,8 @@ class LettaConfig(I18nMixin, BaseModel):
     host: str = Field("localhost", alias="host")
     port: int = Field(8283, alias="port")
     id: str = Field(..., alias="id")
+    faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
+    segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
     "host": Description(
@@ -198,5 +200,13 @@ class AgentConfig(I18nMixin, BaseModel):
         ),
         "llm_configs": Description(
             en="Pool of LLM provider configurations", zh="语言模型提供者配置池"
+        ),
+        "faster_first_response": Description(
+            en="Whether to respond as soon as encountering a comma in the first sentence to reduce latency (default: True)",
+            zh="是否在第一句回应时遇上逗号就直接生成音频以减少首句延迟（默认：True）",
+        ),
+        "segment_method": Description(
+            en="Method for segmenting sentences: 'regex' or 'pysbd' (default: 'pysbd')",
+            zh="分割句子的方法：'regex' 或 'pysbd'（默认：'pysbd'）",
         ),
     }
