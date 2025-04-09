@@ -120,14 +120,15 @@ class TTSFactory:
             #         gender: str = "male",
             #         pitch: int = 3,
             #         speed: int = 3
-            from .spark_tts import Spark_ttsEngine
-            return Spark_ttsEngine(
-                api_url = kwargs.get("api_url"),
-            prompt_wav_upload = kwargs.get("prompt_wav_upload"),
-                api_name = kwargs.get("api_name"),
-                gender = kwargs.get("gender"),
-                pitch = kwargs.get("pitch"),
-                speed = kwargs.get("speed")
+            from .spark_tts import TTSEngine as SparkTTSEngine
+
+            return SparkTTSEngine(
+                api_url=kwargs.get("api_url"),
+                prompt_wav_upload=kwargs.get("prompt_wav_upload"),
+                api_name=kwargs.get("api_name"),
+                gender=kwargs.get("gender"),
+                pitch=kwargs.get("pitch"),
+                speed=kwargs.get("speed"),
             )
         else:
             raise ValueError(f"Unknown TTS engine type: {engine_type}")
@@ -138,7 +139,8 @@ class TTSFactory:
 # tts_engine.speak("Hello world")
 if __name__ == "__main__":
     tts_engine = TTSFactory.get_tts_engine(
-        "spark_tts", api_url="http://127.0.0.1:7860/voice_clone",
-        used_voices=r"D:\python\spark_tts\收集的语音\纳西妲-完整.mp3"
+        "spark_tts",
+        api_url="http://127.0.0.1:7860/voice_clone",
+        used_voices=r"D:\python\spark_tts\收集的语音\纳西妲-完整.mp3",
     )
     tts_engine.generate_audio("Hello world")

@@ -1,19 +1,18 @@
-import requests
-from loguru import logger
-from gradio_client import Client, file, handle_file
 import shutil
+from loguru import logger
+from gradio_client import Client, file
 from .tts_interface import TTSInterface
-import os
 
-class Spark_ttsEngine(TTSInterface):
+
+class TTSEngine(TTSInterface):
     def __init__(
         self,
         api_url: str = "http://127.0.0.1:7860/",
         prompt_wav_upload: str = "voice_clone/voice_clone_voice.wav",
-        api_name:str = "voice_clone",
+        api_name: str = "voice_clone",
         gender: str = "male",
         pitch: int = 3,
-        speed: int = 3
+        speed: int = 3,
     ):
         self.api_url = api_url
         self.new_audio_dir = "cache"
@@ -35,7 +34,7 @@ class Spark_ttsEngine(TTSInterface):
                         prompt_text="",
                         prompt_wav_upload=file(self.used_voices),
                         prompt_wav_record=None,
-                        api_name="/voice_clone"
+                        api_name="/voice_clone",
                     )
                     shutil.copyfile(source_file, file_name)
                     return file_name
@@ -49,7 +48,7 @@ class Spark_ttsEngine(TTSInterface):
                         gender=self.gender,
                         pitch=self.pitch,
                         speed=self.speed,
-                        api_name="/voice_creation"
+                        api_name="/voice_creation",
                     )
                     shutil.copyfile(source_file, file_name)
                     return file_name

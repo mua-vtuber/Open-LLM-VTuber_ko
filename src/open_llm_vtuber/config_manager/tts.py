@@ -303,15 +303,10 @@ class SherpaOnnxTTSConfig(I18nMixin):
 
 class SparkTTSConfig(I18nMixin):
     """Configuration for Spark TTS."""
-    #         api_url: str = "http://127.0.0.1:7860/",
-    #         prompt_wav_upload: str = "voice_clone/voice_clone_voice.wav",
-    #         api_name:str = "voice_clone",
-    #         gender: str = "male",
-    #         pitch: int = 3,
-    #         speed: int = 3
-    api_url:str = Field(..., alias="api_url")
+    
+    api_url: str = Field(..., alias="api_url")
     prompt_wav_upload: str = Field(..., alias="prompt_wav_upload")
-    api_name:str = Field(..., alias="api_name")
+    api_name: str = Field(..., alias="api_name")
     gender: str = Field(..., alias="gender")
     pitch: int = Field(..., alias="pitch")
     speed: int = Field(..., alias="speed")
@@ -322,11 +317,11 @@ class SparkTTSConfig(I18nMixin):
             zh="参考音频（使用语音克隆时候使用）",
         ),
         "api_url": Description(
-            en="Your API address. For example: http://127.0.0.1:7860/voice_clone",
+            en="API address of the spark tts gradio web frontend. For example: http://127.0.0.1:7860/voice_clone",
             zh="你的API地址。举例：http://127.0.0.1:7860/voice_clone",
         ),
         "api_name": Description(
-            en="Your API name. For example: voice_clone,voice_creation",
+            en="The API endpoint name. For example: voice_clone,voice_creation",
             zh="你的API名称。举例：voice_clone，voice_creation",
         ),
         "gender": Description(
@@ -334,11 +329,11 @@ class SparkTTSConfig(I18nMixin):
         ),
         "pitch": Description(
             en="Pitch shift (in semitones) default 3,range 1-5.",
-            zh="音高（以半音为单位）默认3，范围1-5"
+            zh="音高（以半音为单位）默认3，范围1-5",
         ),
         "speed": Description(
             en="Speed of the voice (in percent) default 3,range 1-5.",
-            zh="声音速度（以百分比为单位）默认3，范围1-5"
+            zh="声音速度（以百分比为单位）默认3，范围1-5",
         ),
     }
 
@@ -358,7 +353,7 @@ class TTSConfig(I18nMixin):
         "gpt_sovits_tts",
         "fish_api_tts",
         "sherpa_onnx_tts",
-        'spark_tts'
+        "spark_tts",
     ] = Field(..., alias="tts_model")
 
     azure_tts: Optional[AzureTTSConfig] = Field(None, alias="azure_tts")
@@ -401,9 +396,7 @@ class TTSConfig(I18nMixin):
         "sherpa_onnx_tts": Description(
             en="Configuration for Sherpa Onnx TTS", zh="Sherpa Onnx TTS 配置"
         ),
-        "spark_tts": Description(
-            en="Configuration for Spark TTS", zh="Spark TTS 配置"
-        ),
+        "spark_tts": Description(en="Configuration for Spark TTS", zh="Spark TTS 配置"),
     }
 
     @model_validator(mode="after")
