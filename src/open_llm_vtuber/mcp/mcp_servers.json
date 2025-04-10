@@ -1,0 +1,9 @@
+{
+    "custom_servers_path": "./servers",
+    "officials":{
+        "git":{
+            "executable": "uvx",
+            "args":["mcp-server-git", "--repository", "path/to/git/repo"]
+        }
+    }
+}

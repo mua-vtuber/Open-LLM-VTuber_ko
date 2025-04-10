@@ -54,6 +54,8 @@ character_config:
         faster_first_response: True
         # Method for segmenting sentences: 'regex' or 'pysbd'
         segment_method: 'pysbd'
+        # Use MCP (Model Context Protocol) to let the LLM have the ability to call tools
+        use_mcp: True
 
       mem0_agent:
         vector_store:
