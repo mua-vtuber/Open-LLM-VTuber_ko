@@ -334,6 +334,43 @@ class OpenAITTSConfig(I18nMixin):
     }
 
 
+class SparkTTSConfig(I18nMixin):
+    """Configuration for Spark TTS."""
+    
+    api_url: str = Field(..., alias="api_url")
+    prompt_wav_upload: str = Field(..., alias="prompt_wav_upload")
+    api_name: str = Field(..., alias="api_name")
+    gender: str = Field(..., alias="gender")
+    pitch: int = Field(..., alias="pitch")
+    speed: int = Field(..., alias="speed")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "prompt_wav_upload": Description(
+            en="Reference audio (used when using voice cloning)",
+            zh="参考音频（使用语音克隆时候使用）",
+        ),
+        "api_url": Description(
+            en="API address of the spark tts gradio web frontend. For example: http://127.0.0.1:7860/voice_clone",
+            zh="你的API地址。举例：http://127.0.0.1:7860/voice_clone",
+        ),
+        "api_name": Description(
+            en="The API endpoint name. For example: voice_clone,voice_creation",
+            zh="你的API名称。举例：voice_clone，voice_creation",
+        ),
+        "gender": Description(
+            en="Gender of the voice (male or female)", zh="声音性别（男或女）"
+        ),
+        "pitch": Description(
+            en="Pitch shift (in semitones) default 3,range 1-5.",
+            zh="音高（以半音为单位）默认3，范围1-5",
+        ),
+        "speed": Description(
+            en="Speed of the voice (in percent) default 3,range 1-5.",
+            zh="声音速度（以百分比为单位）默认3，范围1-5",
+        ),
+    }
+
+
 class TTSConfig(I18nMixin):
     """Configuration for Text-to-Speech."""
 
@@ -350,6 +387,7 @@ class TTSConfig(I18nMixin):
         "fish_api_tts",
         "sherpa_onnx_tts",
         "openai_tts",  # Add openai_tts here
+        "spark_tts",
     ] = Field(..., alias="tts_model")
 
     azure_tts: Optional[AzureTTSConfig] = Field(None, alias="azure_tts")
@@ -366,6 +404,7 @@ class TTSConfig(I18nMixin):
         None, alias="sherpa_onnx_tts"
     )
     openai_tts: Optional[OpenAITTSConfig] = Field(None, alias="openai_tts")
+    spark_tts: Optional[SparkTTSConfig] = Field(None, alias="spark_tts")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "tts_model": Description(
@@ -395,6 +434,7 @@ class TTSConfig(I18nMixin):
         "openai_tts": Description(
             en="Configuration for OpenAI-compatible TTS", zh="OpenAI 兼容 TTS 配置"
         ),
+        "spark_tts": Description(en="Configuration for Spark TTS", zh="Spark TTS 配置"),
     }
 
     @model_validator(mode="after")
@@ -426,5 +466,6 @@ class TTSConfig(I18nMixin):
             values.sherpa_onnx_tts.model_validate(values.sherpa_onnx_tts.model_dump())
         elif tts_model == "openai_tts" and values.openai_tts is not None:
             values.openai_tts.model_validate(values.openai_tts.model_dump())
-
+        elif tts_model == "spark_tts" and values.spark_tts is not None:
+            values.spark_tts.model_validate(values.spark_tts.model_dump())
         return values
