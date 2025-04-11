@@ -22,7 +22,7 @@ class MCPServerManager:
         """Initialize the MCP Server Manager.
         
         Args:
-            config_path (str | Path): The path to the directory containing the server files.
+            config_path (str | Path): The path to the directory containing the server files.  
                 Default is './servers'.
         """
         # Use the absolute path for the config path.
@@ -59,7 +59,7 @@ class MCPServerManager:
     
     
     def _detect_runtime(self, target: str) -> bool:
-        
+        """Check if a runtime is available in the system PATH."""
         founded = shutil.which(target)
         if founded:
             return True
@@ -67,7 +67,7 @@ class MCPServerManager:
     
     
     def search_custom_servers(self) -> None:
-        """Search for available mcp servers in the custom directory.
+        """Search for available mcp servers in the custom directory.  
         Stores the server in `self.servers` in a specific format.
         
         Suported suffixes are:
@@ -112,13 +112,14 @@ class MCPServerManager:
     def load_official_servers(self) -> None:
         """Load official servers from the config file.
         
-        The config file should contain a list of official servers with their details.
+        The config file should follow the original structure.
         """
-        if "officials" not in self.config:
+        officials = self.config.get("officials", {})
+        if officials == {}:
             logger.warning("MCPSM: No official servers found in the config file.")
             return
         
-        for server_name, server_details in self.config["officials"].items():
+        for server_name, server_details in officials.items():
             if "executable" not in server_details or "args" not in server_details:
                 logger.warning(f"MCPSM: Invalid server details for '{server_name}'. Ignoring.")
                 continue
