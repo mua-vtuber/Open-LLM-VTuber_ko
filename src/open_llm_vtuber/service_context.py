@@ -222,7 +222,8 @@ class ServiceContext:
                 system_prompt=system_prompt,
                 live2d_model=self.live2d_model,
                 tts_preprocessor_config=self.character_config.tts_preprocessor_config,
-                character_avatar=avatar,  # Add avatar parameter
+                character_avatar=avatar,
+                system_config=self.system_config.model_dump(),
             )
 
             logger.debug(f"Agent choice: {agent_config.conversation_agent_choice}")

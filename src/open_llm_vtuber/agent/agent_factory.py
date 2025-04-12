@@ -56,6 +56,8 @@ class AgentFactory:
                 llm_provider=llm_provider, system_prompt=system_prompt, **llm_config
             )
 
+            tool_prompts = kwargs.get("system_config", {}).get("tool_prompts", {})
+
             # Create the agent with the LLM and live2d_model
             return BasicMemoryAgent(
                 llm=llm,
@@ -67,6 +69,7 @@ class AgentFactory:
                 ),
                 segment_method=basic_memory_settings.get("segment_method", "pysbd"),
                 interrupt_method=interrupt_method,
+                tool_prompts=tool_prompts,
             )
 
         elif conversation_agent_choice == "mem0_agent":

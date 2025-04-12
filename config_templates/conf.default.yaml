@@ -13,7 +13,8 @@ system_config:
     # Enable think_tag_prompt to let LLMs without thinking output show inner thoughts, mental activities and actions (in parentheses format) without voice synthesis. See think_tag_prompt for more details.
     # think_tag_prompt: 'think_tag_prompt'
     # live_prompt: 'live_prompt'
-  group_conversation_prompt: 'group_conversation_prompt' # When using group conversation, this prompt will be added to the memory of each AI participant.
+    # When using group conversation, this prompt will be added to the memory of each AI participant.
+    group_conversation_prompt: 'group_conversation_prompt'
 
 # configuration for the default character
 character_config:
