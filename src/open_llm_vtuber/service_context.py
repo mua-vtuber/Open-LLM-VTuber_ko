@@ -288,6 +288,21 @@ class ServiceContext:
                     "[<insert_emomap_keys>]", self.live2d_model.emo_str
                 )
 
+            if prompt_name == "mcp_prompt":
+                from pathlib import Path
+                from .mcp.prompt_constructor import PromptConstructor
+                
+                mcp_prompt_path = Path(__file__).parent / "mcp" /"configs" / "servers_prompt.json"
+                pc = PromptConstructor()
+                pc.run_sync() # Currently I don't know other way to run async function in sync context
+                mcp_prompts = json.loads(mcp_prompt_path.read_text(encoding="utf-8"))
+                prompts = ""
+                for _, prompt in mcp_prompts.items():
+                    prompts += prompt + "\n"
+                prompt_content = prompt_content.replace(
+                    "[<insert_mcp_servers_with_tools>]", prompts
+                )
+            
             persona_prompt += prompt_content
 
         logger.debug("\n === System Prompt ===")

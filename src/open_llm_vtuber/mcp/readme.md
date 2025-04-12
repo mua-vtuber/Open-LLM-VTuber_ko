@@ -48,31 +48,32 @@ So for common users (or MCP server developers), you can follow these steps to ad
     "args": ["<MCP server module/package name>", "...(other arguments)"]
 }
 ```
-Fields wrapped in '<>' are things you shuold change and 'a/b' means you should choose 'a' or 'b'. If you are still confused, here is an example of adding [MCP Servers - Git][3]:
-In the section **Configuration-Usage with Claude Desktop-Using uvx** of its readme file, we see such json config(2 indent):
+Fields wrapped in '<>' are things you shuold change and 'a/b' means you should choose 'a' or 'b'. If you are still confused, here is an example of adding [MCP Servers - Time][3]:
+In the section **Configuration-Configure for Claude.app-Using uvx** of its readme file, we see such json config(2 indent):
 ```json
 "mcpServers": {
-  "git": {
+  "time": {
     "command": "uvx",
-    "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
+    "args": ["mcp-server-time"]
   }
 }
 ```
 Then, it should be like this in our `mcp_servers.json`(4 indent):
 ```json
 "officials": {
-    "git": {
+    "time": {
         "executable": "uvx",
-        "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
+        "args": ["mcp-server-time"]
     }
 }
 ```
 > You may need to use json validate tool to configure it correctly
 > [JSON formatter][4]
 
+**Important: Official servers require you to configure them correctly, otherwise you will meet problems.**
+
 5. For ***custom*** MCP Servers, you need to confirm field `custom_servers_path`, we recommand not to change it, but if you still want to change it, remember to use absolute path. Then, put your server file into the folder, default is `./servers`(as [#File Structure](#-file-structure)). And, nothing else.
 **NOTE:** The relative path in `mcp_servers.json` is relative to `/mcp`
-
 
 
 ## 📚 References
@@ -111,7 +112,7 @@ Both commands help simplify the process of running MCP servers by handling depen
 
 [1]: <https://modelcontextprotocol.io/introduction>
 [2]: <https://github.com/modelcontextprotocol/servers>
-[3]: <https://github.com/modelcontextprotocol/servers/tree/main/src/git#configuration>
+[3]: <https://github.com/modelcontextprotocol/servers/tree/main/src/time#configuration>
 [4]: <https://jsonformatter.org/>
 [5]: <https://docs.astral.sh/uv/getting-started/installation/>
 [6]: <https://nodejs.org/en>

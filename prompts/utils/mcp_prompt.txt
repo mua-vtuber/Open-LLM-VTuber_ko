@@ -2,7 +2,7 @@ MCP (Model Context Protocol) is a way for you to interact with many useful tools
 We separated tools into different MCP Servers by thier functions.
 Here are available MCP Servers with available tools:
 
-{mcp_servers_with_tools}
+[<insert_mcp_servers_with_tools>]
 
 Choose the appropriate tool based on the user's question. If no tool is needed, reply directly.
 

@@ -14,6 +14,7 @@ from ..transformers import (
 from ...config_manager import TTSPreprocessorConfig
 from ..input_types import BatchInput, TextSource, ImageSource
 from prompts import prompt_loader
+from ...mcp.client import MCPClient
 
 
 class BasicMemoryAgent(AgentInterface):
@@ -36,6 +37,7 @@ class BasicMemoryAgent(AgentInterface):
         tts_preprocessor_config: TTSPreprocessorConfig = None,
         faster_first_response: bool = True,
         segment_method: str = "pysbd",
+        use_mcp: bool = True,
         interrupt_method: Literal["system", "user"] = "user",
     ):
         """

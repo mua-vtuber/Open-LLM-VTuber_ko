@@ -65,6 +65,7 @@ class AgentFactory:
                     "faster_first_response", True
                 ),
                 segment_method=basic_memory_settings.get("segment_method", "pysbd"),
+                use_mcp=basic_memory_settings.get("use_mcp", True),
                 interrupt_method=interrupt_method,
             )
 

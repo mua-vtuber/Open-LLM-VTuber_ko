@@ -67,7 +67,7 @@ class MCPClient:
             ValueError: If the server is not found in the available servers or not supported.
             RuntimeError: If node.js is not found in PATH and the server is a JavaScript server.
         """
-        logger.info(f"MCPC: Attempting to connect to server '{server_name}'...")
+        logger.debug(f"MCPC: Attempting to connect to server '{server_name}'...")
         # Initialize the server parameters.
         server = self.server_manager.get_server(server_name)
         if not server:
@@ -111,7 +111,7 @@ class MCPClient:
         if self.session is None:
             raise RuntimeError("MCPC: Not connected to any server.")
         
-        logger.info("MCPC: Listing tools...")
+        logger.debug("MCPC: Listing tools...")
         response = await self.session.list_tools()
         logger.debug(f"MCPC: Response from server: {response}")
         return response.tools

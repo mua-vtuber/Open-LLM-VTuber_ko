@@ -99,7 +99,7 @@ class MCPServerManager:
                     "executable": sys.executable,
                     "args": [str(path)]
                 }
-                logger.info(f"MCPSM: Found custom server: {server_name}.py")
+                logger.debug(f"MCPSM: Found custom server: {server_name}.py")
             elif path.suffix == ".js":
                 if not self.npx_available:
                     logger.warning(f"Found TypeScript server '{server_name}.js' but node is not available.")
@@ -143,7 +143,7 @@ class MCPServerManager:
                 "executable": server_details["executable"],
                 "args": server_details["args"]
             }
-            logger.info(f"MCPSM: Loaded official server: {server_name}.")
+            logger.debug(f"MCPSM: Loaded official server: {server_name}.")
     
     
     def remove_server(self, server_name: str) -> None:

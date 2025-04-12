@@ -94,13 +94,21 @@ class PromptConstructor:
         logger.info(f"PC: Dumped prompts to '{self.prompts_path}'")
     
     
+    def run_sync(self) -> None:
+        """Run the prompt constructor synchronously."""
+        import asyncio
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.get_servers_info())
+        loop.close()
+        
+        self.construct_prompt()
+        self.dump_prompts()
+    
+    
 if __name__ == "__main__":
-    import asyncio
     
-    async def main():
-        pc = PromptConstructor()
-        await pc.get_servers_info()
-        pc.construct_prompt()
-        pc.dump_prompts()
-    
-    asyncio.run(main())
+    prompt_constructor = PromptConstructor()
+    prompt_constructor.run_sync()
+    logger.info("PC: Prompt construction completed.")
