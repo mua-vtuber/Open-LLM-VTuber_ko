@@ -117,7 +117,7 @@ class MCPClient:
         return response.tools
         
     
-    async def call_tool(self, tool_name: str, args: Dict[str, Any]) -> CallToolResult:
+    async def call_tool(self, tool_name: str, args: Dict[str, Any]) -> str:
         """Call a tool on the connected server.
         
         Args:
@@ -125,7 +125,7 @@ class MCPClient:
             args (Dict[str, Any]): The arguments to pass to the tool.
             
         Returns:
-            mcp.types.CallToolResult: The result of the tool call.
+            str: The result of the tool call.
         
         Raises:
             RuntimeError: If not connected to a server.
@@ -142,7 +142,7 @@ class MCPClient:
         if response.isError:
             logger.error(f"MCPC: Error calling tool '{tool_name}': {response.content[0].text}")
             
-        return response
+        return response.content[0].text
     
     
     async def close(self) -> None:

@@ -1,3 +1,4 @@
+import json
 from typing import AsyncIterator, List, Dict, Any, Callable, Literal
 from loguru import logger
 
@@ -15,6 +16,7 @@ from ...config_manager import TTSPreprocessorConfig
 from ..input_types import BatchInput, TextSource, ImageSource
 from prompts import prompt_loader
 from ...mcp.client import MCPClient
+from ...mcp.server_manager import MCPServerManager
 
 
 class BasicMemoryAgent(AgentInterface):
@@ -60,6 +62,7 @@ class BasicMemoryAgent(AgentInterface):
         self._tts_preprocessor_config = tts_preprocessor_config
         self._faster_first_response = faster_first_response
         self._segment_method = segment_method
+        self._mcp_server_manager = MCPServerManager() if use_mcp else None
         self.interrupt_method = interrupt_method
         # Flag to ensure a single interrupt handling per conversation
         self._interrupt_handled = False
@@ -271,11 +274,71 @@ class BasicMemoryAgent(AgentInterface):
             # Get token stream from LLM
             token_stream = chat_func(messages, self._system)
             complete_response = ""
+            
+            # Enabled MCP
+            if self._mcp_server_manager:
+                
+                # Stage 1: Process tokens and check for potential JSON response
+                potential_json = False
+                async for token in token_stream:
+                    if token.startswith("{"):
+                        logger.debug("Potential JSON response start.")
+                        potential_json = True
+                    
+                    if potential_json:
+                        if token.endswith("}"):
+                            logger.debug("Potential JSON response end.")
+                            potential_json = False
+                    else:
+                        yield token
+                        
+                    complete_response += token
+                
+                try:
+                    json_response = json.loads(complete_response)
+                except Exception as e:
+                    json_response = None
+                    logger.debug(f"Cannot parse potential JSON response: {complete_response}")
+                    yield complete_response
+                
+                # Stage 2: Try to process JSON response as MCP request
+                mcp_response = None
+                try:
+                    if json_response:
+                        logger.debug(f"MCP: Detected MCP request: {json_response}")
+                        mcp_server = json_response.get("mcp_server")
+                        tool = json_response.get("tool")
+                        arguments = json_response.get("arguments")
+                        if mcp_server and tool and arguments:
+                            logger.debug("MCP: Starting MCP client")
+                            async with MCPClient(self._mcp_server_manager) as client:
+                                await client.connect_to_server(mcp_server)
+                                mcp_response = await client.call_tool(
+                                    tool, arguments
+                                )
+                except Exception as e:
+                    logger.warning(f"MCP: Error processing potential MCP request: {e}")
+                    mcp_response = None
+                        
+                # Stage 3: If MCP response is valid, send it to the LLM and continue the conversation
+                if mcp_response:
+                    messages.append({
+                        "role": "user",
+                        "content": mcp_response,
+                    })
+                    token_stream = chat_func(messages, self._system)
+                    complete_response = ""
 
-            async for token in token_stream:
-                yield token
-                complete_response += token
-
+                    async for token in token_stream:
+                        yield token
+                        complete_response += token
+            
+            else:
+                # Process token stream without MCP
+                async for token in token_stream:
+                    yield token
+                    complete_response += token
+                        
             # Store complete response
             self._add_message(complete_response, "assistant")
 
