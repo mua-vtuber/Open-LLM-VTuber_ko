@@ -6,11 +6,17 @@ This module provides a server manager for MCP servers.
 import shutil
 import sys
 import json
+
 from pathlib import Path
 from typing import Dict, Optional, Union, Sequence
 from loguru import logger
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent / "mcp_servers.json"
+try:
+    from .utils.path import validate_file
+except ImportError:
+    from utils.path import validate_file
+
+DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "mcp_servers.json"
 
 class MCPServerManager:
     """MCP Server Manager for managing server files.
@@ -22,14 +28,13 @@ class MCPServerManager:
         """Initialize the MCP Server Manager.
         
         Args:
-            config_path (str | Path): The path to the directory containing the server files.  
-                Default is './servers'.
+            config_path (str | Path): The path to the configuration file.
+                Default is './configs/mcp_servers.json'.
         """
-        # Use the absolute path for the config path.
-        config_path = Path(config_path).absolute()
-        
         # Check if the config path is valid json file.
-        if not (config_path.exists() and config_path.is_file() and config_path.suffix == ".json"):
+        try:
+            config_path = validate_file(config_path, ".json")
+        except ValueError:
             logger.error(f"MCPSM: File '{config_path}' does not exist, or is not a json file.")
             raise ValueError(f"MCPSM: File '{config_path}' does not exist, or is not a json file.")
 
@@ -38,7 +43,7 @@ class MCPServerManager:
         # Structure of self.servers (also self.config["officials"]):
         # {
         #     "mcp_server_name": {
-        #         "executable": "python | uvx | node | npx",
+        #         "executable": "python(sys.executable) | uvx | node | npx",
         #         "args": [
         #             "path/to/server.py | path/to/server.js | @modelcontextprotocol/server | module-name",
         #             "--other",

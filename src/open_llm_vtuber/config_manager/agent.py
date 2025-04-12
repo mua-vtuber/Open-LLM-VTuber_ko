@@ -29,6 +29,7 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
 
     faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
+    use_mcp: Optional[bool] = Field(True, alias="use_mcp")
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "llm_provider": Description(
             en="LLM provider to use for this agent",
@@ -41,6 +42,10 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
         "segment_method": Description(
             en="Method for segmenting sentences: 'regex' or 'pysbd' (default: 'pysbd')",
             zh="分割句子的方法：'regex' 或 'pysbd'（默认：'pysbd'）",
+        ),
+        "use_mcp": Description(
+            en="Whether to use MCP (Model Context Protocol) for the agent (default: True)",
+            zh="是否使用为智能体启用 MCP (Model Context Protocol) （默认：True）",
         ),
     }
 
