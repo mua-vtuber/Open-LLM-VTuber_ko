@@ -41,6 +41,7 @@ class BasicMemoryAgent(AgentInterface):
         segment_method: str = "pysbd",
         use_mcp: bool = True,
         interrupt_method: Literal["system", "user"] = "user",
+        tool_prompts: Dict[str, str] = None,
     ):
         """
         Initialize the agent with LLM, system prompt and configuration
@@ -54,6 +55,7 @@ class BasicMemoryAgent(AgentInterface):
             segment_method: `str` - Method for sentence segmentation
             interrupt_method: `Literal["system", "user"]` -
                 Methods for writing interruptions signal in chat history.
+            tool_prompts: `Dict[str, str]` - Dictionary of tool prompts from system_config
 
         """
         super().__init__()
@@ -64,6 +66,7 @@ class BasicMemoryAgent(AgentInterface):
         self._segment_method = segment_method
         self._mcp_server_manager = MCPServerManager() if use_mcp else None
         self.interrupt_method = interrupt_method
+        self._tool_prompts = tool_prompts or {}
         # Flag to ensure a single interrupt handling per conversation
         self._interrupt_handled = False
         self._set_llm(llm)
@@ -367,8 +370,13 @@ class BasicMemoryAgent(AgentInterface):
         """
         other_ais = ", ".join(name for name in ai_participants)
 
-        # Load and format the group conversation prompt
-        group_context = prompt_loader.load_util("group_conversation_prompt").format(
+        prompt_name = self._tool_prompts.get("group_conversation_prompt", "")
+
+        if not prompt_name:
+            logger.warning("No group conversation prompt found. Continuing without group context.")
+            return
+
+        group_context = prompt_loader.load_util(prompt_name).format(
             human_name=human_name, other_ais=other_ais
         )
 

@@ -90,7 +90,10 @@ class AsyncLLM(StatelessLLMInterface):
                 temperature=self.temperature,
             )
             async for chunk in stream:
-                if chunk.choices[0].delta.content is None:
+                if len(chunk.choices) == 0:
+                    logger.info("Empty chunk received")
+                    continue
+                elif chunk.choices[0].delta.content is None:
                     chunk.choices[0].delta.content = ""
                 yield chunk.choices[0].delta.content
 

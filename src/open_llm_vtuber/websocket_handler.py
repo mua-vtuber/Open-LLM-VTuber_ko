@@ -93,6 +93,8 @@ class WebSocketHandler:
             "switch-config": self._handle_config_switch,
             "fetch-backgrounds": self._handle_fetch_backgrounds,
             "audio-play-start": self._handle_audio_play_start,
+            "request-init-config": self._handle_init_config_request,
+            "heartbeat": self._handle_heartbeat,
         }
 
     async def handle_new_connection(
@@ -551,3 +553,32 @@ class WebSocketHandler:
     ) -> None:
         """Handle group info request"""
         await self.send_group_update(websocket, client_uid)
+
+    async def _handle_init_config_request(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Handle request for initialization configuration"""
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            context = self.default_context_cache
+
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "set-model-and-conf",
+                    "model_info": context.live2d_model.model_info,
+                    "conf_name": context.character_config.conf_name,
+                    "conf_uid": context.character_config.conf_uid,
+                    "client_uid": client_uid,
+                }
+            )
+        )
+
+    async def _handle_heartbeat(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Handle heartbeat messages from clients"""
+        try:
+            await websocket.send_json({"type": "heartbeat-ack"})
+        except Exception as e:
+            logger.error(f"Error sending heartbeat acknowledgment: {e}")

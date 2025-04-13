@@ -14,9 +14,11 @@ system_config:
     live2d_expression_prompt: 'live2d_expression_prompt' # 将追加到系统提示末尾，让 LLM（大型语言模型）包含控制面部表情的关键字。支持的关键字将自动加载到 `[<insert_emomap_keys>]` 的位置。
     # 启用 think_tag_prompt 可让不具备思考输出的 LLM 也能展示内心想法、心理活动和动作（以括号形式呈现），但不会进行语音合成。更多详情请参考 think_tag_prompt。
     # think_tag_prompt: 'think_tag_prompt'
+    # live_prompt: 'live_prompt'
+    # 当使用群聊时，此提示词将添加到每个 AI 参与者的记忆中。
+    group_conversation_prompt: 'group_conversation_prompt'
     # 启用 mcp_prompt 可让 LLMs 具备与 MCP (Model Context Protocol) 服务器交互的能力。更多详情请参考 mcp_prompt。
     mcp_prompt: 'mcp_prompt'
-  group_conversation_prompt: 'group_conversation_prompt' # 当使用群聊时，此提示词将添加到每个 AI 参与者的记忆中。
 
 # 默认角色的配置
 character_config:
@@ -50,7 +52,7 @@ character_config:
         # 例如：
         # 'openai_compatible_llm', 'llama_cpp_llm', 'claude_llm', 'ollama_llm'
         # 'openai_llm', 'gemini_llm', 'zhipu_llm', 'deepseek_llm', 'groq_llm'
-        # 'mistral_llm'
+        # 'mistral_llm', 'lmstudio_llm' 之类的
         llm_provider: 'ollama_llm' # 使用的 LLM 提供商
         # 是否在第一句回应时遇上逗号就直接生成音频以减少首句延迟（默认：True）
         faster_first_response: True
@@ -69,7 +71,7 @@ character_config:
             embedding_model_dims: 1024 # 嵌入模型维度
 
         # mem0 有自己的 llm 设置，与我们的 llm_config 不同。
-        # 有关更多详细信息，请查看他们的文档
+        # 有关更多详细信息，请查看他们的文档      
         llm:
           provider: 'ollama' # 使用的 LLM 提供商
           config:
@@ -92,6 +94,16 @@ character_config:
 
       # MemGPT 配置：MemGPT 暂时被移除
       ##
+
+      letta_agent:
+        host: 'localhost' #主机地址
+        port: 8283 # 端口号
+        id: xxx #letta server运行的Agent的id编号
+        faster_first_response: True
+        # 句子分割方法：'regex' 或 'pysbd'
+        segment_method: 'pysbd'
+        # 一旦选择letta作为agent，那么实际运行时候的llm是在letta上配置的，因此用户需要自己运行letta server
+        # 有关更多详细信息，请查看他们的文档
 
     llm_configs:
       # 一个配置池，用于不同代理中使用的所有无状态 llm 提供商的凭据和连接详细信息
@@ -127,6 +139,11 @@ character_config:
         # 设置为 -1 表示模型将永远保留在内存中（即使退出 open llm vtuber 之后也是）
         keep_alive: -1
         unload_at_exit: True # 退出时从内存中卸载模型
+
+      lmstudio_llm:
+        base_url: 'http://localhost:1234/v1'
+        model: 'qwen2.5:latest'
+        temperature: 1.0 # value between 0 to 2
 
       openai_llm:
         llm_api_key: 'Your Open AI API key' # OpenAI API 密钥
@@ -362,6 +379,13 @@ character_config:
       num_threads: 1 # 计算线程数
       speed: 1.0 # 语速（1.0 为正常）
       debug: false # 启用调试模式（True/False）
+    spark_tts:
+      api_url: 'http://127.0.0.1:6006/' # 初始API地址，使用gradio自带的前端API。地址：https://github.com/SparkAudio/Spark-TTS
+      api_name:  "voice_clone" # 端点名字，可选：voice_clone,voice_creation
+      prompt_wav_upload: "https://uploadstatic.mihoyo.com/ys-obc/2022/11/02/16576950/4d9feb71760c5e8eb5f6c700df12fa0c_6824265537002152805.mp3" # 参考音频地址,api_name: = "voice_clone"时填写
+      gender:  "female" # 生成声线，api_name: = "voice_creation"时填写
+      pitch:  3 # 音高，api_name: = "voice_creation"时填写
+      speed:  3 # 语速，api_name: = "voice_creation"时填写
 
 
   # =================== Voice Activity Detection ===================
@@ -401,3 +425,11 @@ character_config:
         region: 'ap-guangzhou'
         source_lang: 'zh'
         target_lang: 'ja'
+
+# 直播平台集成
+live_config:
+  bilibili_live:
+    # 要监控的B站直播间ID列表（直播间URL中的数字）
+    room_ids: [1991478060]
+    # SESSDATA cookie值（可选，用于认证请求，可以查看发送弹幕用户名）
+    sessdata: ""
