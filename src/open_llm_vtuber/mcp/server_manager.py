@@ -125,11 +125,11 @@ class MCPServerManager:
             return
         
         for server_name, server_details in officials.items():
-            if "executable" not in server_details or "args" not in server_details:
+            if "command" not in server_details or "args" not in server_details:
                 logger.warning(f"MCPSM: Invalid server details for '{server_name}'. Ignoring.")
                 continue
             
-            executable = server_details["executable"]
+            executable = server_details["command"]
             if executable == "npx":
                 if not self.npx_available:
                     logger.warning(f"MCPSM: npx is not available. Cannot load server '{server_name}'.")
@@ -140,8 +140,9 @@ class MCPServerManager:
                     continue
             
             self.servers[server_name] = {
-                "executable": server_details["executable"],
-                "args": server_details["args"]
+                "executable": server_details["command"],
+                "args": server_details["args"],
+                "env": server_details.get("env", None),
             }
             logger.debug(f"MCPSM: Loaded official server: {server_name}.")
     

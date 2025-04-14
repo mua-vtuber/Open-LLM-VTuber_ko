@@ -62,7 +62,7 @@ Then, it should be like this in our `mcp_servers.json`(4 indent):
 ```json
 "officials": {
     "time": {
-        "executable": "uvx",
+        "command": "uvx",
         "args": ["mcp-server-time"]
     }
 }

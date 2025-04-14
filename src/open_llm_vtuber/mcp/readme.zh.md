@@ -58,7 +58,7 @@
 ```json
 "officials": {
     "time": {
-        "executable": "uvx",
+        "command": "uvx",
         "args": ["mcp-server-time"]
     }
 }

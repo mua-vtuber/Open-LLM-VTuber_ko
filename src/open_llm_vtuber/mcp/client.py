@@ -9,7 +9,7 @@ from loguru import logger
 from datetime import timedelta
 
 from mcp import ClientSession, StdioServerParameters
-from mcp.types import CallToolResult, Tool
+from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
 try:
@@ -76,11 +76,12 @@ class MCPClient:
         
         executable = server["executable"]
         args = server["args"]
+        env = server.get("env", None)
             
         server_params = StdioServerParameters(
             command=executable,
             args=args,
-            env=None,
+            env=env,
         )
         
         # Intialize the session.
