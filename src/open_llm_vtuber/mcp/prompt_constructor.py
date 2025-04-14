@@ -8,14 +8,9 @@ from typing import Dict
 from pathlib import Path
 from loguru import logger
 
-try:
-    from .client import MCPClient
-    from .server_manager import MCPServerManager
-    from .utils.path import validate_file
-except ImportError:
-    from client import MCPClient
-    from server_manager import MCPServerManager
-    from utils.path import validate_file
+from .client import MCPClient
+from .server_manager import MCPServerManager
+from .utils.path import validate_file
 
 DEFAULT_PROMPTS_PATH = Path(__file__).parent / "configs" / "servers_prompt.json"
 
@@ -107,8 +102,8 @@ class PromptConstructor:
         self.dump_prompts()
     
     
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    prompt_constructor = PromptConstructor()
-    prompt_constructor.run_sync()
-    logger.info("PC: Prompt construction completed.")
+#     prompt_constructor = PromptConstructor()
+#     prompt_constructor.run_sync()
+#     logger.info("PC: Prompt construction completed.")

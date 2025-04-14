@@ -11,10 +11,7 @@ from pathlib import Path
 from typing import Dict, Optional, Union, Sequence
 from loguru import logger
 
-try:
-    from .utils.path import validate_file
-except ImportError:
-    from utils.path import validate_file
+from .utils.path import validate_file
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "mcp_servers.json"
 

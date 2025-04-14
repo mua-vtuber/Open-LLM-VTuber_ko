@@ -12,10 +12,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
-try:
-    from .server_manager import MCPServerManager
-except ImportError:
-    from server_manager import MCPServerManager
+from .server_manager import MCPServerManager
+
 
 DEFAULT_TIMEOUT = timedelta(seconds=10)
 
@@ -168,17 +166,17 @@ class MCPClient:
             logger.error(f"MCPC: Traceback: {traceback}")
 
 
-if __name__ == "__main__":
-    # Test the MCPClient.
-    import asyncio
+# if __name__ == "__main__":
+#     # Test the MCPClient.
+#     import asyncio
     
-    server_manager = MCPServerManager()
+#     server_manager = MCPServerManager()
     
-    async def main():
-        async with MCPClient(server_manager) as client:
-            await client.connect_to_server("example")
+#     async def main():
+#         async with MCPClient(server_manager) as client:
+#             await client.connect_to_server("example")
             
-            # Test error handling by calling a non-existent tool.
-            await client.call_tool("example_tool", {"arg1": "value1"})
+#             # Test error handling by calling a non-existent tool.
+#             await client.call_tool("example_tool", {"arg1": "value1"})
             
-    asyncio.run(main())
+#     asyncio.run(main())
