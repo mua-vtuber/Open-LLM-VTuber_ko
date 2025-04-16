@@ -290,20 +290,34 @@ class ServiceContext:
                 )
 
             if prompt_name == "mcp_prompt":
+                use_mcp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcp
+
+                if not use_mcp:
+                    logger.warning("MCP is disabled, skipping MCP prompt.")
+                    continue
+
                 from pathlib import Path
                 from .mcp.prompt_constructor import PromptConstructor
-                
-                mcp_prompt_path = Path(__file__).parent / "mcp" /"configs" / "servers_prompt.json"
+
+                mcp_prompt_path = (
+                    Path(__file__).parent / "mcp" / "configs" / "servers_prompt.json"
+                )
                 pc = PromptConstructor()
-                pc.run_sync() # Currently I don't know other way to run async function in sync context
+                pc.run_sync()  # Currently I don't know other way to run async function in sync context
+
                 mcp_prompts = json.loads(mcp_prompt_path.read_text(encoding="utf-8"))
+                if mcp_prompts == {}:
+                    logger.warning("No MCP Servers & Tools prompts found.")
+                    logger.warning("Disabling the whole MCP prompt.")
+                    continue
+
                 prompts = ""
                 for _, prompt in mcp_prompts.items():
                     prompts += prompt + "\n"
                 prompt_content = prompt_content.replace(
                     "[<insert_mcp_servers_with_tools>]", prompts
                 )
-            
+
             persona_prompt += prompt_content
 
         logger.debug("\n === System Prompt ===")

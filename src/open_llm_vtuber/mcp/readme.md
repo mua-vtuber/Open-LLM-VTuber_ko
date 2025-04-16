@@ -44,7 +44,7 @@ So for common users (or MCP server developers), you can follow these steps to ad
 4. For ***official*** MCP servers, you need to extend the `officials` field of `mcp_servers.json` with following format:
 ```json
 "<MCP server name>": {
-    "executable": "uvx/npx"
+    "command": "uvx/npx",
     "args": ["<MCP server module/package name>", "...(other arguments)"]
 }
 ```
@@ -72,7 +72,7 @@ Then, it should be like this in our `mcp_servers.json`(4 indent):
 
 **Important: Official servers require you to configure them correctly, otherwise you will meet problems.**
 
-5. For ***custom*** MCP Servers, you need to confirm field `custom_servers_path`, we recommand not to change it, but if you still want to change it, remember to use absolute path. Then, put your server file into the folder, default is `./servers`(as [#File Structure](#-file-structure)). And, nothing else.
+5. For ***custom*** MCP Servers, you need to confirm field `custom_servers_path`, we recommand not to change it, but if you still want to change it, it is better to use absolute path. Then, put your server file into the folder, default is `./servers`(as [#File Structure](#-file-structure)). And, nothing else.
 **NOTE:** The relative path in `mcp_servers.json` is relative to `/mcp`
 
 

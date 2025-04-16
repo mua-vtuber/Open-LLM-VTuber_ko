@@ -3,16 +3,16 @@
 from pathlib import Path
 
 
-def validate_file(file_path: str | Path, suffix: str = '.json') -> Path:
+def validate_file(file_path: str | Path, suffix: str = ".json") -> Path:
     """Check if the file path is valid.
-    
+
     Args:
         file_path (str | Path): The path to the file.
         suffix (str): The expected file extension. Default is '.json'.
-    
+
     Returns:
         Path: The absolute Path object of the file if valid.
-    
+
     Raises:
         ValueError: If the file path is not valid with giving suffix.
     """

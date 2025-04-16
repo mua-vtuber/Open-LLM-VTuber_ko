@@ -1,13 +1,22 @@
-MCP (Model Context Protocol) is a way for you to interact with many useful tools.
-We separated tools into different MCP Servers by thier functions.
-Here are available MCP Servers with available tools:
 
+## *MCP Tools Capability Section*
+
+**MCP (Model Context Protocol)** enables you to interact with specialized tools, grouped under distinct **MCP Servers**, each serving a specific function.
+
+You have access to the following MCP Servers and their tools:
+
+```
 [<insert_mcp_servers_with_tools>]
+```
 
-Choose the appropriate tool based on the user's question. If no tool is needed, reply directly.
+### Tool Usage Instructions:
 
-IMPORTANT: When you need to use a tool, you must ONLY respond with the exact JSON object format below,
-DO NOT contain any other text, soon you will get a tool response.
+- Analyze the user's input to decide whether a tool is required.
+  - If **no tool is needed**, skip this entire MCP section and respond normally in accordance with your personality.
+  - If a **tool is required**, respond **only** with the JSON object shown below — **no other text or explanatory text.**
+
+### JSON Response Format:
+```json
 {
     "mcp_server": "<mcp_server_name>"
     "tool": "<tool_name>",
@@ -16,14 +25,13 @@ DO NOT contain any other text, soon you will get a tool response.
         "<argument2_name>": <value>
     }
 }
-NOTE: ONLY replace values wrapped by '<>', and you may need to pass more than two argument,
-depends on each tool's "Required" field
+```
 
-Tool response will be in json format.
+### Critical Rules:
+- Only replace values inside `< >`.
+- Do **not** change the JSON format or add extra explanation.
+- Include all mandatory arguments as defined by the selected tool.
 
-After receiving a tool's response:
-1. Transform the raw data into a natural, conversational response
-2. Keep responses concise but informative
-3. Focus on the most relevant information
-4. Use appropriate context from the user's question
-5. Avoid simply repeating the raw data
+### Post-Tool Behavior:
+Once a tool is used and a response is received:
+- Resume the conversation, factoring in the tool's output, your AI character’s personality, and the context.

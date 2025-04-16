@@ -16,6 +16,7 @@ system_config:
     # When using group conversation, this prompt will be added to the memory of each AI participant.
     group_conversation_prompt: 'group_conversation_prompt'
     # Enable mcp_prompt to let LLMs interact with MCP (Model Context Protocol) servers. See mcp_prompt for more details.
+    # Please note that this will work only if the 'use_mcp' is set to True in the agent settings.
     mcp_prompt: 'mcp_prompt'
 
 # configuration for the default character

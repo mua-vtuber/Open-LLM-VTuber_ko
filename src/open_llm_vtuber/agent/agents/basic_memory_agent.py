@@ -277,33 +277,34 @@ class BasicMemoryAgent(AgentInterface):
             # Get token stream from LLM
             token_stream = chat_func(messages, self._system)
             complete_response = ""
-            
+
             # Enabled MCP
             if self._mcp_server_manager:
-                
                 # Stage 1: Process tokens and check for potential JSON response
                 potential_json = False
                 async for token in token_stream:
                     if token.startswith("{"):
                         logger.debug("Potential JSON response start.")
                         potential_json = True
-                    
+
                     if potential_json:
                         if token.endswith("}"):
                             logger.debug("Potential JSON response end.")
                             potential_json = False
                     else:
                         yield token
-                        
+
                     complete_response += token
-                
+
                 try:
                     json_response = json.loads(complete_response)
                 except Exception as e:
                     json_response = None
-                    logger.debug(f"Cannot parse potential JSON response: {complete_response}")
+                    logger.debug(
+                        f"Cannot parse potential JSON response: {complete_response}"
+                    )
                     yield complete_response
-                
+
                 # Stage 2: Try to process JSON response as MCP request
                 mcp_response = None
                 try:
@@ -316,32 +317,32 @@ class BasicMemoryAgent(AgentInterface):
                             logger.debug("MCP: Starting MCP client")
                             async with MCPClient(self._mcp_server_manager) as client:
                                 await client.connect_to_server(mcp_server)
-                                mcp_response = await client.call_tool(
-                                    tool, arguments
-                                )
+                                mcp_response = await client.call_tool(tool, arguments)
                 except Exception as e:
                     logger.warning(f"MCP: Error processing potential MCP request: {e}")
                     mcp_response = None
-                        
+
                 # Stage 3: If MCP response is valid, send it to the LLM and continue the conversation
                 if mcp_response:
-                    messages.append({
-                        "role": "user",
-                        "content": mcp_response,
-                    })
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": mcp_response,
+                        }
+                    )
                     token_stream = chat_func(messages, self._system)
                     complete_response = ""
 
                     async for token in token_stream:
                         yield token
                         complete_response += token
-            
+
             else:
                 # Process token stream without MCP
                 async for token in token_stream:
                     yield token
                     complete_response += token
-                        
+
             # Store complete response
             self._add_message(complete_response, "assistant")
 
@@ -373,7 +374,9 @@ class BasicMemoryAgent(AgentInterface):
         prompt_name = self._tool_prompts.get("group_conversation_prompt", "")
 
         if not prompt_name:
-            logger.warning("No group conversation prompt found. Continuing without group context.")
+            logger.warning(
+                "No group conversation prompt found. Continuing without group context."
+            )
             return
 
         group_context = prompt_loader.load_util(prompt_name).format(
