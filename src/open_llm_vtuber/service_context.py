@@ -106,7 +106,7 @@ class ServiceContext:
 
         logger.debug(f"Loaded service context with cache: {character_config}")
 
-    def load_from_config(self, config: Config) -> None:
+    async def load_from_config(self, config: Config) -> None:
         """
         Load the ServiceContext with the config.
         Reinitialize the instances if the config is different.
@@ -138,7 +138,7 @@ class ServiceContext:
         self.init_vad(config.character_config.vad_config)
 
         # init agent from character config
-        self.init_agent(
+        await self.init_agent(
             config.character_config.agent_config,
             config.character_config.persona_prompt,
         )
@@ -197,7 +197,7 @@ class ServiceContext:
         else:
             logger.info("VAD already initialized with the same config.")
 
-    def init_agent(self, agent_config: AgentConfig, persona_prompt: str) -> None:
+    async def init_agent(self, agent_config: AgentConfig, persona_prompt: str) -> None:
         """Initialize or update the LLM engine based on agent configuration."""
         logger.info(f"Initializing Agent: {agent_config.conversation_agent_choice}")
 
@@ -209,7 +209,7 @@ class ServiceContext:
             logger.debug("Agent already initialized with the same config.")
             return
 
-        system_prompt = self.construct_system_prompt(persona_prompt)
+        system_prompt = await self.construct_system_prompt(persona_prompt)
 
         # Pass avatar to agent factory
         avatar = self.character_config.avatar or ""  # Get avatar from config
@@ -266,7 +266,7 @@ class ServiceContext:
 
     # ==== utils
 
-    def construct_system_prompt(self, persona_prompt: str) -> str:
+    async def construct_system_prompt(self, persona_prompt: str) -> str:
         """
         Append tool prompts to persona prompt.
 
@@ -303,7 +303,7 @@ class ServiceContext:
                     Path(__file__).parent / "mcp" / "configs" / "servers_prompt.json"
                 )
                 pc = PromptConstructor()
-                pc.run_sync()  # Currently I don't know other way to run async function in sync context
+                await pc.run()  # Run the async prompt construction
 
                 mcp_prompts = json.loads(mcp_prompt_path.read_text(encoding="utf-8"))
                 if mcp_prompts == {}:
@@ -368,7 +368,7 @@ class ServiceContext:
                     "character_config": new_character_config_data,
                 }
                 new_config = validate_config(new_config)
-                self.load_from_config(new_config)
+                await self.load_from_config(new_config)  # Await the async load
                 logger.debug(f"New config: {self}")
                 logger.debug(
                     f"New character config: {self.character_config.model_dump()}"

@@ -65,7 +65,14 @@ class PromptConstructor:
                     tool_info["required"] = tool.inputSchema.get("required", [])
 
     def construct_prompt(self, force: bool = False) -> None:
-        """Construct the prompt for each server and its tools."""
+        """Construct the prompt for each server and its tools.
+        
+        Args:
+            force (bool, optional): If True, reconstruct prompts for all servers, 
+                even if they already exist in the prompts dictionary. 
+                If False, skip servers that already have prompts defined.
+                Default is False.
+        """
         for server_name, tools in self.servers_info.items():
             if server_name in self.prompts and not force:
                 logger.info(
@@ -74,11 +81,11 @@ class PromptConstructor:
                 continue
 
             prompt = f"Server: {server_name}\n"
-            prompt += f"    Tools:\n"
+            prompt += "    Tools:\n"
             for tool_name, tool_info in tools.items():
                 prompt += f"        {tool_name}:\n"
                 prompt += f"            Description: {tool_info['description']}\n"
-                prompt += f"            Parameters:\n"
+                prompt += "            Parameters:\n"
                 for param_name, param_info in tool_info["parameters"].items():
                     description = param_info.get("description")
                     description = (
@@ -103,21 +110,15 @@ class PromptConstructor:
         )
         logger.info(f"PC: Dumped prompts to '{self.prompts_path}'")
 
-    def run_sync(self) -> None:
-        """Run the prompt constructor synchronously."""
-        import asyncio
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.get_servers_info())
-        loop.close()
-
-        self.construct_prompt(True)
+    async def run(self, force: bool = True) -> None:
+        """Run the prompt constructor asynchronously."""
+        await self.get_servers_info()
+        self.construct_prompt(force)
         self.dump_prompts()
 
 
 # if __name__ == "__main__":
-
+#     import asyncio
 #     prompt_constructor = PromptConstructor()
-#     prompt_constructor.run_sync()
+#     asyncio.run(prompt_constructor.run())
 #     logger.info("PC: Prompt construction completed.")
