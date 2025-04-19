@@ -12,6 +12,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
+from .types import CallableTool
 from .server_manager import MCPServerManager
 
 
@@ -117,31 +118,34 @@ class MCPClient:
         logger.debug(f"MCPC: Response from server: {response}")
         return response.tools
 
-    async def call_tool(self, tool_name: str, args: Dict[str, Any]) -> str:
+    async def call_tool(self, tool: CallableTool) -> str:
         """Call a tool on the connected server.
 
         Args:
-            tool_name (str): The name of the tool to call.
-            args (Dict[str, Any]): The arguments to pass to the tool.
+            tool (CallableTool): The tool to call.
 
         Returns:
             str: The result of the tool call.
 
         Raises:
             RuntimeError: If not connected to a server.
+            ValueError: Error from the server while calling the tool.
         """
         if self.session is None:
             raise RuntimeError("MCPC: Not connected to any server.")
 
-        logger.info(f"MCPC: Calling tool '{tool_name}'...")
-        logger.debug(f"MCPC: Tool args: {args}")
+        logger.info(f"MCPC: Calling tool '{tool.name}'...")
+        logger.debug(f"MCPC: Tool args: {tool.args}")
 
-        response = await self.session.call_tool(tool_name, args)
+        response = await self.session.call_tool(tool.name, tool.args)
         logger.debug(f"MCPC: Response from server: {response}")
 
         if response.isError:
             logger.error(
-                f"MCPC: Error calling tool '{tool_name}': {response.content[0].text}"
+                f"MCPC: Error calling tool '{tool.name}': {response.content[0].text}"
+            )
+            raise ValueError(
+                f"MCPC: {response.content[0].text}"
             )
 
         return response.content[0].text

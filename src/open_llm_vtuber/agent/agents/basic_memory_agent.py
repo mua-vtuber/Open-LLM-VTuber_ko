@@ -1,6 +1,7 @@
 import json
 from typing import AsyncIterator, List, Dict, Any, Callable, Literal
 from loguru import logger
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 
 from .agent_interface import AgentInterface
 from ..output_types import SentenceOutput, DisplayText
@@ -18,6 +19,8 @@ from prompts import prompt_loader
 from ...mcpp.client import MCPClient
 from ...mcpp.server_manager import MCPServerManager
 from ...mcpp.tool_manager import ToolManager
+from ...mcpp.json_detector import StreamJSONDetector
+from ...mcpp.types import CallableTool
 
 
 class BasicMemoryAgent(AgentInterface):
@@ -41,6 +44,7 @@ class BasicMemoryAgent(AgentInterface):
         faster_first_response: bool = True,
         segment_method: str = "pysbd",
         use_mcpp: bool = True,
+        mcp_prompt: str = None,
         interrupt_method: Literal["system", "user"] = "user",
         tool_prompts: Dict[str, str] = None,
     ):
@@ -67,6 +71,9 @@ class BasicMemoryAgent(AgentInterface):
         self._segment_method = segment_method
         self._mcp_server_manager = MCPServerManager() if use_mcpp else None
         self._tool_manager = ToolManager() if use_mcpp else None
+        self._json_detector = StreamJSONDetector() if use_mcpp else None
+        self._mcp_prompt = mcp_prompt if mcp_prompt else None
+        self.prompt_mode_flag = False
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
         # Flag to ensure a single interrupt handling per conversation
@@ -247,7 +254,11 @@ class BasicMemoryAgent(AgentInterface):
         return messages
 
     def _chat_function_factory(
-        self, chat_func: Callable[[List[Dict[str, Any]], str, List[Dict[str, Any]]], AsyncIterator[str]]
+        self, 
+        chat_func: Callable[[
+            List[Dict[str, Any]], str, List[Dict[str, Any]]],
+            AsyncIterator[str | List[ChoiceDeltaToolCall]
+        ]]
     ) -> Callable[..., AsyncIterator[SentenceOutput]]:
         """
         Create the chat pipeline with transformers
@@ -277,71 +288,154 @@ class BasicMemoryAgent(AgentInterface):
 
             messages = self._to_messages(input_data)
 
-            # Get token stream from LLM
-            token_stream = chat_func(messages, self._system)
-            complete_response = ""
-
-            # Enabled MCP
+            # MCP Plus enabled
             if self._mcp_server_manager:
-                # Stage 1: Process tokens and check for potential JSON response
-                potential_json = False
-                async for token in token_stream:
-                    if token.startswith("{"):
-                        logger.debug("Potential JSON response start.")
-                        potential_json = True
-
-                    if potential_json:
-                        if token.endswith("}"):
-                            logger.debug("Potential JSON response end.")
-                            potential_json = False
-                    else:
-                        yield token
-
-                    complete_response += token
-
-                try:
-                    json_response = json.loads(complete_response)
-                except Exception as e:
-                    json_response = None
-                    logger.debug(
-                        f"Cannot parse potential JSON response: {complete_response}"
-                    )
-                    yield complete_response
-
-                # Stage 2: Try to process JSON response as MCP request
-                mcp_response = None
-                try:
-                    if json_response:
-                        logger.debug(f"MCP: Detected MCP request: {json_response}")
-                        mcp_server = json_response.get("mcp_server")
-                        tool = json_response.get("tool")
-                        arguments = json_response.get("arguments")
-                        if mcp_server and tool and arguments:
-                            logger.debug("MCP: Starting MCP client")
+                tools_waiting_to_call: List[CallableTool] = []
+                tools = self._tool_manager.get_all_tools()
+                logger.debug(f"TM: All available tools: {tools}")
+                
+                # Get token stream from LLM
+                token_stream: AsyncIterator[str | List[ChoiceDeltaToolCall]] = chat_func(
+                    messages, self._system, tools=tools
+                )
+                complete_response = ""
+                
+                # TODO: Support older LLMs using API Function Call
+                # Stage A: Deal with the token stream, detecting tool calls.
+                # Case 1: Process the token stream in API Tool Use mode.
+                if not self.prompt_mode_flag:
+                    async for token in token_stream:
+                        # Case 1-1: Handle Tool Call tokens.
+                        if isinstance(token, list):
+                            try:
+                                for tool_call in token:
+                                    tool = self._tool_manager.get_tool(tool_call.function.name)
+                                    if not tool:
+                                        raise ValueError(
+                                            f"Tool '{tool_call.function.name}' not found in ToolManager."
+                                        )
+                                    server = tool.related_server
+                                    tool = CallableTool(
+                                        name=tool_call.function.name,
+                                        server=server,
+                                        args=json.loads(
+                                            tool_call.function.arguments
+                                        ),
+                                        id=tool_call.id,
+                                    )
+                                    tools_waiting_to_call.append(tool)
+                                    
+                            except json.JSONDecodeError:
+                                logger.error("Failed to decode tool call arguments")
+                                logger.error(f"Tool call: {tool_call}")
+                                yield "Error calling tool: Failed to decode tool call arguments, see the log for details."
+                                continue
+                            
+                            except ValueError as e:
+                                logger.error(f"Error processing tool call: {e}")
+                                yield token
+                                continue
+                        
+                        # Case 1-2: API not support tools, switch to prompt mode
+                        elif token == "__API_NOT_SUPPORT_TOOLS__":
+                            self._tool_manager.disable()
+                            if self._mcp_prompt:
+                                self._system += f"\n\n{self._mcp_prompt}"
+                            logger.info("Disabled ToolManager, trying to use MCP via prompt.")
+                            
+                            # First time need to recreate the LLM.
+                            re_stream = chat_func(messages, self._system)
+                            async for token in self.process_json_stream(re_stream):
+                                # Normal tokens
+                                if not isinstance(token, list):
+                                    yield token
+                                    complete_response += token
+                                    continue
+                                # Handle JSON response
+                                tools = self._process_tool_from_dict_list(token)
+                                if tools:
+                                    tools_waiting_to_call.extend(tools)
+                                    logger.info(f"Tool call detected: {tools}")
+                        
+                        # Case 1-3: Handle normal tokens.
+                        else:
+                            yield token
+                            complete_response += token
+                
+                # Case 2: Process the token stream in prompt mode.
+                else:
+                    async for token in self.process_json_stream(token_stream):
+                        # Normal tokens
+                        if not isinstance(token, list):
+                            yield token
+                            complete_response += token
+                            continue
+                        # Handle JSON response
+                        tools = self._process_tool_from_dict_list(token)
+                        if tools:
+                            tools_waiting_to_call.extend(tools)
+                            logger.info(f"Tool call detected: {tools}")
+                
+                
+                # Stage B: Call the tools.
+                if tools_waiting_to_call:
+                    tools_response = []
+                    for tool in tools_waiting_to_call:
+                        try:
+                            logger.info(f"Start calling tool: {tool.name}")
                             async with MCPClient(self._mcp_server_manager) as client:
-                                await client.connect_to_server(mcp_server)
-                                mcp_response = await client.call_tool(tool, arguments)
-                except Exception as e:
-                    logger.warning(f"MCP: Error processing potential MCP request: {e}")
-                    mcp_response = None
-
-                # Stage 3: If MCP response is valid, send it to the LLM and continue the conversation
-                if mcp_response:
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": mcp_response,
-                        }
-                    )
+                                await client.connect_to_server(tool.server)
+                                response = await client.call_tool(tool)
+                                if self.prompt_mode_flag:
+                                    response = {"role": "user", "content": response}
+                                else:
+                                    # Create a message in Assistant role with tool_calls to satisfy API requirement
+                                    # This ensures we have a tool_calls message before adding a tool role message
+                                    assistant_message = {
+                                        "role": "assistant",
+                                        "content": None,
+                                        "tool_calls": [
+                                            {
+                                                "id": tool.id,
+                                                "type": "function",
+                                                "function": {
+                                                    "name": tool.name,
+                                                    "arguments": json.dumps(tool.args)
+                                                }
+                                            }
+                                        ]
+                                    }
+                                    # Add the assistant message with tool_calls
+                                    messages.append(assistant_message)
+                                    
+                                    response = {"role": "tool", "tool_call_id": tool.id, "content": response}
+                            logger.info(f"End calling tool: {tool.name}")
+                            logger.debug(f"Call of '{tool}' completed with response: {response}")
+                        except Exception as e:
+                            logger.error(f"Error calling tool '{tool.name}': {e}")
+                            response = {
+                                "role": "user",
+                                "content": f"Error calling tool '{tool.name}': {e}",
+                            }
+                        tools_response.append(response)
+                    
+                    messages.extend(tools_response)
+                    
+                    # Stage C: Call the LLM again with the tool responses.
                     token_stream = chat_func(messages, self._system)
                     complete_response = ""
-
+                    
                     async for token in token_stream:
                         yield token
                         complete_response += token
-
+                        
+                        
+            # MCP Plus disabled
             else:
-                # Process token stream without MCP
+                # Get token stream from LLM
+                token_stream = chat_func(messages, self._system)
+                complete_response = ""
+                
                 async for token in token_stream:
                     yield token
                     complete_response += token
@@ -350,6 +444,58 @@ class BasicMemoryAgent(AgentInterface):
             self._add_message(complete_response, "assistant")
 
         return chat_with_memory
+    
+    async def process_json_stream(self, stream: AsyncIterator[str]) -> AsyncIterator[str | Dict[str, Any]]:
+        """
+        Process the JSON stream from the LLM and handle tool calls.
+
+        Args:
+            stream: AsyncIterator[str] - The stream of JSON data
+
+        Returns:
+            AsyncIterator[str | Dict[str, Any]] - if JSON is detected, yield it
+            else yield the token
+        """
+        potential_json = False
+        full_json_tokens = ""
+        async for token in stream:
+            if '{' in token:
+                potential_json = True
+                full_json_tokens += token
+            if potential_json:
+                json_data = self._json_detector.process_chunk(token)
+                full_json_tokens += token
+                if json_data:
+                    logger.debug(f"Detected JSON: {json_data}")
+                    yield json_data
+                    potential_json = False
+            else:
+                yield token
+        logger.debug(f"Full JSON tokens: {full_json_tokens}")
+    
+    def _process_tool_from_dict_list(self, data: List[Dict[str, Any]]) -> List[CallableTool]:
+        """Process the tool data from the LLM response.
+        
+        Args:
+            data: List[Dict[str, Any]] - The list of dictionaries containing tool data
+        
+        Returns:
+            List[CallableTool] - List of CallableTool objects
+        """
+        tools = []
+        for item in data:
+            server = item.get("mcp_server", None)
+            tool = item.get("tool", None)
+            arguments = item.get("arguments", None)
+            if all([server, tool, arguments]):
+                tools.append(
+                    CallableTool(
+                        name=tool,
+                        server=server,
+                        args=json.loads(arguments),
+                    )
+                )
+        return tools
 
     async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
         """Placeholder chat method that will be replaced at runtime"""
