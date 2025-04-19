@@ -1,6 +1,8 @@
-# MCP for Open-LLM-VTuber
+# MCP Plus for Open-LLM-VTuber
 
 English / [中文](./readme.zh.md)
+
+
 
 ## 📄 Introduction
 
@@ -11,19 +13,29 @@ As MCP is a powerful tool for LLMs to call functions, reach resources on your co
 
 
 
+## ➕ About "Plus"
+
+As some LLMs' API support `tools` parameter, we decided to integrate the `Tool Use` feature into the MCP implemention. Don't be worried, we didn't make any modifications to the Protocol itself, just stitched two features together.
+
+
+
 ## 📁 File Structure
 
-- `mcp/` - The main folder of MCP module.
+- `mcpp/` - The main folder of MCP Plus module.
     - `configs/` - Configuration files.
         - `mcp_servers.json` - Config file for MCP.
         - `servers_prompt.json` - MCP servers' prompts, will pass to LLMs.
     - `servers/` - Custom MCP servers should be stored here (or may change it at 'mcp_servers.json').
         - `example.py` - Basic python MCP server example, contains a tool named `calculate_bmi`.
+    - `utils/` - Some useful generic functions.
+        - `path.py` - Now contains a common file validation logic.
     - `client.py` - The MCP client implemention.
+    - `json_detector.py` - Used to detect JSON objects from text.
     - `prompt_constructor` - MCP server/tool prompts constructor.
     - `readme.md` - You are reading it.
     - `readme.zh.md` - The Chinese version of readme file.
     - `server_manager.py` - The MCP servers manager.
+    - `types.py` - Standard data structures.
 
 
 
@@ -74,6 +86,7 @@ Then, it should be like this in our `mcp_servers.json`(4 indent):
 
 5. For ***custom*** MCP Servers, you need to confirm field `custom_servers_path`, we recommand not to change it, but if you still want to change it, it is better to use absolute path. Then, put your server file into the folder, default is `./servers`(as [#File Structure](#-file-structure)). And, nothing else.
 **NOTE:** The relative path in `mcp_servers.json` is relative to `/mcp`
+
 
 
 ## 📚 References

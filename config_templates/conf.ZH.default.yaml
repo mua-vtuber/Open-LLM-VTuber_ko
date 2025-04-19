@@ -17,9 +17,6 @@ system_config:
     # live_prompt: 'live_prompt'
     # 当使用群聊时，此提示词将添加到每个 AI 参与者的记忆中。
     group_conversation_prompt: 'group_conversation_prompt'
-    # 启用 mcp_prompt 可让 LLMs 具备与 MCP (Model Context Protocol) 服务器交互的能力。更多详情请参考 mcp_prompt。
-    # 请注意，本配置项仅在 agent 配置项的 use_mcp 为 True 时生效。
-    mcp_prompt: 'mcp_prompt'
 
 # 默认角色的配置
 character_config:
@@ -59,8 +56,9 @@ character_config:
         faster_first_response: True
         # 句子分割方法：'regex' 或 'pysbd'
         segment_method: 'pysbd'
-        # 是否使用 MCP（Model Context Protocol）以使 LLM 获得函数调用的能力（默认：False）
-        use_mcp: False
+        # 是否使用 MCP（Model Context Protocol） Plus 以使 LLM 获得使用工具的能力（默认：False）
+        # 'Plus' 意味着它包含了通过 OpenAI API 调用工具的能力。
+        use_mcpp: False
 
       mem0_agent:
         vector_store:

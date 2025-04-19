@@ -15,9 +15,6 @@ system_config:
     # live_prompt: 'live_prompt'
     # When using group conversation, this prompt will be added to the memory of each AI participant.
     group_conversation_prompt: 'group_conversation_prompt'
-    # Enable mcp_prompt to let LLMs interact with MCP (Model Context Protocol) servers. See mcp_prompt for more details.
-    # Please note that this will work only if the 'use_mcp' is set to True in the agent settings.
-    mcp_prompt: 'mcp_prompt'
 
 # configuration for the default character
 character_config:
@@ -59,8 +56,9 @@ character_config:
         faster_first_response: True
         # Method for segmenting sentences: 'regex' or 'pysbd'
         segment_method: 'pysbd'
-        # Use MCP (Model Context Protocol) to let the LLM have the ability to call tools
-        use_mcp: True
+        # Use MCP (Model Context Protocol) Plus to let the LLM have the ability to use tools
+        # 'Plus' means that it has the ability to call tools by using OpenAI API.
+        use_mcpp: True
 
       mem0_agent:
         vector_store:

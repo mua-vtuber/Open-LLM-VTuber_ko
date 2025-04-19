@@ -15,8 +15,9 @@ from ..transformers import (
 from ...config_manager import TTSPreprocessorConfig
 from ..input_types import BatchInput, TextSource, ImageSource
 from prompts import prompt_loader
-from ...mcp.client import MCPClient
-from ...mcp.server_manager import MCPServerManager
+from ...mcpp.client import MCPClient
+from ...mcpp.server_manager import MCPServerManager
+from ...mcpp.tool_manager import ToolManager
 
 
 class BasicMemoryAgent(AgentInterface):
@@ -39,7 +40,7 @@ class BasicMemoryAgent(AgentInterface):
         tts_preprocessor_config: TTSPreprocessorConfig = None,
         faster_first_response: bool = True,
         segment_method: str = "pysbd",
-        use_mcp: bool = True,
+        use_mcpp: bool = True,
         interrupt_method: Literal["system", "user"] = "user",
         tool_prompts: Dict[str, str] = None,
     ):
@@ -64,7 +65,8 @@ class BasicMemoryAgent(AgentInterface):
         self._tts_preprocessor_config = tts_preprocessor_config
         self._faster_first_response = faster_first_response
         self._segment_method = segment_method
-        self._mcp_server_manager = MCPServerManager() if use_mcp else None
+        self._mcp_server_manager = MCPServerManager() if use_mcpp else None
+        self._tool_manager = ToolManager() if use_mcpp else None
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
         # Flag to ensure a single interrupt handling per conversation
@@ -95,6 +97,7 @@ class BasicMemoryAgent(AgentInterface):
 
         if self.interrupt_method == "user":
             system = f"{system}\n\nIf you received `[interrupted by user]` signal, you were interrupted."
+            
 
         self._system = system
 
@@ -244,7 +247,7 @@ class BasicMemoryAgent(AgentInterface):
         return messages
 
     def _chat_function_factory(
-        self, chat_func: Callable[[List[Dict[str, Any]], str], AsyncIterator[str]]
+        self, chat_func: Callable[[List[Dict[str, Any]], str, List[Dict[str, Any]]], AsyncIterator[str]]
     ) -> Callable[..., AsyncIterator[SentenceOutput]]:
         """
         Create the chat pipeline with transformers

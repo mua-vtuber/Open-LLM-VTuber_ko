@@ -10,8 +10,10 @@ from openai import (
     APIError,
     APIConnectionError,
     RateLimitError,
+    BadRequestError,
 )
 from openai.types.chat import ChatCompletionChunk
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from loguru import logger
 
 from .stateless_llm_interface import StatelessLLMInterface
@@ -47,23 +49,26 @@ class AsyncLLM(StatelessLLMInterface):
             project=project_id,
             api_key=llm_api_key,
         )
+        self.support_tools = True
 
         logger.info(
             f"Initialized AsyncLLM with the parameters: {self.base_url}, {self.model}"
         )
 
     async def chat_completion(
-        self, messages: List[Dict[str, Any]], system: str = None
-    ) -> AsyncIterator[str]:
+        self, messages: List[Dict[str, Any]], system: str = None, tools: List[Dict[str, Any]] = None
+    ) -> AsyncIterator[str | List[ChoiceDeltaToolCall]]:
         """
         Generates a chat completion using the OpenAI API asynchronously.
 
         Parameters:
         - messages (List[Dict[str, Any]]): The list of messages to send to the API.
         - system (str, optional): System prompt to use for this completion.
+        - tools (List[Dict[str, str]], optional): List of tools to use for this completion.
 
         Yields:
         - str: The content of each chunk from the API response.
+        - List[ChoiceDeltaToolCall]: The tool calls detected in the response.
 
         Raises:
         - APIConnectionError: When the server cannot be reached
@@ -88,8 +93,17 @@ class AsyncLLM(StatelessLLMInterface):
                 model=self.model,
                 stream=True,
                 temperature=self.temperature,
+                tools=tools if self.support_tools else None,
             )
             async for chunk in stream:
+                if self.support_tools:
+                    tool_calls: List[ChoiceDeltaToolCall] = chunk.choices[0].delta.tool_calls
+                    if tool_calls:
+                        logger.info(
+                            f"Tool call detected: {tool_calls}"
+                        )
+                        yield tool_calls
+                        continue
                 if len(chunk.choices) == 0:
                     logger.info("Empty chunk received")
                     continue

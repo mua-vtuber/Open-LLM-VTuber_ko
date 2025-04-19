@@ -42,16 +42,16 @@ class MCPClient:
             server_manager (MCPServerManager): The server manager to use for managing servers.
 
         Raises:
-            ValueError: If the server manager is not an instance of MCPServerManager.
+            TypeError: If the server manager is not an instance of MCPServerManager.
         """
         self.session: Optional[ClientSession] = None
         self.exit_stack: AsyncExitStack = AsyncExitStack()
-        self.stdio, self.write = None, None
+        self.read, self.write = None, None
 
         if isinstance(server_manager, MCPServerManager):
             self.server_manager = server_manager
         else:
-            raise ValueError(
+            raise TypeError(
                 "MCPC: Invalid server manager. Must be an instance of MCPServerManager."
             )
 
@@ -79,23 +79,22 @@ class MCPClient:
                 f"MCPC: Server '{server_name}' not found in available servers."
             )
 
-        executable = server["executable"]
-        args = server["args"]
-        env = server.get("env", None)
+        if server.timeout:
+            timeout = server.timeout
 
         server_params = StdioServerParameters(
-            command=executable,
-            args=args,
-            env=env,
+            command=server.command,
+            args=server.args,
+            env=server.env,
         )
 
         # Intialize the session.
         stdio_transport = await self.exit_stack.enter_async_context(
             stdio_client(server_params)
         )
-        self.stdio, self.write = stdio_transport
+        self.read, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(
-            ClientSession(self.stdio, self.write, read_timeout_seconds=timeout)
+            ClientSession(self.read, self.write, read_timeout_seconds=timeout)
         )
         await self.session.initialize()
 
@@ -146,25 +145,25 @@ class MCPClient:
             )
 
         return response.content[0].text
-
-    async def close(self) -> None:
-        """Clean up the MCP client."""
+    
+    async def aclose(self) -> None:
         await self.exit_stack.aclose()
+        await self.read.aclose()
+        await self.write.aclose()
         self.session = None
-        self.stdio, self.write = None, None
+        self.read, self.write = None, None
+        self.exit_stack = None
         logger.info("MCPC: Closed the client session.")
-
+        
     async def __aenter__(self) -> "MCPClient":
         """Enter the async context manager."""
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
         """Exit the async context manager."""
-        await self.close()
+        await self.aclose()
         if exc_type:
-            logger.error(f"MCPC: Exception occurred: {exc_value}")
-        if traceback:
-            logger.error(f"MCPC: Traceback: {traceback}")
+            logger.error(f"MCPC: Exception occurred: {exc_type.__name__}")
 
 
 # if __name__ == "__main__":
