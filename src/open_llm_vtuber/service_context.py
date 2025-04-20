@@ -295,9 +295,7 @@ class ServiceContext:
             # Note: Now wether to use MCP prompt or not is up to the agent
             # Here we just construct it and ready to pass it to the agent
             if prompt_name == "mcp_prompt":
-                use_mcpp = (
-                    self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
-                )
+                use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
                 if not use_mcpp:
                     logger.debug(
                         "MCP prompt is not constructed because use_mcpp is False"
@@ -312,7 +310,9 @@ class ServiceContext:
                 mc = MixedConstructor()
                 await mc.run()
                 if mc.prompts == {}:
-                    logger.warning("MCP Servers prompt is empty while 'use_mcpp' is True")
+                    logger.warning(
+                        "MCP Servers prompt is empty while 'use_mcpp' is True"
+                    )
                     logger.warning("This means MCP won't be running in expected way.")
                     self.mcp_prompt = ""
                     continue

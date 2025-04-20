@@ -253,33 +253,35 @@ class BasicMemoryAgent(AgentInterface):
         return messages
 
     async def _process_tool_calls(
-        self, 
+        self,
         chat_func: Callable[
             [List[Dict[str, Any]], str, List[Dict[str, Any]]],
-            AsyncIterator[str | List[ChoiceDeltaToolCall]]
+            AsyncIterator[str | List[ChoiceDeltaToolCall]],
         ],
         messages: List[Dict[str, Any]],
-        tools_waiting_to_call: List[CallableTool] = None
+        tools_waiting_to_call: List[CallableTool] = None,
     ) -> AsyncIterator[str]:
         """
         Recursively process tool calls, supporting multiple rounds of tool calls and responses
-        
+
         Args:
             chat_func: LLM `chat_completion` method
             messages: Message history
             tools_waiting_to_call: List of tools waiting to be called
-            
+
         Returns:
             AsyncIterator[str]: Text response stream
         """
         # If there are no tools waiting to be called, directly return the LLM's response
         if not tools_waiting_to_call:
-            token_stream: AsyncIterator[str | List[ChoiceDeltaToolCall]] = chat_func(messages, self._system)
+            token_stream: AsyncIterator[str | List[ChoiceDeltaToolCall]] = chat_func(
+                messages, self._system
+            )
             complete_response: str = ""
-            
+
             # Process LLM response
             new_tools: List[CallableTool] = []
-            
+
             # First try API Tool Call mode (default)
             if not self.prompt_mode_flag:
                 async for token in token_stream:
@@ -287,15 +289,19 @@ class BasicMemoryAgent(AgentInterface):
                     if isinstance(token, list):
                         try:
                             for tool_call in token:
-                                tool = self._tool_manager.get_tool(tool_call.function.name)
+                                tool = self._tool_manager.get_tool(
+                                    tool_call.function.name
+                                )
                                 if not tool:
-                                    raise ValueError(f"Tool '{tool_call.function.name}' not found in ToolManager.")
+                                    raise ValueError(
+                                        f"Tool '{tool_call.function.name}' not found in ToolManager."
+                                    )
                                 server = tool.related_server
                                 tool = CallableTool(
                                     name=tool_call.function.name,
                                     server=server,
                                     args=json.loads(tool_call.function.arguments),
-                                    id=tool_call.id
+                                    id=tool_call.id,
                                 )
                                 new_tools.append(tool)
                         except json.JSONDecodeError:
@@ -312,8 +318,10 @@ class BasicMemoryAgent(AgentInterface):
                         self._tool_manager.disable()
                         if self._mcp_prompt:
                             self._system += f"\n\n{self._mcp_prompt}"
-                        logger.info("Disabled ToolManager, switching to prompt mode for MCP.")
-                        
+                        logger.info(
+                            "Disabled ToolManager, switching to prompt mode for MCP."
+                        )
+
                         # Switch to prompt mode as fallback
                         self.prompt_mode_flag = True
                         re_stream = chat_func(messages, self._system)
@@ -325,7 +333,9 @@ class BasicMemoryAgent(AgentInterface):
                             tools = self._process_tool_from_dict_list(token)
                             if tools:
                                 new_tools.extend(tools)
-                                logger.info(f"Tool call detected through prompt: {tools}")
+                                logger.info(
+                                    f"Tool call detected through prompt: {tools}"
+                                )
                     # Normal text
                     else:
                         yield token
@@ -344,7 +354,7 @@ class BasicMemoryAgent(AgentInterface):
                     if tools:
                         new_tools.extend(tools)
                         logger.info(f"Tool call detected: {tools}")
-            
+
             # If new tool calls are detected, process them recursively
             if new_tools:
                 # We must have a meessage containing the tool_calls before the tool role message
@@ -364,28 +374,28 @@ class BasicMemoryAgent(AgentInterface):
                                     "name": tool.name,
                                     "arguments": json.dumps(tool.args),
                                 },
-                            } for tool in new_tools
+                            }
+                            for tool in new_tools
                         ],
                     }
                     messages.append(assistant_message)
                 else:
                     # For prompt mode, add a simpler message
-                    messages.append({
-                        "role": "assistant",
-                        "content": response
-                    })
-                
+                    messages.append({"role": "assistant", "content": response})
+
                 # Process new tool calls recursively
-                async for token in self._process_tool_calls(chat_func, messages, new_tools):
+                async for token in self._process_tool_calls(
+                    chat_func, messages, new_tools
+                ):
                     yield token
-                    
+
             elif complete_response:
                 # No new tool calls, save the complete response
                 self._add_message(complete_response, "assistant")
-            
+
             # Stop if no tools waiting to call
             return
-        
+
         # Process tool calls
         tools_response = []
         for tool in tools_waiting_to_call:
@@ -413,10 +423,10 @@ class BasicMemoryAgent(AgentInterface):
                 if not self.prompt_mode_flag:
                     response["tool_call_id"] = tool.id
             tools_response.append(response)
-        
+
         # Add tool responses to message history
         messages.extend(tools_response)
-        
+
         # Recursive call with no tools waiting
         async for token in self._process_tool_calls(chat_func, messages):
             yield token
@@ -458,13 +468,18 @@ class BasicMemoryAgent(AgentInterface):
 
             # MCP Plus enabled
             if self._mcp_server_manager:
-                tools = self._tool_manager.get_all_tools() if self._tool_manager else None
-                
+                tools = (
+                    self._tool_manager.get_all_tools() if self._tool_manager else None
+                )
+
                 # Use recursive method to process tool calls
                 async for token in self._process_tool_calls(
-                    lambda msgs, sys, **kwargs: chat_func(msgs, sys, tools=tools, **kwargs) 
-                    if tools else chat_func(msgs, sys, **kwargs),
-                    messages
+                    lambda msgs, sys, **kwargs: chat_func(
+                        msgs, sys, tools=tools, **kwargs
+                    )
+                    if tools
+                    else chat_func(msgs, sys, **kwargs),
+                    messages,
                 ):
                     yield token
             # MCP Plus disabled
