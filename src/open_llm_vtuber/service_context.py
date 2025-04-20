@@ -309,9 +309,18 @@ class ServiceContext:
 
                 mc = MixedConstructor()
                 await mc.run()
+                if mc.prompts == {}:
+                    logger.warning(
+                        "MCP Servers prompt is empty while 'use_mcpp' is True"
+                    )
+                    logger.warning("This means MCP won't be running in expected way.")
+                    self.mcp_prompt = ""
+                    continue
                 prompt = ""
+
                 for server_prompt in mc.prompts.values():
                     prompt += server_prompt["content"]
+
                 self.mcp_prompt = prompt_content.replace(
                     "[<insert_mcp_servers_with_tools>]", prompt
                 )
