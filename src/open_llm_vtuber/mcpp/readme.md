@@ -23,6 +23,7 @@ As some LLMs' API support `tools` parameter, we decided to integrate the `Tool U
 
 - `mcpp/` - The main folder of MCP Plus module.
     - `configs/` - Configuration files.
+        - `formatted_tools.json` - Tools in universal format that can be called by API.
         - `mcp_servers.json` - Config file for MCP.
         - `servers_prompt.json` - MCP servers' prompts, will pass to LLMs.
     - `servers/` - Custom MCP servers should be stored here (or may change it at 'mcp_servers.json').
@@ -31,7 +32,7 @@ As some LLMs' API support `tools` parameter, we decided to integrate the `Tool U
         - `path.py` - Now contains a common file validation logic.
     - `client.py` - The MCP client implemention.
     - `json_detector.py` - Used to detect JSON objects from text.
-    - `prompt_constructor` - MCP server/tool prompts constructor.
+    - `mixed_constructor` - MCP server/tool prompts constructor, also format tools.
     - `readme.md` - You are reading it.
     - `readme.zh.md` - The Chinese version of readme file.
     - `server_manager.py` - The MCP servers manager.

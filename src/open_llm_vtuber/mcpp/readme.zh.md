@@ -9,19 +9,28 @@
 
 由于MCP是LLM调用函数、访问计算机资源和提供有用提示的强大工具，在Open-LLM-VTuber中实现它似乎是一个回报很高的行动。所以它就在这里了。
 
+## ➕ 关于"Plus"
+
+由于一些LLM的API支持`tools`参数，我们决定将`API工具调用`功能集成到MCP实现中。不用担心，我们没有对协议本身做任何修改，只是将两个功能结合在一起。
+
 ## 📁 文件结构
 
-- `mcp/` - MCP模块的主文件夹。
+- `mcpp/` - MCP Plus模块的主文件夹。
     - `configs/` - 配置文件。
+        - `formatted_tools.json` - 可被API调用的通用格式工具。
         - `mcp_servers.json` - MCP的配置文件。
         - `servers_prompt.json` - MCP服务器的提示，将传递给LLM。
     - `servers/` - 自定义MCP服务器应该存储在这里（或者可以在'mcp_servers.json'中更改）。
         - `example.py` - 基本的Python MCP服务器示例，包含一个名为`calculate_bmi`的工具。
+    - `utils/` - 一些有用的通用函数。
+        - `path.py` - 目前包含通用文件验证逻辑。
     - `client.py` - MCP客户端实现。
-    - `prompt_constructor` - MCP服务器/工具提示构造器。
+    - `json_detector.py` - 用于从文本中检测JSON对象。
+    - `mixed_constructor` - MCP服务器/工具提示构造器，同时格式化工具。
     - `readme.md` - 英文版说明文件。
     - `readme.zh.md` - 你正在阅读的中文版说明文件。
     - `server_manager.py` - MCP服务器管理器。
+    - `types.py` - 标准数据结构。
 
 ## 🔧 使用方法
 
