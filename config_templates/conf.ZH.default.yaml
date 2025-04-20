@@ -110,12 +110,23 @@ character_config:
     llm_configs:
       # 一个配置池，用于不同代理中使用的所有无状态 llm 提供商的凭据和连接详细信息
 
+      # 无状态 LLM 模板 (对于非 ChatML 的 LLM, 通常而言不用管这个配置)
+      stateless_llm_with_template:
+        base_url: 'http://localhost:8080/v1'
+        llm_api_key: 'somethingelse'
+        organization_id: null
+        project_id: null
+        model: 'qwen2.5:latest'
+        template: 'CHATML'
+        temperature: 1.0 # value between 0 to 2
+        interrupt_method: 'user'
+
       # OpenAI 兼容推理后端
       openai_compatible_llm:
         base_url: 'http://localhost:11434/v1' # 基础 URL
         llm_api_key: 'somethingelse' # API 密钥
-        organization_id: 'org_eternity' # 组织 ID
-        project_id: 'project_glass' # 项目 ID
+        organization_id: null # 组织 ID
+        project_id: null # 项目 ID
         model: 'qwen2.5:latest' # 使用的模型
         temperature: 1.0 # 温度，介于 0 到 2 之间
         interrupt_method: 'user'
