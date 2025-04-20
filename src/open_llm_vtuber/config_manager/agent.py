@@ -31,8 +31,8 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
 
     faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
-    use_mcpp: Optional[bool] = Field(False, alias="use_mcp")
-    
+    use_mcpp: Optional[bool] = Field(False, alias="use_mcpp")
+
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "llm_provider": Description(
             en="LLM provider to use for this agent",

@@ -106,19 +106,21 @@ class MCPServerManager:
         for path in custom_servers_path.iterdir():
             if path.suffix == ".py":
                 server_name = path.stem
-                
+
                 # Use importlib to load the module and get special attributes
                 spec = importlib.util.spec_from_file_location(server_name, path)
                 if spec is None or spec.loader is None:
-                    logger.warning(f"MCPSM: Failed to load module from '{path}'. Ignoring.")
+                    logger.warning(
+                        f"MCPSM: Failed to load module from '{path}'. Ignoring."
+                    )
                     continue
-                    
+
                 module = importlib.util.module_from_spec(spec)
                 try:
                     spec.loader.exec_module(module)
                     env = getattr(module, "__envs__", None)
                     timeout = getattr(module, "__timeout__", None)
-                    
+
                     self.servers[server_name] = MCPServer(
                         name=server_name,
                         command=sys.executable,
@@ -126,18 +128,24 @@ class MCPServerManager:
                         env=env,
                         timeout=timeout,
                         type=MCPServerType.Custom,
-                        path=path
+                        path=path,
                     )
                     logger.debug(f"MCPSM: Found custom server: '{server_name}.py'")
                     if env:
-                        logger.debug(f"MCPSM: Custom server '{server_name}' has environment variables defined")
+                        logger.debug(
+                            f"MCPSM: Custom server '{server_name}' has environment variables defined"
+                        )
                         logger.debug(f"MCPSM: '{server_name}' - env: {env}")
                     if timeout:
-                        logger.debug(f"MCPSM: Custom server '{server_name}' has custom timeout: {timeout}")
+                        logger.debug(
+                            f"MCPSM: Custom server '{server_name}' has custom timeout: {timeout}"
+                        )
                 except Exception as e:
-                    logger.warning(f"MCPSM: Error loading module '{server_name}': {e}. Ignoring.")
+                    logger.warning(
+                        f"MCPSM: Error loading module '{server_name}': {e}. Ignoring."
+                    )
                     continue
-                    
+
             elif path.suffix == ".js":
                 server_name = path.stem
                 if not self.npx_available:
@@ -148,7 +156,7 @@ class MCPServerManager:
                     continue
                 self.servers[server_name] = MCPServer(
                     name=server_name,
-                    command="node", 
+                    command="node",
                     args=[str(path)],
                     type=MCPServerType.Custom,
                     path=path,
@@ -216,10 +224,10 @@ class MCPServerManager:
 
     def get_server(self, server_name: str) -> Optional[MCPServer]:
         """Get the server by name.
-        
+
         Args:
             server_name (str): The name of the server to get.
-        
+
         Returns:
             Optional[MCPServer]: The server object if found, None otherwise.
         """

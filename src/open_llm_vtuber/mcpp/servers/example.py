@@ -11,10 +11,12 @@ __envs__ = {
 # If you want to set timeout for your server, you can set it here.
 
 from datetime import timedelta
+
 __timeout__ = timedelta(seconds=10)
 
 
 mcp = FastMCP("My App")
+
 
 @mcp.tool()
 def calculate_bmi(weight_kg: float, height_m: float) -> float:
@@ -23,5 +25,4 @@ def calculate_bmi(weight_kg: float, height_m: float) -> float:
 
 
 if __name__ == "__main__":
-
     mcp.run()

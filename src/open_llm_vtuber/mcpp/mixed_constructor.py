@@ -18,7 +18,9 @@ from .tool_manager import ToolManager
 from .utils.path import validate_file
 
 DEFAULT_SERVERS_PROMPT_PATH = Path(__file__).parent / "configs" / "servers_prompt.json"
-DEFAULT_FORMATTED_TOOLS_PATH = Path(__file__).parent / "configs" / "formatted_tools.json"
+DEFAULT_FORMATTED_TOOLS_PATH = (
+    Path(__file__).parent / "configs" / "formatted_tools.json"
+)
 
 DEFAULT_FILES_PATH = {
     "servers_prompt": DEFAULT_SERVERS_PROMPT_PATH,
@@ -55,7 +57,7 @@ class MixedConstructor:
         self.prompts: Dict[str, Dict[str, str | float] | MCPServerPrompt] = json.loads(
             self.servers_prompt.read_text(encoding="utf-8")
         )
-        
+
         self.server_manager = server_manager or MCPServerManager()
         self.tool_manager = tool_manager or ToolManager(
             prompt_paths.get("formatted_tools", DEFAULT_FORMATTED_TOOLS_PATH)
@@ -81,9 +83,9 @@ class MixedConstructor:
         #     }
         # }
         self.servers_info: Dict[str, Dict[str, str]] = {}
-        
+
         self._preprocess_prompts()
-    
+
     def _preprocess_prompts(self) -> None:
         """Preprocess the prompts to standard data structure."""
         for server_name, prompt in self.prompts.items():
@@ -101,7 +103,7 @@ class MixedConstructor:
                 f"MC: Invalid prompt format for server '{server_name}'. "
                 "Expected a dictionary with 'content' and 'mtime' keys."
             )
-    
+
     def _reformat_prompts_to_dict(self) -> None:
         """Reformat the prompts to a dictionary."""
         for server_name, prompt in self.prompts.items():
@@ -111,12 +113,12 @@ class MixedConstructor:
                     "mtime": prompt.mtime,
                 }
                 continue
-            
+
             logger.warning(
                 f"MC: Invalid prompt format for server '{server_name}'. "
                 "Expected an instance of MCPServerPrompt."
             )
-            
+
     def _reformat_tools_to_dict(self) -> None:
         """Reformat the tools to a dictionary."""
         for tool_name, tool_info in self.tool_manager.tools.items():
@@ -139,16 +141,16 @@ class MixedConstructor:
         self.servers_prompt.write_text(
             json.dumps(self.prompts, indent=4), encoding="utf-8"
         )
-        logger.info(f"MC: Dumped prompts to '{self.servers_prompt}'")
-        
+        logger.debug(f"MC: Dumped prompts to '{self.servers_prompt}'")
+
     def _dump_tools(self) -> None:
         """Dump the formatted tools to the tools file."""
         self._reformat_tools_to_dict()
         self.tool_manager.formatted_tools.write_text(
             json.dumps(self.tool_manager.tools, indent=4), encoding="utf-8"
         )
-        logger.info(f"MC: Dumped tools to '{self.tool_manager.formatted_tools}'")
-    
+        logger.debug(f"MC: Dumped tools to '{self.tool_manager.formatted_tools}'")
+
     async def get_servers_info(self) -> None:
         """Get the tools information from the MCP servers."""
         for server_name in self.server_manager.servers.keys():
@@ -176,22 +178,21 @@ class MixedConstructor:
 
     def construct_servers_prompt(self, force: bool = False) -> None:
         """Construct the prompt for each server and its tools.
-        
+
         Args:
-            force (bool, optional): If True, reconstruct prompts for all servers, 
-                even if they already exist in the prompts dictionary and didn't have any changes. 
+            force (bool, optional): If True, reconstruct prompts for all servers,
+                even if they already exist in the prompts dictionary and didn't have any changes.
                 If False, skip servers by check the server file's last modified time(only custom servers).
                 Default is False.
         """
-        
+
         for server_name, tools in self.servers_info.items():
-            
             server = self.server_manager.get_server(server_name)
             if server.type is MCPServerType.Custom:
                 mtime = os.path.getmtime(server.path)
             else:
                 mtime = -1
-            
+
             prompt = self.prompts.get(server_name, None)
             if isinstance(prompt, MCPServerPrompt):
                 if not force and prompt.mtime == mtime and mtime > 0:
@@ -227,11 +228,9 @@ class MixedConstructor:
                         f"            Required: {', '.join(tool_info['required'])}\n"
                     )
 
-            self.prompts[server_name] = MCPServerPrompt(
-                content=prompt, mtime=mtime
-            )
+            self.prompts[server_name] = MCPServerPrompt(content=prompt, mtime=mtime)
             logger.info(f"MC: Constructed prompt for server '{server_name}'.")
-            
+
         self._dump_prompts()
 
     def format_tools(self) -> None:
@@ -240,24 +239,33 @@ class MixedConstructor:
             data_object = self.tool_manager.tools.get(tool_name, None)
             if isinstance(data_object, FormattedTool):
                 input_schema = data_object.input_schema
-                properties: Dict[str, Dict[str, str]] = input_schema.get("properties", {})
+                properties: Dict[str, Dict[str, str]] = input_schema.get(
+                    "properties", {}
+                )
                 data_object.generic_schema = {
                     "type": "function",
                     "function": {
                         "name": tool_name,
-                        "description": input_schema.get("description", "No description provided."),
+                        "description": input_schema.get(
+                            "description", "No description provided."
+                        ),
                         "parameters": {
                             "type": "object",
                             "properties": {
                                 param_name: {
                                     "type": param_info.get("type", "string"),
-                                    "description": param_info.get("description", param_info.get("title", "No description provided.")),
+                                    "description": param_info.get(
+                                        "description",
+                                        param_info.get(
+                                            "title", "No description provided."
+                                        ),
+                                    ),
                                 }
                                 for param_name, param_info in properties.items()
                             },
                             "required": input_schema.get("required", []),
-                        }
-                    }
+                        },
+                    },
                 }
                 logger.debug(f"MC: Formatted tool '{tool_name}' to standard structure.")
             else:
@@ -265,9 +273,9 @@ class MixedConstructor:
                     f"MC: Invalid tool format for '{tool_name}'. "
                     "Expected an instance of FormattedTool."
                 )
-        
+
         self._dump_tools()
-    
+
     async def run(self, force: bool = False) -> None:
         """Run the mixed constructor asynchronously."""
         await self.get_servers_info()

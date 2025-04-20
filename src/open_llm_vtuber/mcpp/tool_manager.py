@@ -8,7 +8,10 @@ from openai import NotGiven, NOT_GIVEN
 from .types import FormattedTool
 from .utils.path import validate_file
 
-DEFAULT_FORMATTED_TOOLS_PATH = Path(__file__).parent / "configs" / "formatted_tools.json"
+DEFAULT_FORMATTED_TOOLS_PATH = (
+    Path(__file__).parent / "configs" / "formatted_tools.json"
+)
+
 
 class ToolManager:
     """Tool Manager for managing tools."""
@@ -23,15 +26,15 @@ class ToolManager:
                 Default is './configs/formatted_tools.json'.
         """
         self.formatted_tools = validate_file(formatted_tools_path)
-        
+
         self.tools: Dict[str, Dict[str, Any] | FormattedTool] = json.loads(
             self.formatted_tools.read_text(encoding="utf-8")
         )
-        
+
         self.__enabled = True
-        
+
         self._preprocess_tools()
-    
+
     def _preprocess_tools(self) -> None:
         """Preprocess the tools to standard data structure."""
         for tool_name, tool_info in self.tools.items():
@@ -52,7 +55,7 @@ class ToolManager:
                 f"TM: Invalid tool format for '{tool_name}'. "
                 "Expected a dictionary with 'input_schema' and 'related_server' keys."
             )
-    
+
     def get_tool(self, tool_name: str) -> FormattedTool | None:
         """Get a tool by its name.
 
@@ -64,13 +67,15 @@ class ToolManager:
         """
         return self.tools.get(tool_name, None)
 
-    def get_all_tools(self, mode: Literal["OpenAI", "Claude"] = "OpenAI") -> List[Dict[str, Any]] | NotGiven:
+    def get_all_tools(
+        self, mode: Literal["OpenAI", "Claude"] = "OpenAI"
+    ) -> List[Dict[str, Any]] | NotGiven:
         """Get all generic schemas.
 
         Args:
             mode (Literal["OpenAI", "Claude"]): Mode to get the schemas for.
                 Default is "OpenAI".
-        
+
         Returns:
             List[Dict[str, Any]]: List of schemas that suit API's requirements.
             NotGiven: If the tool manager is not enabled.
@@ -79,22 +84,24 @@ class ToolManager:
             return NOT_GIVEN
         if mode.upper() == "OPENAI":
             return [
-                tool.generic_schema for tool in self.tools.values() if isinstance(tool, FormattedTool)
+                tool.generic_schema
+                for tool in self.tools.values()
+                if isinstance(tool, FormattedTool)
             ]
         elif mode.upper() == "CLAUDE":
             return [
-                tool.input_schema for tool in self.tools.values() if isinstance(tool, FormattedTool)
+                tool.input_schema
+                for tool in self.tools.values()
+                if isinstance(tool, FormattedTool)
             ]
         else:
-            logger.warning(
-                f"TM: Invalid mode '{mode}'. Expected 'OpenAI' or 'Claude'."
-            )
+            logger.warning(f"TM: Invalid mode '{mode}'. Expected 'OpenAI' or 'Claude'.")
             return NOT_GIVEN
-    
+
     def enable(self) -> None:
         """Enable the tool manager."""
         self.__enabled = True
-    
+
     def disable(self) -> None:
         """Disable the tool manager."""
         self.__enabled = False

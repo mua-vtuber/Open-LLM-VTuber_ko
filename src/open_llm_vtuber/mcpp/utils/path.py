@@ -3,6 +3,7 @@
 from pathlib import Path
 from loguru import logger
 
+
 def validate_file(file_path: str | Path, suffix: str = ".json") -> Path:
     """Check if the file path is valid.
 

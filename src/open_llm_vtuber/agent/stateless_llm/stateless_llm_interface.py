@@ -20,7 +20,10 @@ class StatelessLLMInterface(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def chat_completion(
-        self, messages: List[Dict[str, Any]], system: str = None, tools: List[Dict[str, Any]] = None
+        self,
+        messages: List[Dict[str, Any]],
+        system: str = None,
+        tools: List[Dict[str, Any]] = None,
     ) -> AsyncIterator[str]:
         """
         Generates a chat completion asynchronously and return an iterator to the response.

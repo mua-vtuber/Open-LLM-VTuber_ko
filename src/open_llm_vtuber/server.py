@@ -149,7 +149,7 @@ class WebSocketServer:
         )
 
     async def initialize(self):
-        """Asynchronously load the service context from config. 
+        """Asynchronously load the service context from config.
         Calling this function is needed if default_context_cache was not provided to the constructor."""
         await self.default_context_cache.load_from_config(self.config)
 

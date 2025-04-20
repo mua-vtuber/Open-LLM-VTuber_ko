@@ -144,12 +144,10 @@ class MCPClient:
             logger.error(
                 f"MCPC: Error calling tool '{tool.name}': {response.content[0].text}"
             )
-            raise ValueError(
-                f"MCPC: {response.content[0].text}"
-            )
+            raise ValueError(f"MCPC: {response.content[0].text}")
 
         return response.content[0].text
-    
+
     async def aclose(self) -> None:
         await self.exit_stack.aclose()
         await self.read.aclose()
@@ -158,7 +156,7 @@ class MCPClient:
         self.read, self.write = None, None
         self.exit_stack = None
         logger.info("MCPC: Closed the client session.")
-        
+
     async def __aenter__(self) -> "MCPClient":
         """Enter the async context manager."""
         return self
