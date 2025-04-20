@@ -295,7 +295,9 @@ class ServiceContext:
             # Note: Now wether to use MCP prompt or not is up to the agent
             # Here we just construct it and ready to pass it to the agent
             if prompt_name == "mcp_prompt":
-                use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
+                use_mcpp = (
+                    self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
+                )
                 if not use_mcpp:
                     logger.debug(
                         "MCP prompt is not constructed because use_mcpp is False"
@@ -315,8 +317,10 @@ class ServiceContext:
                     self.mcp_prompt = ""
                     continue
                 prompt = ""
+
                 for server_prompt in mc.prompts.values():
                     prompt += server_prompt["content"]
+
                 self.mcp_prompt = prompt_content.replace(
                     "[<insert_mcp_servers_with_tools>]", prompt
                 )
