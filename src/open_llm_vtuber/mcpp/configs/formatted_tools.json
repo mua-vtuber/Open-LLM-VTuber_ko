@@ -131,5 +131,84 @@
                 }
             }
         }
+    },
+    "search": {
+        "input_schema": {
+            "properties": {
+                "query": {
+                    "title": "Query",
+                    "type": "string"
+                },
+                "max_results": {
+                    "default": 10,
+                    "title": "Max Results",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "query"
+            ],
+            "title": "searchArguments",
+            "type": "object"
+        },
+        "related_server": "ddg-search",
+        "generic_schema": {
+            "type": "function",
+            "function": {
+                "name": "search",
+                "description": "No description provided.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Query"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Max Results"
+                        }
+                    },
+                    "required": [
+                        "query"
+                    ]
+                }
+            }
+        }
+    },
+    "fetch_content": {
+        "input_schema": {
+            "properties": {
+                "url": {
+                    "title": "Url",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "url"
+            ],
+            "title": "fetch_contentArguments",
+            "type": "object"
+        },
+        "related_server": "ddg-search",
+        "generic_schema": {
+            "type": "function",
+            "function": {
+                "name": "fetch_content",
+                "description": "No description provided.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "Url"
+                        }
+                    },
+                    "required": [
+                        "url"
+                    ]
+                }
+            }
+        }
     }
 }

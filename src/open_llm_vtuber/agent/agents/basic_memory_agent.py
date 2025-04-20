@@ -379,6 +379,26 @@ class BasicMemoryAgent(AgentInterface):
                 # Stage B: Call the tools.
                 if tools_waiting_to_call:
                     tools_response = []
+                    tool_calls = [
+                        {
+                            "id": tool.id,
+                            "type": "function",
+                            "function": {
+                                "name": tool.name,
+                                "arguments": json.dumps(tool.args),
+                            },
+                        }
+                        for tool in tools_waiting_to_call
+                    ]
+                    assistant_message = {
+                        "role": "assistant",
+                        "content": complete_response,
+                        "tool_calls": tool_calls
+                    }
+                    messages.append(assistant_message)
+                    
+                    logger.warning(f"assistant_message: {assistant_message}")
+
                     for tool in tools_waiting_to_call:
                         try:
                             logger.info(f"Start calling tool: {tool.name}")
@@ -388,25 +408,6 @@ class BasicMemoryAgent(AgentInterface):
                                 if self.prompt_mode_flag:
                                     response = {"role": "user", "content": response}
                                 else:
-                                    # Create a message in Assistant role with tool_calls to satisfy API requirement
-                                    # This ensures we have a tool_calls message before adding a tool role message
-                                    assistant_message = {
-                                        "role": "assistant",
-                                        "content": None,
-                                        "tool_calls": [
-                                            {
-                                                "id": tool.id,
-                                                "type": "function",
-                                                "function": {
-                                                    "name": tool.name,
-                                                    "arguments": json.dumps(tool.args),
-                                                },
-                                            }
-                                        ],
-                                    }
-                                    # Add the assistant message with tool_calls
-                                    messages.append(assistant_message)
-
                                     response = {
                                         "role": "tool",
                                         "tool_call_id": tool.id,
