@@ -146,10 +146,10 @@ class MixedConstructor:
     def _dump_tools(self) -> None:
         """Dump the formatted tools to the tools file."""
         self._reformat_tools_to_dict()
-        self.tool_manager.formatted_tools.write_text(
+        self.tool_manager.formatted_tools_path.write_text(
             json.dumps(self.tool_manager.tools, indent=4), encoding="utf-8"
         )
-        logger.debug(f"MC: Dumped tools to '{self.tool_manager.formatted_tools}'")
+        logger.debug(f"MC: Dumped tools to '{self.tool_manager.formatted_tools_path}'")
 
     async def get_servers_info(self) -> None:
         """Get the tools information from the MCP servers."""
