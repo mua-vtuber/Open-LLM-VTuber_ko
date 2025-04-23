@@ -366,7 +366,13 @@ class BasicMemoryAgent(AgentInterface):
             tool_id = call.get("id")
             tool_name = call.get("name")
             # Claude passes 'input', prompt mode passes 'args'
-            tool_input = call.get("input", call.get("args")) 
+            tool_input = call.get("input", call.get("args"))
+            
+            # Handle case where tool_input is None or empty
+            if tool_input is None:
+                logger.warning(f"Empty input for tool '{tool_name}' (ID: {tool_id}). Using empty object.")
+                tool_input = {}  # Default to empty object
+                
             if not tool_id or not tool_name:
                 logger.error(f"Invalid Dict tool call structure (Claude or Prompt): {call}")
                 result_content = "Error: Invalid tool call structure from LLM."
@@ -386,6 +392,11 @@ class BasicMemoryAgent(AgentInterface):
         tool_info = self._tool_manager.get_tool(tool_name)
         is_error = False
         result_content = ""
+
+        # Ensure tool_input is never None
+        if tool_input is None:
+            logger.warning(f"Null tool_input received for '{tool_name}'. Using empty object.")
+            tool_input = {}
 
         if not tool_info:
             logger.error(f"Tool '{tool_name}' not found in ToolManager.")
@@ -594,7 +605,7 @@ class BasicMemoryAgent(AgentInterface):
         tools: List[Dict[str, Any]]
     ) -> AsyncIterator[str]:
         """Handles the interaction loop with OpenAI compatible LLMs, including tool calls and prompt mode fallback."""
-        messages = initial_messages.copy()
+        messages = initial_messages.copy() # interaction loop memory (temporary)
         current_turn_text = ""
         # Holds ToolCallObject list in native mode, or simple dict list in prompt mode
         pending_tool_calls: Union[List[ToolCallObject], List[Dict[str, Any]]] = [] 
@@ -612,7 +623,7 @@ class BasicMemoryAgent(AgentInterface):
                 else:
                      logger.warning("Prompt mode active but mcp_prompt is not configured!")
                      current_system_prompt = self._system # Use base system prompt
-                tools_for_api = [] # Don't send native tools in prompt mode
+                tools_for_api = None # Don't send native tools in prompt mode
             else:
                  # Use native mode
                 current_system_prompt = self._system
@@ -731,7 +742,7 @@ class BasicMemoryAgent(AgentInterface):
                  # --- Handle Native Mode Tool Calls --- 
                  messages.append(assistant_message_for_api)
                  if current_turn_text:
-                     self._add_message(current_turn_text, "assistant")
+                     self._add_message(current_turn_text, "assistant") # For the agent memory, we only add the text to save tokens
 
                  logger.debug("Executing OpenAI native tools...")
                  # Expect list of tool role dicts

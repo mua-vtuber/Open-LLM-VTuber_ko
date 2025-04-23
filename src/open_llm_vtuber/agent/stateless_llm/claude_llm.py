@@ -121,20 +121,12 @@ class AsyncLLM(StatelessLLMInterface):
                 model=self.model,
                 max_tokens=1024,
                 tools=tools if tools else None,
-                # tool_choice can be added here if needed, e.g., {"type": "auto"}
             ) as stream:
 
                 current_tool_call_info = None
                 partial_json_accumulator = ""
-                current_message_snapshot = None # To store the snapshot for index check
 
                 async for event in stream:
-                    # Store the latest snapshot for context if needed
-                    if hasattr(event, 'message'):
-                         current_message_snapshot = event.message # For message_start
-                    elif hasattr(event, 'current_message_snapshot'):
-                         current_message_snapshot = event.current_message_snapshot # For other events
-
                     if event.type == "message_start":
                         logger.debug("Stream: message_start")
                         yield {"type": "message_start", "data": event.message.model_dump(exclude_none=True)}
@@ -160,8 +152,6 @@ class AsyncLLM(StatelessLLMInterface):
                             if current_tool_call_info and event.index == current_tool_call_info["index"]:
                                 partial_json_accumulator += event.delta.partial_json
                                 logger.trace(f"Stream: input_json_delta - Tool ID: {current_tool_call_info['id']}, Partial: {event.delta.partial_json}")
-                                # Optionally yield partial updates if needed downstream
-                                # yield {"type": "tool_input_delta", "tool_id": current_tool_call_info["id"], "partial_json": event.delta.partial_json}
                             else:
                                  logger.warning(f"Received input_json_delta but no active tool call matching index {event.index}")
                     elif event.type == "content_block_stop":
@@ -169,8 +159,11 @@ class AsyncLLM(StatelessLLMInterface):
                         # Check if this stop corresponds to the active tool call
                         if current_tool_call_info and event.index == current_tool_call_info["index"]:
                              try:
-                                 # Parse the accumulated JSON for the current tool call
-                                 tool_input = json.loads(partial_json_accumulator)
+                                 if not partial_json_accumulator.strip():
+                                     logger.warning(f"Empty JSON input received for tool ID: {current_tool_call_info['id']}. Using empty object.")
+                                     tool_input = {}
+                                 else:
+                                     tool_input = json.loads(partial_json_accumulator)
                                  current_tool_call_info["input"] = tool_input
                                  logger.debug(f"Stream: tool_use completed - ID: {current_tool_call_info['id']}, Input: {tool_input}")
                                  # Yield the complete tool call info
