@@ -35,7 +35,9 @@ class ToolManager:
             logger.error(f"TM: Failed to decode JSON from {self.formatted_tools_path}")
             self.tools = {}
         except FileNotFoundError:
-            logger.error(f"TM: Formatted tools file not found at {self.formatted_tools_path}")
+            logger.error(
+                f"TM: Formatted tools file not found at {self.formatted_tools_path}"
+            )
             self.tools = {}
 
         self.__enabled = True
@@ -72,7 +74,9 @@ class ToolManager:
             elif isinstance(tool_info, FormattedTool):
                 processed_tools[tool_name] = tool_info
             else:
-                logger.warning(f"TM: Unexpected tool format for '{tool_name}'. Skipping.")
+                logger.warning(
+                    f"TM: Unexpected tool format for '{tool_name}'. Skipping."
+                )
         self.tools = processed_tools
 
     def get_tool(self, tool_name: str) -> FormattedTool | None:
@@ -114,15 +118,21 @@ class ToolManager:
             for tool_name, tool_data in self.tools.items():
                 if isinstance(tool_data, FormattedTool):
                     description = "No description available."
-                    if tool_data.generic_schema and isinstance(tool_data.generic_schema, dict):
-                        description = tool_data.generic_schema.get("description", description)
+                    if tool_data.generic_schema and isinstance(
+                        tool_data.generic_schema, dict
+                    ):
+                        description = tool_data.generic_schema.get(
+                            "description", description
+                        )
                     elif isinstance(tool_data.input_schema, dict):
-                        description = tool_data.input_schema.get("description", description)
+                        description = tool_data.input_schema.get(
+                            "description", description
+                        )
 
                     claude_tool = {
                         "name": tool_name,
                         "description": description,
-                        "input_schema": tool_data.input_schema
+                        "input_schema": tool_data.input_schema,
                     }
                     formatted_tools_list.append(claude_tool)
         else:

@@ -5,7 +5,7 @@ for language generation.
 
 import json
 from typing import AsyncIterator, List, Dict, Any
-from anthropic import AsyncAnthropic, AsyncStream
+
 from loguru import logger
 from anthropic import AsyncAnthropic, NOT_GIVEN
 
@@ -15,7 +15,7 @@ from .stateless_llm_interface import StatelessLLMInterface
 class AsyncLLM(StatelessLLMInterface):
     def __init__(
         self,
-        model: str = "claude-3-haiku-20240307",
+        model: str = "claude-3-haiku-latest",
         base_url: str = None,
         llm_api_key: str = None,
         system: str = None,
@@ -82,7 +82,10 @@ class AsyncLLM(StatelessLLMInterface):
         return message
 
     async def chat_completion(
-        self, messages: List[Dict[str, Any]], system: str = None, tools: List[Dict[str, Any]] = None
+        self,
+        messages: List[Dict[str, Any]],
+        system: str = None,
+        tools: List[Dict[str, Any]] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Generates a chat completion using the Claude API asynchronously,
@@ -123,69 +126,112 @@ class AsyncLLM(StatelessLLMInterface):
                 max_tokens=1024,
                 tools=tools if tools else NOT_GIVEN,
             ) as stream:
-
                 current_tool_call_info = None
                 partial_json_accumulator = ""
 
                 async for event in stream:
                     if event.type == "message_start":
                         logger.debug("Stream: message_start")
-                        yield {"type": "message_start", "data": event.message.model_dump(exclude_none=True)}
+                        yield {
+                            "type": "message_start",
+                            "data": event.message.model_dump(exclude_none=True),
+                        }
                     elif event.type == "content_block_start":
-                        logger.debug(f"Stream: content_block_start - Index: {event.index}, Type: {event.content_block.type}")
+                        logger.debug(
+                            f"Stream: content_block_start - Index: {event.index}, Type: {event.content_block.type}"
+                        )
                         if event.content_block.type == "text":
-                            pass # Handled by text_delta
+                            pass  # Handled by text_delta
                         elif event.content_block.type == "tool_use":
                             current_tool_call_info = {
                                 "id": event.content_block.id,
                                 "name": event.content_block.name,
                                 "input": None,
-                                "index": event.index # Store index
+                                "index": event.index,  # Store index
                             }
                             partial_json_accumulator = ""
-                            logger.debug(f"Stream: tool_use started - ID: {current_tool_call_info['id']}, Name: {current_tool_call_info['name']}")
-                            yield {"type": "tool_use_start", "data": current_tool_call_info.copy()}
+                            logger.debug(
+                                f"Stream: tool_use started - ID: {current_tool_call_info['id']}, Name: {current_tool_call_info['name']}"
+                            )
+                            yield {
+                                "type": "tool_use_start",
+                                "data": current_tool_call_info.copy(),
+                            }
                     elif event.type == "content_block_delta":
-                        logger.debug(f"Stream: content_block_delta - Index: {event.index}, Delta Type: {event.delta.type}")
+                        logger.debug(
+                            f"Stream: content_block_delta - Index: {event.index}, Delta Type: {event.delta.type}"
+                        )
                         if event.delta.type == "text_delta":
                             yield {"type": "text_delta", "text": event.delta.text}
                         elif event.delta.type == "input_json_delta":
-                            if current_tool_call_info and event.index == current_tool_call_info["index"]:
+                            if (
+                                current_tool_call_info
+                                and event.index == current_tool_call_info["index"]
+                            ):
                                 partial_json_accumulator += event.delta.partial_json
-                                logger.trace(f"Stream: input_json_delta - Tool ID: {current_tool_call_info['id']}, Partial: {event.delta.partial_json}")
+                                logger.trace(
+                                    f"Stream: input_json_delta - Tool ID: {current_tool_call_info['id']}, Partial: {event.delta.partial_json}"
+                                )
                             else:
-                                 logger.warning(f"Received input_json_delta but no active tool call matching index {event.index}")
+                                logger.warning(
+                                    f"Received input_json_delta but no active tool call matching index {event.index}"
+                                )
                     elif event.type == "content_block_stop":
-                        logger.debug(f"Stream: content_block_stop - Index: {event.index}")
+                        logger.debug(
+                            f"Stream: content_block_stop - Index: {event.index}"
+                        )
                         # Check if this stop corresponds to the active tool call
-                        if current_tool_call_info and event.index == current_tool_call_info["index"]:
-                             try:
-                                 if not partial_json_accumulator.strip():
-                                     logger.warning(f"Empty JSON input received for tool ID: {current_tool_call_info['id']}. Using empty object.")
-                                     tool_input = {}
-                                 else:
-                                     tool_input = json.loads(partial_json_accumulator)
-                                 current_tool_call_info["input"] = tool_input
-                                 logger.debug(f"Stream: tool_use completed - ID: {current_tool_call_info['id']}, Input: {tool_input}")
-                                 # Yield the complete tool call info
-                                 yield {"type": "tool_use_complete", "data": current_tool_call_info.copy()}
-                             except json.JSONDecodeError as e:
-                                 logger.error(f"Failed to decode tool input JSON: {partial_json_accumulator}. Error: {e}")
-                                 yield {"type": "error", "message": f"Failed to parse tool input JSON for tool ID {current_tool_call_info['id']}"}
-                             finally:
-                                  # Reset regardless of success or failure for this index
-                                 current_tool_call_info = None
-                                 partial_json_accumulator = ""
+                        if (
+                            current_tool_call_info
+                            and event.index == current_tool_call_info["index"]
+                        ):
+                            try:
+                                if not partial_json_accumulator.strip():
+                                    logger.warning(
+                                        f"Empty JSON input received for tool ID: {current_tool_call_info['id']}. Using empty object."
+                                    )
+                                    tool_input = {}
+                                else:
+                                    tool_input = json.loads(partial_json_accumulator)
+                                current_tool_call_info["input"] = tool_input
+                                logger.debug(
+                                    f"Stream: tool_use completed - ID: {current_tool_call_info['id']}, Input: {tool_input}"
+                                )
+                                # Yield the complete tool call info
+                                yield {
+                                    "type": "tool_use_complete",
+                                    "data": current_tool_call_info.copy(),
+                                }
+                            except json.JSONDecodeError as e:
+                                logger.error(
+                                    f"Failed to decode tool input JSON: {partial_json_accumulator}. Error: {e}"
+                                )
+                                yield {
+                                    "type": "error",
+                                    "message": f"Failed to parse tool input JSON for tool ID {current_tool_call_info['id']}",
+                                }
+                            finally:
+                                # Reset regardless of success or failure for this index
+                                current_tool_call_info = None
+                                partial_json_accumulator = ""
                     elif event.type == "message_delta":
-                         logger.debug(f"Stream: message_delta - Delta: {event.delta.model_dump(exclude_none=True)}, Usage: {event.usage}")
-                         yield {"type": "message_delta", "data": {"delta": event.delta.model_dump(exclude_none=True), "usage": event.usage.model_dump()}}
+                        logger.debug(
+                            f"Stream: message_delta - Delta: {event.delta.model_dump(exclude_none=True)}, Usage: {event.usage}"
+                        )
+                        yield {
+                            "type": "message_delta",
+                            "data": {
+                                "delta": event.delta.model_dump(exclude_none=True),
+                                "usage": event.usage.model_dump(),
+                            },
+                        }
                     elif event.type == "message_stop":
-                         logger.debug("Stream: message_stop")
-                         yield {"type": "message_stop"}
-                         # No need to break here, the context manager handles the end
+                        logger.debug("Stream: message_stop")
+                        yield {"type": "message_stop"}
+                        # No need to break here, the context manager handles the end
                     elif event.type == "ping":
                         logger.trace("Stream: ping")
-                        pass # Ignore pings
+                        pass  # Ignore pings
                     # Anthropic SDK might raise errors directly, or via event.type == 'error'
                     # The outer try/except handles SDK-level errors.
 
