@@ -7,6 +7,7 @@ import json
 from typing import AsyncIterator, List, Dict, Any
 from anthropic import AsyncAnthropic, AsyncStream
 from loguru import logger
+from anthropic import AsyncAnthropic, NOT_GIVEN
 
 from .stateless_llm_interface import StatelessLLMInterface
 
@@ -120,7 +121,7 @@ class AsyncLLM(StatelessLLMInterface):
                 system=system if system else (self.system if self.system else ""),
                 model=self.model,
                 max_tokens=1024,
-                tools=tools if tools else None,
+                tools=tools if tools else NOT_GIVEN,
             ) as stream:
 
                 current_tool_call_info = None
