@@ -1,7 +1,8 @@
 import json
-from typing import AsyncIterator, List, Dict, Any, Callable, Literal, Union
+from typing import AsyncIterator, List, Dict, Any, Callable, Literal, Union, Optional, Tuple
 from loguru import logger
 import types
+import datetime
 
 from .agent_interface import AgentInterface
 from ..output_types import SentenceOutput, DisplayText
@@ -141,7 +142,9 @@ class BasicMemoryAgent(AgentInterface):
             skip_memory: If True, message will not be added to memory (for system prompts)
         """
         if skip_memory:
-            logger.debug(f"Skipping adding {role} message to memory due to skip_memory flag")
+            logger.debug(
+                f"Skipping adding {role} message to memory due to skip_memory flag"
+            )
             return
 
         text_content = ""
@@ -307,13 +310,15 @@ class BasicMemoryAgent(AgentInterface):
         if user_content:
             user_message = {"role": "user", "content": user_content}
             messages.append(user_message)
-            
+
             # Check if we should skip adding to memory
             skip_memory = False
             if input_data.metadata and input_data.metadata.get("skip_memory", False):
                 skip_memory = True
-                logger.debug("Skipping adding input to AI's internal memory due to skip_memory flag")
-            
+                logger.debug(
+                    "Skipping adding input to AI's internal memory due to skip_memory flag"
+                )
+
             if not skip_memory:
                 self._add_message(
                     text_prompt if text_prompt else "[User provided image(s)]", "user"
@@ -326,35 +331,27 @@ class BasicMemoryAgent(AgentInterface):
     async def _execute_tools(
         self,
         tool_calls: Union[List[Dict[str, Any]], List[ToolCallObject]],
-        caller_mode: Literal["Claude", "OpenAI"],
-    ) -> List[Dict[str, Any]]:
-        """Executes tools requested by LLM and formats results based on the caller mode."""
-        results = []
+        caller_mode: Literal["Claude", "OpenAI", "Prompt"],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Executes tools, returns LLM results and status update events."""
+        llm_results = []
+        status_updates = []
 
         if not self._mcp_server_manager or not self._tool_manager:
             logger.error("MCP Server/Tool Manager not available, cannot execute tools.")
-            # Simplified error generation
             for i, call in enumerate(tool_calls):
-                tool_id = getattr(call, "id", call.get("id", f"error_{i}"))
+                tool_id = getattr(call, "id", call.get("id", f"error_{i}_{datetime.datetime.utcnow().isoformat()}"))
+                tool_name = getattr(call, "function.name", call.get("name", "Unknown"))
                 error_content = "Error: Tool execution environment not configured."
-                if caller_mode == "Claude":
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tool_id,
-                            "content": error_content,
-                            "is_error": True,
-                        }
-                    )
-                elif caller_mode == "OpenAI":
-                    results.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_id,
-                            "content": error_content,
-                        }
-                    )
-            return results
+                status_updates.append({
+                    "type": "tool_call_status",
+                    "tool_id": tool_id,
+                    "tool_name": tool_name,
+                    "status": "error",
+                    "content": error_content,
+                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+                })
+            return llm_results, status_updates
 
         logger.info(
             f"Attempting to execute {len(tool_calls)} tool(s) for {caller_mode} caller."
@@ -374,21 +371,45 @@ class BasicMemoryAgent(AgentInterface):
                     logger.warning(
                         f"Skipping tool call due to parsing error: {result_content}"
                     )
+                    status_updates.append({
+                        "type": "tool_call_status",
+                        "tool_id": tool_id or f"parse_error_{datetime.datetime.utcnow().isoformat()}",
+                        "tool_name": tool_name or "Unknown Tool",
+                        "status": "error",
+                        "content": result_content,
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+                    })
                 else:
-                    # Execute the tool
+                    status_updates.append({
+                        "type": "tool_call_status",
+                        "tool_id": tool_id,
+                        "tool_name": tool_name,
+                        "status": "running",
+                        "content": f"Input: {json.dumps(tool_input)}",
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+                    })
+
                     is_error, result_content = await self._run_single_tool(
                         client, tool_name, tool_id, tool_input
                     )
 
-                # Format the result based on the caller mode
+                    status_updates.append({
+                        "type": "tool_call_status",
+                        "tool_id": tool_id,
+                        "tool_name": tool_name,
+                        "status": "error" if is_error else "completed",
+                        "content": result_content,
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+                    })
+
                 formatted_result = self._format_tool_result(
                     caller_mode, tool_id, result_content, is_error
                 )
                 if formatted_result:
-                    results.append(formatted_result)
+                    llm_results.append(formatted_result)
 
-        logger.info(f"Finished executing tools. Returning {len(results)} result(s).")
-        return results
+        logger.info(f"Finished executing tools. Returning {len(llm_results)} LLM result(s) and {len(status_updates)} status update(s).")
+        return llm_results, status_updates
 
     def _parse_tool_call(self, call: Union[Dict[str, Any], ToolCallObject]) -> tuple:
         """Parses a tool call from either Claude or OpenAI format."""
@@ -489,7 +510,7 @@ class BasicMemoryAgent(AgentInterface):
 
     def _format_tool_result(
         self,
-        caller_mode: Literal["Claude", "OpenAI"],
+        caller_mode: Literal["Claude", "OpenAI", "Prompt"],
         tool_id: str,
         result_content: str,
         is_error: bool,
@@ -504,21 +525,31 @@ class BasicMemoryAgent(AgentInterface):
             }
         elif caller_mode == "OpenAI":
             return {"role": "tool", "tool_call_id": tool_id, "content": result_content}
-        else:
-            # Handle Prompt mode - return a simple dict for the loop to process
+        elif caller_mode == "Prompt":
             logger.debug(
                 f"Formatting result for Prompt mode. ID: {tool_id}, Error: {is_error}"
             )
             return {
-                "tool_id": tool_id,  # Include ID for potential logging/tracking
+                "tool_id": tool_id,
+                "content": result_content,
+                "is_error": is_error,
+            }
+        else:
+            logger.debug(
+                f"Formatting result for Prompt mode. ID: {tool_id}, Error: {is_error}"
+            )
+            return {
+                "tool_id": tool_id,
                 "content": result_content,
                 "is_error": is_error,
             }
 
     async def _claude_tool_interaction_loop(
-        self, initial_messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]
-    ) -> AsyncIterator[str]:
-        """Handles the interaction loop with Claude, including tool calls."""
+        self,
+        initial_messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+    ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
+        """Handles the interaction loop with Claude, yielding text or tool status events."""
         messages = initial_messages.copy()
         current_turn_text = ""
         pending_tool_calls = []
@@ -583,7 +614,6 @@ class BasicMemoryAgent(AgentInterface):
                 logger.info(
                     f"Claude requested {len(pending_tool_calls)} tool(s). Executing..."
                 )
-                # Filter out empty text blocks from the assistant content before appending
                 filtered_assistant_content = [
                     block
                     for block in current_assistant_message_content
@@ -593,15 +623,13 @@ class BasicMemoryAgent(AgentInterface):
                     )
                 ]
 
-                # Append the assistant message that contained the tool_use blocks
-                if filtered_assistant_content:  # Use the filtered list
+                if filtered_assistant_content:
                     logger.debug(
                         f"Appending assistant message with content: {filtered_assistant_content}"
                     )
                     messages.append(
                         {"role": "assistant", "content": filtered_assistant_content}
                     )
-                    # Extract text from filtered_assistant_content for memory
                     assistant_text_for_memory = "".join(
                         [
                             c["text"]
@@ -616,21 +644,23 @@ class BasicMemoryAgent(AgentInterface):
                         "Tool calls pending but no valid assistant content (text/tool_use) was generated."
                     )
 
-                # Execute tools using the unified executor
-                tool_results = await self._execute_tools(
-                    pending_tool_calls, caller_mode="Claude"
-                )  # Pass mode
+                llm_results, status_updates = await self._execute_tools(
+                    pending_tool_calls,
+                    caller_mode="Claude",
+                )
 
-                if not tool_results:
+                for update in status_updates:
+                    yield update
+
+                if not llm_results:
                     logger.error(
-                        "Claude tool execution failed to produce results. Stopping interaction."
+                        "Claude tool execution failed to produce LLM results. Stopping interaction."
                     )
                     return
 
-                # Append user message with tool results (already formatted by _execute_tools)
-                messages.append({"role": "user", "content": tool_results})
+                messages.append({"role": "user", "content": llm_results})
                 logger.debug(
-                    f"Appended Claude tool results. New message count: {len(messages)}"
+                    f"Appended Claude LLM tool results. New message count: {len(messages)}"
                 )
 
                 stop_reason = None
@@ -653,17 +683,15 @@ class BasicMemoryAgent(AgentInterface):
         for item in data:
             server = item.get("mcp_server")
             tool_name = item.get("tool")
-            arguments_str = item.get("arguments")  # Arguments might be stringified JSON
+            arguments_str = item.get("arguments")
             if all([server, tool_name, arguments_str]):
                 try:
-                    # Parse the arguments string into a dict
                     args_dict = json.loads(arguments_str)
                     parsed_tools.append(
                         {
                             "name": tool_name,
                             "server": server,
                             "args": args_dict,
-                            # Generate a placeholder ID for prompt mode calls
                             "id": f"prompt_tool_{len(parsed_tools)}",
                         }
                     )
@@ -683,21 +711,18 @@ class BasicMemoryAgent(AgentInterface):
         return parsed_tools
 
     async def _openai_tool_interaction_loop(
-        self, initial_messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]
-    ) -> AsyncIterator[str]:
-        """Handles the interaction loop with OpenAI compatible LLMs, including tool calls and prompt mode fallback."""
-        messages = initial_messages.copy()  # interaction loop memory (temporary)
+        self,
+        initial_messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+    ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
+        """Handles OpenAI interaction, yielding text or tool status events."""
+        messages = initial_messages.copy()
         current_turn_text = ""
-        # Holds ToolCallObject list in native mode, or simple dict list in prompt mode
         pending_tool_calls: Union[List[ToolCallObject], List[Dict[str, Any]]] = []
-
-        # Determine initial system prompt (might change if switching to prompt mode)
         current_system_prompt = self._system
 
         while True:
-            # --- Prepare for API Call ---
             if self.prompt_mode_flag:
-                # Use prompt mode: Append mcp_prompt, clear native tools
                 logger.info("OpenAI loop running in prompt mode.")
                 if self._mcp_prompt:
                     current_system_prompt = f"{self._system}\n\n{self._mcp_prompt}"
@@ -705,10 +730,9 @@ class BasicMemoryAgent(AgentInterface):
                     logger.warning(
                         "Prompt mode active but mcp_prompt is not configured!"
                     )
-                    current_system_prompt = self._system  # Use base system prompt
-                tools_for_api = None  # Don't send native tools in prompt mode
+                    current_system_prompt = self._system
+                tools_for_api = None
             else:
-                # Use native mode
                 current_system_prompt = self._system
                 tools_for_api = tools
 
@@ -719,27 +743,22 @@ class BasicMemoryAgent(AgentInterface):
                 messages, current_system_prompt, tools=tools_for_api
             )
             pending_tool_calls.clear()
-            current_turn_text = ""  # Reset text for this API call
-            assistant_message_for_api = None  # For native mode tool calls
-            detected_prompt_json = None  # For prompt mode tool calls
+            current_turn_text = ""
+            assistant_message_for_api = None
+            detected_prompt_json = None
+            goto_next_while_iteration = False
 
-            # --- Process Stream ---
             async for event in stream:
                 if self.prompt_mode_flag:
-                    # --- Prompt Mode Stream Processing ---
                     if isinstance(event, str):
                         current_turn_text += event
-                        # Check for JSON using detector
                         if self._json_detector:
                             potential_json = self._json_detector.process_chunk(event)
                             if potential_json:
                                 logger.info(
                                     "Detected potential JSON tool call in prompt mode stream."
                                 )
-                                # Attempt to parse the complete JSON
                                 try:
-                                    # Note: process_chunk might return list or dict
-                                    # We assume list of dicts based on mcp_prompt format
                                     if isinstance(potential_json, list):
                                         detected_prompt_json = potential_json
                                     elif isinstance(potential_json, dict):
@@ -753,32 +772,23 @@ class BasicMemoryAgent(AgentInterface):
                                         logger.debug(
                                             f"Successfully parsed JSON: {detected_prompt_json}"
                                         )
-                                        # Stop processing stream for this turn, proceed to tool execution
                                         break
                                 except Exception as e:
                                     logger.error(
                                         f"Error fully parsing detected JSON: {e}"
                                     )
-                                    self._json_detector.reset()  # Reset detector on error
-                        yield event  # Yield text chunk regardless
+                                    self._json_detector.reset()
+                        yield event
                     else:
                         logger.warning(
                             f"Received non-string event in prompt mode stream: {type(event)}"
                         )
                 else:
-                    # --- Native Mode Stream Processing ---
                     if isinstance(event, str):
                         current_turn_text += event
-                        yield event  # Yield text chunk
-                    elif isinstance(event, list) and all(
-                        isinstance(tc, ToolCallObject) for tc in event
-                    ):
-                        # Native tool call request received
+                        yield event
+                    elif isinstance(event, list) and all(isinstance(tc, ToolCallObject) for tc in event):
                         pending_tool_calls = event
-                        logger.info(
-                            f"OpenAI LLM requested {len(pending_tool_calls)} tool(s) via native API."
-                        )
-                        # Construct the assistant message for API history
                         assistant_message_for_api = {
                             "role": "assistant",
                             "content": current_turn_text if current_turn_text else None,
@@ -794,103 +804,74 @@ class BasicMemoryAgent(AgentInterface):
                                 for tc in pending_tool_calls
                             ],
                         }
-                        break  # Exit inner stream loop to execute tools
+                        break
                     elif event == "__API_NOT_SUPPORT_TOOLS__":
                         logger.warning(
                             f"LLM {getattr(self._llm, 'model', '')} reported no native tool support. Switching to prompt mode."
                         )
                         self.prompt_mode_flag = True
                         if self._tool_manager:
-                            self._tool_manager.disable()  # Disable native tool formatting
+                            self._tool_manager.disable()
                         if self._json_detector:
-                            self._json_detector.reset()  # Ensure detector is ready
-                        # We don't yield anything here, just continue the outer loop
-                        # The next iteration will use prompt mode settings.
-                        # Need to break the inner loop and continue the outer one
-                        goto_next_while_iteration = (
-                            True  # Use a flag to break and continue
-                        )
+                            self._json_detector.reset()
+                        goto_next_while_iteration = True
                         break
                     else:
                         logger.warning(
                             f"Received unexpected event type from native OpenAI stream: {type(event)}"
                         )
-            # --- End Inner Stream Loop ---
+            if goto_next_while_iteration:
+                logger.info("Restarting interaction loop iteration to apply prompt mode.")
+                continue
 
-            # Check flag to restart outer loop immediately if switched to prompt mode
-            if "goto_next_while_iteration" in locals() and goto_next_while_iteration:
-                del goto_next_while_iteration  # Clean up flag
-                logger.info(
-                    "Restarting interaction loop iteration to apply prompt mode."
-                )
-                continue  # Restart the while True loop
-
-            # --- Post-Stream Processing & Tool Execution ---
             if detected_prompt_json:
-                # --- Handle Prompt Mode Tool Calls ---
                 logger.info("Processing tools detected via prompt mode JSON.")
-                # Add assistant message (containing the JSON trigger text) to memory
-                # We only add the raw text leading up to the JSON for memory
                 self._add_message(current_turn_text, "assistant")
 
                 parsed_tools = self._process_tool_from_prompt_json(detected_prompt_json)
                 if parsed_tools:
-                    tool_results_data = await self._execute_tools(
-                        parsed_tools, caller_mode="Prompt"
+                    llm_results, status_updates = await self._execute_tools(
+                        parsed_tools,
+                        caller_mode="Prompt",
                     )
-                    if tool_results_data:
-                        # Format results into a single user message string
-                        result_strings = [
-                            res.get("content", "Error: Malformed result")
-                            for res in tool_results_data
-                        ]
+                    for update in status_updates:
+                        yield update
+
+                    if llm_results:
+                        result_strings = [res.get("content", "Error: Malformed result") for res in llm_results]
                         combined_results_str = "\n".join(result_strings)
-                        messages.append(
-                            {"role": "user", "content": combined_results_str}
-                        )
-                        logger.debug(
-                            f"Appended prompt mode tool results as user message. New message count: {len(messages)}"
-                        )
+                        messages.append({"role": "user", "content": combined_results_str})
+                        logger.debug(f"Appended prompt mode LLM tool results. Msg count: {len(messages)}")
                     else:
-                        logger.error(
-                            "Prompt mode tool execution failed to produce results. Stopping interaction."
-                        )
-                        return
-                else:
-                    logger.warning(
-                        "Detected JSON but failed to parse into valid tool calls."
-                    )
-                # Continue loop after prompt mode tool execution
+                        if not any(upd['status'] == 'error' for upd in status_updates):
+                           logger.error("Prompt mode tool execution finished but produced no results for LLM.")
                 continue
 
             elif pending_tool_calls and assistant_message_for_api:
-                # --- Handle Native Mode Tool Calls ---
                 messages.append(assistant_message_for_api)
                 if current_turn_text:
                     self._add_message(
                         current_turn_text, "assistant"
-                    )  # For the agent memory, we only add the text to save tokens
+                    )
 
                 logger.debug("Executing OpenAI native tools...")
-                # Expect list of tool role dicts
-                tool_results_messages = await self._execute_tools(
-                    pending_tool_calls, caller_mode="OpenAI"
+                llm_results, status_updates = await self._execute_tools(
+                    pending_tool_calls,
+                    caller_mode="OpenAI",
                 )
 
-                if not tool_results_messages:
-                    logger.error(
-                        "OpenAI native tool execution failed to produce results. Stopping interaction."
-                    )
-                    return
+                for update in status_updates:
+                    yield update
 
-                messages.extend(tool_results_messages)
-                logger.debug(
-                    f"Appended OpenAI native tool results. New message count: {len(messages)}"
-                )
-                continue  # Continue loop after native tool execution
+                if not llm_results:
+                     logger.error("OpenAI native tool execution failed to produce results for LLM.")
+                     return
+
+                messages.extend(llm_results)
+                logger.debug(f"Appended OpenAI native LLM tool results. Msg count: {len(messages)}")
+                continue
 
             else:
-                # --- No Tool Calls, Final Response ---
                 logger.info(
                     "No tool calls requested or fallback executed. Interaction complete for this turn."
                 )
@@ -898,14 +879,14 @@ class BasicMemoryAgent(AgentInterface):
                     self._add_message(current_turn_text, "assistant")
                 else:
                     logger.info("No text generated in the final response.")
-                return  # Exit the loop and the function
+                return
 
     def _chat_function_factory(
         self,
-    ) -> Callable[[BatchInput], AsyncIterator[SentenceOutput]]:
+    ) -> Callable[[BatchInput], AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]]:
         """
-        Create the chat pipeline with transformers. Determines interaction flow based on LLM type.
-        Handles native tool calls and prompt mode fallback.
+        Creates the chat pipeline. The decorated function yields text or tool status dicts.
+        The final decorated result yields SentenceOutput or tool status dicts.
         """
 
         @tts_filter(self._tts_preprocessor_config)
@@ -916,75 +897,59 @@ class BasicMemoryAgent(AgentInterface):
             segment_method=self._segment_method,
             valid_tags=["think"],
         )
-        async def chat_with_memory(input_data: BatchInput) -> AsyncIterator[str]:
+        async def chat_with_memory(
+            input_data: BatchInput,
+        ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
             """
-            Chat implementation with memory and processing pipeline.
-            Handles tool interactions internally if applicable.
+            Yields raw text chunks or tool status event dictionaries.
+            Decorators above will process the text chunks.
             """
             self.reset_interrupt()
-            # Reset prompt mode flag at the start of each user turn
             self.prompt_mode_flag = False
             if self._tool_manager:
-                self._tool_manager.enable()  # Ensure tool manager is enabled initially
+                self._tool_manager.enable()
             if self._json_detector:
-                self._json_detector.reset()  # Reset detector
+                self._json_detector.reset()
 
             messages = self._to_messages(input_data)
             tools = None
             tool_mode = None
-            llm_supports_native_tools = False  # Flag for native support
+            llm_supports_native_tools = False
 
-            # Determine LLM type and prepare tools if MCP+ is enabled
             if self._use_mcpp and self._tool_manager and self._mcp_server_manager:
                 if isinstance(self._llm, ClaudeAsyncLLM):
                     logger.info("LLM is Claude type, preparing Claude tools.")
                     tool_mode = "Claude"
                     tools = self._tool_manager.get_all_tools(mode=tool_mode)
-                    llm_supports_native_tools = True  # Claude supports native tools
+                    llm_supports_native_tools = True
                 elif isinstance(self._llm, OpenAICompatibleAsyncLLM):
                     logger.info(
                         "LLM is OpenAI compatible type, preparing OpenAI tools (will check support via API)."
                     )
                     tool_mode = "OpenAI"
                     tools = self._tool_manager.get_all_tools(mode=tool_mode)
-                    # We don't know native support yet, _openai_tool_interaction_loop will find out
                     llm_supports_native_tools = (
-                        True  # Assume true initially, loop corrects if needed
-                    )
-                else:
-                    logger.warning(
-                        f"Tool use enabled, but LLM type {type(self._llm)} not explicitly handled. Proceeding without tools."
+                        True
                     )
 
                 if llm_supports_native_tools and not tools:
                     logger.warning(
                         f"Tool Manager returned no tools for mode '{tool_mode}'. Tool usage might be limited."
                     )
-                    # Don't disable llm_supports_native_tools here, allow fallback check
 
-            # --- Execute Correct Interaction Loop or Fallback ---
-            if (
-                self._use_mcpp and tool_mode == "Claude"
-            ):  # Claude only uses native tools
-                logger.info("Starting chat with Claude tool support.")
-                async for text_chunk in self._claude_tool_interaction_loop(
+            if self._use_mcpp and tool_mode == "Claude":
+                async for output in self._claude_tool_interaction_loop(
                     messages, tools if tools else []
                 ):
-                    yield text_chunk
+                    yield output
                 return
-            elif (
-                self._use_mcpp and tool_mode == "OpenAI"
-            ):  # OpenAI uses native or fallback
-                logger.info(
-                    "Starting chat with OpenAI compatible LLM (native or prompt tools)."
-                )
-                async for text_chunk in self._openai_tool_interaction_loop(
+            elif self._use_mcpp and tool_mode == "OpenAI":
+                async for output in self._openai_tool_interaction_loop(
                     messages, tools if tools else []
                 ):
-                    yield text_chunk
+                    yield output
                 return
             else:
-                # --- Fallback/Non-Tool Path (or unknown LLM type with MCP+) ---
                 logger.info(
                     "Starting simple chat completion (MCP disabled, unknown LLM, or no tools)."
                 )
@@ -1012,9 +977,13 @@ class BasicMemoryAgent(AgentInterface):
 
         return chat_with_memory
 
-    async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
-        """Placeholder chat method that will be replaced at runtime"""
-        async for output in self.chat(input_data):
+    async def chat(
+        self,
+        input_data: BatchInput,
+    ) -> AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]:
+        """Runs the chat pipeline, yielding SentenceOutput or tool status events."""
+        chat_func_decorated = self._chat_function_factory()
+        async for output in chat_func_decorated(input_data):
             yield output
 
     def reset_interrupt(self) -> None:
