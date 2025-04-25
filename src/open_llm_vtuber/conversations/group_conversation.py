@@ -33,6 +33,7 @@ async def process_group_conversation(
     user_input: Union[str, np.ndarray],
     images: Optional[List[Dict[str, Any]]] = None,
     session_emoji: str = np.random.choice(EMOJI_LIST),
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Process group conversation
 
@@ -45,6 +46,7 @@ async def process_group_conversation(
         user_input: Text or audio input from user
         images: Optional list of image data
         session_emoji: Emoji identifier for the conversation
+        metadata: Optional metadata for special processing flags
     """
     # Create TTSTaskManager for each member
     tts_managers = {uid: TTSTaskManager() for uid in group_members}
@@ -83,22 +85,36 @@ async def process_group_conversation(
             initiator_client_uid=initiator_client_uid,
         )
 
-        for member_uid in group_members:
-            member_context = client_contexts[member_uid]
-            store_message(
-                conf_uid=member_context.character_config.conf_uid,
-                history_uid=member_context.history_uid,
-                role="human",
-                content=input_text,
-                name=human_name,
-            )
+        # Check if we should skip storing this input to history
+        skip_history = metadata and metadata.get("skip_history", False)
+        
+        if not skip_history:
+            for member_uid in group_members:
+                member_context = client_contexts[member_uid]
+                store_message(
+                    conf_uid=member_context.character_config.conf_uid,
+                    history_uid=member_context.history_uid,
+                    role="human",
+                    content=input_text,
+                    name=human_name,
+                )
+        else:
+            logger.debug("Skipping storing proactive speak input to group history")
 
         state.conversation_history = [f"{human_name}: {input_text}"]
-
+        
+        is_first_responder = False
         # Main conversation loop
         while state.group_queue:
             try:
                 current_member_uid = state.group_queue.pop(0)
+                
+                # Only pass metadata to the first responder
+                current_metadata = None  
+                if is_first_responder:
+                    current_metadata = metadata
+                    is_first_responder = False
+                    
                 await handle_group_member_turn(
                     current_member_uid=current_member_uid,
                     state=state,
@@ -108,6 +124,7 @@ async def process_group_conversation(
                     group_members=group_members,
                     images=images,
                     tts_manager=tts_managers[current_member_uid],
+                    metadata=current_metadata,
                 )
             except Exception as e:
                 logger.error(f"Error in group member turn: {e}")
@@ -213,6 +230,7 @@ async def handle_group_member_turn(
     group_members: List[str],
     images: Optional[List[Dict[str, Any]]],
     tts_manager: TTSTaskManager,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Handle a single group member's conversation turn"""
     # Update current speaker before processing
@@ -227,7 +245,10 @@ async def handle_group_member_turn(
     new_context = "\n".join(new_messages) if new_messages else ""
 
     batch_input = create_batch_input(
-        input_text=new_context, images=images, from_name="Human"
+        input_text=new_context, 
+        images=images, 
+        from_name="Human",
+        metadata=metadata,
     )
 
     logger.info(
@@ -274,6 +295,8 @@ async def handle_group_member_turn(
                 name=context.character_config.character_name,
                 avatar=context.character_config.avatar,
             )
+        else:
+            logger.debug("Skipping storing AI response to history (proactive speak)")
 
     state.memory_index[current_member_uid] = len(state.conversation_history)
     state.group_queue.append(current_member_uid)

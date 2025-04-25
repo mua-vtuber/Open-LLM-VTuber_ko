@@ -26,6 +26,7 @@ async def process_single_conversation(
     user_input: Union[str, np.ndarray],
     images: Optional[List[Dict[str, Any]]] = None,
     session_emoji: str = np.random.choice(EMOJI_LIST),
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Process a single-user conversation turn
 
@@ -36,6 +37,7 @@ async def process_single_conversation(
         user_input: Text or audio input from user
         images: Optional list of image data
         session_emoji: Emoji identifier for the conversation
+        metadata: Optional metadata for special processing flags
 
     Returns:
         str: Complete response text
@@ -58,10 +60,12 @@ async def process_single_conversation(
             input_text=input_text,
             images=images,
             from_name=context.character_config.human_name,
+            metadata=metadata,
         )
 
-        # Store user message
-        if context.history_uid:
+        # Store user message (check if we should skip storing to history)
+        skip_history = metadata and metadata.get("skip_history", False)
+        if context.history_uid and not skip_history:
             store_message(
                 conf_uid=context.character_config.conf_uid,
                 history_uid=context.history_uid,
@@ -69,6 +73,10 @@ async def process_single_conversation(
                 content=input_text,
                 name=context.character_config.human_name,
             )
+        
+        if skip_history:
+            logger.debug(f"Skipping storing user input to history (proactive speak)")
+
         logger.info(f"User input: {input_text}")
         if images:
             logger.info(f"With {len(images)} images")

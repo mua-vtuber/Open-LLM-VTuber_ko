@@ -21,6 +21,7 @@ def create_batch_input(
     input_text: str,
     images: Optional[List[Dict[str, Any]]],
     from_name: str,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> BatchInput:
     """Create batch input for agent processing"""
     return BatchInput(
@@ -37,6 +38,7 @@ def create_batch_input(
         ]
         if images
         else None,
+        metadata=metadata,
     )
 
 

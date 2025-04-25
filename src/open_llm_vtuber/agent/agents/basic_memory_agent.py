@@ -128,6 +128,7 @@ class BasicMemoryAgent(AgentInterface):
         message: Union[str, List[Dict[str, Any]]],
         role: str,
         display_text: DisplayText | None = None,
+        skip_memory: bool = False,
     ):
         """
         Add a message to the memory. Stores only the primary text content for simplicity.
@@ -137,7 +138,12 @@ class BasicMemoryAgent(AgentInterface):
             message: Message content (string or list of content items like text, images)
             role: Message role ('user' or 'assistant')
             display_text: Optional display information containing name and avatar
+            skip_memory: If True, message will not be added to memory (for system prompts)
         """
+        if skip_memory:
+            logger.debug(f"Skipping adding {role} message to memory due to skip_memory flag")
+            return
+
         text_content = ""
         if isinstance(message, list):
             for item in message:
@@ -301,9 +307,17 @@ class BasicMemoryAgent(AgentInterface):
         if user_content:
             user_message = {"role": "user", "content": user_content}
             messages.append(user_message)
-            self._add_message(
-                text_prompt if text_prompt else "[User provided image(s)]", "user"
-            )
+            
+            # Check if we should skip adding to memory
+            skip_memory = False
+            if input_data.metadata and input_data.metadata.get("skip_memory", False):
+                skip_memory = True
+                logger.debug("Skipping adding input to AI's internal memory due to skip_memory flag")
+            
+            if not skip_memory:
+                self._add_message(
+                    text_prompt if text_prompt else "[User provided image(s)]", "user"
+                )
         else:
             logger.warning("No content generated for user message.")
 

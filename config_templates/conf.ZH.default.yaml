@@ -20,6 +20,8 @@ system_config:
     # 启用 mcp_prompt 可让 LLM 具备通过 MCP（Model Context Protocol）使用工具的能力。
     # 请注意：mcp_prompt 由 Agent 决定是否使用。
     mcp_prompt: 'mcp_prompt'
+    # 当AI被要求主动说话时使用的提示词
+    proactive_speak_prompt: 'proactive_speak_prompt'
 
 # 默认角色的配置
 character_config:
