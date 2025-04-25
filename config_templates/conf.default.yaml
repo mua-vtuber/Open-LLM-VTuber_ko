@@ -202,11 +202,11 @@ character_config:
 
     # Faster whisper config
     faster_whisper:
-      model_path: 'distil-medium.en' # distil-medium.en is an English-only model
-      #                               use distil-large-v3 if you have a good GPU
+      model_path: 'large-v3-turbo' # model path, name, or id from hf hub
       download_root: 'models/whisper'
       language: 'en' # en, zh, or something else. put nothing for auto-detect.
       device: 'auto' # cpu, cuda, or auto. faster-whisper doesn't support mps
+      compute_type: 'int8'
 
     whisper_cpp:
       # all available models are listed on https://abdeladim-s.github.io/pywhispercpp/#pywhispercpp.constants.AVAILABLE_MODELS
@@ -223,7 +223,7 @@ character_config:
 
     # FunASR currently needs internet connection on launch
     # to download / check the models. You can disconnect the internet after initialization.
-    # Or you can use Faster-Whisper for complete offline experience
+    # Or you can use sherpa onnx asr or Faster-Whisper for complete offline experience
     fun_asr:
       model_name: 'iic/SenseVoiceSmall' # or 'paraformer-zh'
       vad_model: 'fsmn-vad' # this is only used to make it works if audio is longer than 30s
