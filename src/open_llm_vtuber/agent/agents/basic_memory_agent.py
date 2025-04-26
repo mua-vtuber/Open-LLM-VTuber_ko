@@ -323,11 +323,12 @@ class BasicMemoryAgent(AgentInterface):
                     + "Z",
                 }
 
-                is_error, result_content = await self._run_single_tool(
+                is_error, result_content, metadata = await self._run_single_tool(
                     self._mcp_client, tool_name, tool_id, tool_input
                 )
-
-                yield {
+                
+                # Prepare tool call status update
+                status_update = {
                     "type": "tool_call_status",
                     "tool_id": tool_id,
                     "tool_name": tool_name,
@@ -338,6 +339,15 @@ class BasicMemoryAgent(AgentInterface):
                     ).isoformat()
                     + "Z",
                 }
+                
+                # For stagehand_navigate tool, include browser view links if available
+                if tool_name == "stagehand_navigate" and not is_error:
+                    live_view_data = metadata.get("liveViewData", {})
+                    if live_view_data:
+                        logger.info(f"Found live view data for stagehand_navigate: {live_view_data}")
+                        status_update["browser_view"] = live_view_data
+                        
+                yield status_update
 
             formatted_result = self._format_tool_result(
                 caller_mode, tool_id, result_content, is_error
@@ -391,12 +401,13 @@ class BasicMemoryAgent(AgentInterface):
 
     async def _run_single_tool(
         self, client: MCPClient, tool_name: str, tool_id: str, tool_input: Any
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, Dict[str, Any]]:
         """Run a single tool using MCPClient."""
         logger.info(f"Executing tool: {tool_name} (ID: {tool_id})")
         tool_info = self._tool_manager.get_tool(tool_name)
         is_error = False
         result_content = ""
+        metadata = {}
 
         if tool_input is None:
             tool_input = {}
@@ -411,11 +422,19 @@ class BasicMemoryAgent(AgentInterface):
              is_error = True
         else:
             try:
-                result_content = await client.call_tool(
+                result = await client.call_tool(
                     server_name=tool_info.related_server,
                     tool_name=tool_name,
                     tool_args=tool_input,
                 )
+                
+                # Handle result as dictionary or string for backwards compatibility
+                if isinstance(result, dict):
+                    result_content = result.get("content", "")
+                    metadata = result.get("metadata", {})
+                else:
+                    result_content = str(result)
+                
                 logger.info(f"Tool '{tool_name}' executed successfully.")
             except (ValueError, RuntimeError, ConnectionError) as e:
                  logger.exception(f"Error executing tool '{tool_name}': {e}")
@@ -425,7 +444,8 @@ class BasicMemoryAgent(AgentInterface):
                 logger.exception(f"Unexpected error executing tool '{tool_name}': {e}")
                 result_content = f"Error executing tool '{tool_name}': {e}"
                 is_error = True
-        return is_error, result_content
+                
+        return is_error, result_content, metadata
 
     def _format_tool_result(
         self,

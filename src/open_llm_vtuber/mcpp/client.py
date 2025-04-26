@@ -82,8 +82,12 @@ class MCPClient:
 
     async def call_tool(
         self, server_name: str, tool_name: str, tool_args: Dict[str, Any]
-    ) -> str:
-        """Call a tool on the specified server."""
+    ) -> Dict[str, Any]:
+        """Call a tool on the specified server.
+        
+        Returns:
+            Dict containing the result text and any metadata from the tool response.
+        """
         session = await self._ensure_server_running_and_get_session(server_name)
         logger.info(f"MCPC: Calling tool '{tool_name}' on server '{server_name}'...")
 
@@ -102,7 +106,27 @@ class MCPClient:
         elif not response.content:
              logger.warning(f"MCPC: Tool '{tool_name}' returned no content. Returning empty string.")
 
-        return result_text
+        # Create result object with content and metadata
+        result = {
+            "content": result_text,
+            "metadata": getattr(response, "metadata", {})
+        }
+        
+        # Add content items to result if available
+        if response.content and len(response.content) > 0:
+            result["content_items"] = []
+            for item in response.content:
+                item_dict = {"type": getattr(item, "type", "text")}
+                # Extract available attributes from content item
+                for attr in ["text", "data", "mimeType"]:
+                    if hasattr(item, attr):
+                        item_dict[attr] = getattr(item, attr)
+                result["content_items"].append(item_dict)
+
+        # For backwards compatibility, make the result string-castable
+        result["__str__"] = result_text
+        
+        return result
 
     async def aclose(self) -> None:
         """Closes all active server connections."""
