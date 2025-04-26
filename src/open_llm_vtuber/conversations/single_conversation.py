@@ -96,7 +96,7 @@ async def process_single_conversation(
                 ):
                     # Handle tool status event: send WebSocket message
                     output_item["name"] = context.character_config.character_name
-                    logger.error(f"Sending tool status update: {output_item}")
+                    logger.debug(f"Sending tool status update: {output_item}")
 
                     await websocket_send(json.dumps(output_item))
 
