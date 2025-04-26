@@ -31,11 +31,11 @@ async def handle_conversation_trigger(
 ) -> None:
     """Handle triggers that start a conversation"""
     metadata = None
-    
+
     if msg_type == "ai-speak-signal":
         try:
             # Get proactive speak prompt from config
-            prompt_name = 'proactive_speak_prompt'
+            prompt_name = "proactive_speak_prompt"
             prompt_file = context.system_config.tool_prompts.get(prompt_name)
             if prompt_file:
                 user_input = prompt_loader.load_util(prompt_file)
@@ -45,15 +45,15 @@ async def handle_conversation_trigger(
         except Exception as e:
             logger.error(f"Error loading proactive speak prompt: {e}")
             user_input = "Please say something."
-            
-        # Add metadata to indicate this is a proactive speak request 
+
+        # Add metadata to indicate this is a proactive speak request
         # that should be skipped in both memory and history
         metadata = {
             "proactive_speak": True,
-            "skip_memory": True,   # Skip storing in AI's internal memory
-            "skip_history": True   # Skip storing in local conversation history
+            "skip_memory": True,  # Skip storing in AI's internal memory
+            "skip_history": True,  # Skip storing in local conversation history
         }
-        
+
         await websocket.send_text(
             json.dumps(
                 {

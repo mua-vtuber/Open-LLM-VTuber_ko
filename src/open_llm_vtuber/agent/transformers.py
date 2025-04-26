@@ -24,40 +24,31 @@ def sentence_divider(
     """
 
     def decorator(
-        func: Callable[..., AsyncIterator[Union[str, Dict[str, Any]]]],
-    ) -> Callable[..., AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]]:
+        func: Callable[
+            ..., AsyncIterator[Union[str, Dict[str, Any]]]
+        ],  # Expects str or dict
+    ) -> Callable[
+        ..., AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]
+    ]:  # Yields SentenceWithTags or dict
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]:
+        async def wrapper(
+            *args, **kwargs
+        ) -> AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]:
             divider = SentenceDivider(
                 faster_first_response=faster_first_response,
                 segment_method=segment_method,
                 valid_tags=valid_tags or [],
             )
             stream_from_func = func(*args, **kwargs)
-            text_buffer = ""
-            
-            async for item in stream_from_func:
-                if isinstance(item, str):
-                    text_buffer += item
+
+            # Process the mixed stream using the updated SentenceDivider
+            async for item in divider.process_stream(stream_from_func):
+                if isinstance(item, SentenceWithTags):
+                    logger.debug(f"sentence_divider yielding sentence: {item}")
                 elif isinstance(item, dict):
-                    if text_buffer:
-                        logger.debug(f"Processing buffered text before dict yield: '{text_buffer[:50]}...'")
-                        async def _buffer_iter(): yield text_buffer
-                        async for sentence in divider.process_stream(_buffer_iter()):
-                            yield sentence
-                            logger.debug(f"sentence_divider: {sentence}")
-                        text_buffer = ""
                     logger.debug(f"sentence_divider yielding dict: {item}")
-                    yield item
-                else:
-                    logger.warning(f"sentence_divider received unexpected type: {type(item)}")
-            
-            if text_buffer:
-                 logger.debug(f"Processing final text buffer: '{text_buffer[:50]}...'")
-                 async def _buffer_iter(): yield text_buffer
-                 async for sentence in divider.process_stream(_buffer_iter()):
-                     yield sentence
-                     logger.debug(f"sentence_divider (final): {sentence}")
+                yield item  # Yield either SentenceWithTags or dict
+            # Flushing is handled within divider.process_stream
 
         return wrapper
 
@@ -68,13 +59,20 @@ def actions_extractor(live2d_model: Live2dModel):
     """
     Decorator that extracts actions from sentences, passing through dicts.
     """
+
     def decorator(
-        func: Callable[..., AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]], # Input type hint
-    ) -> Callable[..., AsyncIterator[Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]]]: # Output type hint
+        func: Callable[
+            ..., AsyncIterator[Union[SentenceWithTags, Dict[str, Any]]]
+        ],  # Input type hint
+    ) -> Callable[
+        ..., AsyncIterator[Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]]
+    ]:  # Output type hint
         @wraps(func)
         async def wrapper(
             *args, **kwargs
-        ) -> AsyncIterator[Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]]: # Yield type hint
+        ) -> AsyncIterator[
+            Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]
+        ]:  # Yield type hint
             stream = func(*args, **kwargs)
             async for item in stream:
                 if isinstance(item, SentenceWithTags):
@@ -82,17 +80,20 @@ def actions_extractor(live2d_model: Live2dModel):
                     actions = Actions()
                     # Only extract emotions for non-tag text
                     if not any(
-                        tag.state in [TagState.START, TagState.END] for tag in sentence.tags
+                        tag.state in [TagState.START, TagState.END]
+                        for tag in sentence.tags
                     ):
                         expressions = live2d_model.extract_emotion(sentence.text)
                         if expressions:
                             actions.expressions = expressions
-                    yield sentence, actions # Yield the tuple
+                    yield sentence, actions  # Yield the tuple
                 elif isinstance(item, dict):
                     # Pass through dictionaries
                     yield item
                 else:
-                    logger.warning(f"actions_extractor received unexpected type: {type(item)}")
+                    logger.warning(
+                        f"actions_extractor received unexpected type: {type(item)}"
+                    )
 
         return wrapper
 
@@ -103,17 +104,31 @@ def display_processor():
     """
     Decorator that processes text for display, passing through dicts.
     """
+
     def decorator(
-        func: Callable[..., AsyncIterator[Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]]], # Input type hint
-    ) -> Callable[..., AsyncIterator[Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]]]: # Output type hint
+        func: Callable[
+            ..., AsyncIterator[Union[Tuple[SentenceWithTags, Actions], Dict[str, Any]]]
+        ],  # Input type hint
+    ) -> Callable[
+        ...,
+        AsyncIterator[
+            Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]
+        ],
+    ]:  # Output type hint
         @wraps(func)
         async def wrapper(
             *args, **kwargs
-        ) -> AsyncIterator[Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]]: # Yield type hint
+        ) -> AsyncIterator[
+            Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]
+        ]:  # Yield type hint
             stream = func(*args, **kwargs)
 
             async for item in stream:
-                if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], SentenceWithTags):
+                if (
+                    isinstance(item, tuple)
+                    and len(item) == 2
+                    and isinstance(item[0], SentenceWithTags)
+                ):
                     sentence, actions = item
                     text = sentence.text
                     # Handle think tag states
@@ -124,13 +139,15 @@ def display_processor():
                             elif tag.state == TagState.END:
                                 text = ")"
 
-                    display = DisplayText(text=text) # Simplified DisplayText creation
-                    yield sentence, display, actions # Yield the tuple
+                    display = DisplayText(text=text)  # Simplified DisplayText creation
+                    yield sentence, display, actions  # Yield the tuple
                 elif isinstance(item, dict):
-                     # Pass through dictionaries
+                    # Pass through dictionaries
                     yield item
                 else:
-                     logger.warning(f"display_processor received unexpected type: {type(item)}")
+                    logger.warning(
+                        f"display_processor received unexpected type: {type(item)}"
+                    )
 
         return wrapper
 
@@ -144,16 +161,30 @@ def tts_filter(
     Decorator that filters text for TTS, passing through dicts.
     Skips TTS for think tag content.
     """
+
     def decorator(
-        func: Callable[..., AsyncIterator[Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]]], # Input type hint
-    ) -> Callable[..., AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]]: # Output type hint
+        func: Callable[
+            ...,
+            AsyncIterator[
+                Union[Tuple[SentenceWithTags, DisplayText, Actions], Dict[str, Any]]
+            ],
+        ],  # Input type hint
+    ) -> Callable[
+        ..., AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]
+    ]:  # Output type hint
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]: # Yield type hint
+        async def wrapper(
+            *args, **kwargs
+        ) -> AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]:  # Yield type hint
             stream = func(*args, **kwargs)
             config = tts_preprocessor_config or TTSPreprocessorConfig()
 
             async for item in stream:
-                if isinstance(item, tuple) and len(item) == 3 and isinstance(item[1], DisplayText):
+                if (
+                    isinstance(item, tuple)
+                    and len(item) == 3
+                    and isinstance(item[1], DisplayText)
+                ):
                     sentence, display, actions = item
                     if any(tag.name == "think" for tag in sentence.tags):
                         tts = ""
@@ -179,7 +210,7 @@ def tts_filter(
                     # Pass through dictionaries
                     yield item
                 else:
-                     logger.warning(f"tts_filter received unexpected type: {type(item)}")
+                    logger.warning(f"tts_filter received unexpected type: {type(item)}")
 
         return wrapper
 

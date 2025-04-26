@@ -17,6 +17,7 @@ from ..utils.stream_audio import prepare_audio_payload
 from ..service_context import ServiceContext
 from ..agent.agents.agent_interface import AgentInterface
 
+
 # Convert class methods to standalone functions
 def create_batch_input(
     input_text: str,

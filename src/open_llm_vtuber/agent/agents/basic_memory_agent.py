@@ -1,5 +1,15 @@
 import json
-from typing import AsyncIterator, List, Dict, Any, Callable, Literal, Union, Optional, Tuple
+from typing import (
+    AsyncIterator,
+    List,
+    Dict,
+    Any,
+    Callable,
+    Literal,
+    Union,
+    Optional,
+    Tuple,
+)
 from loguru import logger
 import types
 import datetime
@@ -332,26 +342,35 @@ class BasicMemoryAgent(AgentInterface):
         self,
         tool_calls: Union[List[Dict[str, Any]], List[ToolCallObject]],
         caller_mode: Literal["Claude", "OpenAI", "Prompt"],
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """Executes tools, returns LLM results and status update events."""
-        llm_results = []
-        status_updates = []
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """Executes tools, yields status update events, and returns formatted results for the LLM."""
+        tool_results_for_llm = []
 
         if not self._mcp_server_manager or not self._tool_manager:
             logger.error("MCP Server/Tool Manager not available, cannot execute tools.")
             for i, call in enumerate(tool_calls):
-                tool_id = getattr(call, "id", call.get("id", f"error_{i}_{datetime.datetime.utcnow().isoformat()}"))
+                tool_id = getattr(
+                    call,
+                    "id",
+                    call.get(
+                        "id",
+                        f"error_{i}_{datetime.datetime.now(datetime.timezone.utc).isoformat()}",
+                    ),
+                )
                 tool_name = getattr(call, "function.name", call.get("name", "Unknown"))
                 error_content = "Error: Tool execution environment not configured."
-                status_updates.append({
+                # Yield status update directly
+                yield {
                     "type": "tool_call_status",
                     "tool_id": tool_id,
                     "tool_name": tool_name,
                     "status": "error",
                     "content": error_content,
-                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
-                })
-            return llm_results, status_updates
+                    "timestamp": datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).isoformat()
+                    + "Z",
+                }
 
         logger.info(
             f"Attempting to execute {len(tool_calls)} tool(s) for {caller_mode} caller."
@@ -371,45 +390,62 @@ class BasicMemoryAgent(AgentInterface):
                     logger.warning(
                         f"Skipping tool call due to parsing error: {result_content}"
                     )
-                    status_updates.append({
+                    # Yield status update directly
+                    yield {
                         "type": "tool_call_status",
-                        "tool_id": tool_id or f"parse_error_{datetime.datetime.utcnow().isoformat()}",
+                        "tool_id": tool_id
+                        or f"parse_error_{datetime.datetime.now(datetime.timezone.utc).isoformat()}",
                         "tool_name": tool_name or "Unknown Tool",
                         "status": "error",
                         "content": result_content,
-                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
-                    })
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat()
+                        + "Z",
+                    }
                 else:
-                    status_updates.append({
+                    # Yield 'running' status immediately
+                    yield {
                         "type": "tool_call_status",
                         "tool_id": tool_id,
                         "tool_name": tool_name,
                         "status": "running",
                         "content": f"Input: {json.dumps(tool_input)}",
-                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
-                    })
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat()
+                        + "Z",
+                    }
 
                     is_error, result_content = await self._run_single_tool(
                         client, tool_name, tool_id, tool_input
                     )
 
-                    status_updates.append({
+                    # Yield 'completed' or 'error' status immediately
+                    yield {
                         "type": "tool_call_status",
                         "tool_id": tool_id,
                         "tool_name": tool_name,
                         "status": "error" if is_error else "completed",
                         "content": result_content,
-                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
-                    })
+                        "timestamp": datetime.datetime.now(
+                            datetime.timezone.utc
+                        ).isoformat()
+                        + "Z",
+                    }
 
+                # Format result for the LLM, but don't yield it here
                 formatted_result = self._format_tool_result(
                     caller_mode, tool_id, result_content, is_error
                 )
                 if formatted_result:
-                    llm_results.append(formatted_result)
+                    tool_results_for_llm.append(formatted_result)
 
-        logger.info(f"Finished executing tools. Returning {len(llm_results)} LLM result(s) and {len(status_updates)} status update(s).")
-        return llm_results, status_updates
+        logger.info(
+            f"Finished executing tools. Returning {len(tool_results_for_llm)} formatted tool result(s) for LLM."
+        )
+        # Yield a final marker containing the results instead of returning
+        yield {"type": "final_tool_results", "results": tool_results_for_llm}
 
     def _parse_tool_call(self, call: Union[Dict[str, Any], ToolCallObject]) -> tuple:
         """Parses a tool call from either Claude or OpenAI format."""
@@ -534,15 +570,6 @@ class BasicMemoryAgent(AgentInterface):
                 "content": result_content,
                 "is_error": is_error,
             }
-        else:
-            logger.debug(
-                f"Formatting result for Prompt mode. ID: {tool_id}, Error: {is_error}"
-            )
-            return {
-                "tool_id": tool_id,
-                "content": result_content,
-                "is_error": is_error,
-            }
 
     async def _claude_tool_interaction_loop(
         self,
@@ -644,26 +671,37 @@ class BasicMemoryAgent(AgentInterface):
                         "Tool calls pending but no valid assistant content (text/tool_use) was generated."
                     )
 
-                llm_results, status_updates = await self._execute_tools(
+                # Execute tools and yield status updates as they happen
+                tool_results_for_llm = []
+                tool_executor = self._execute_tools(
                     pending_tool_calls,
                     caller_mode="Claude",
                 )
-
-                for update in status_updates:
-                    yield update
-
-                if not llm_results:
-                    logger.error(
-                        "Claude tool execution failed to produce LLM results. Stopping interaction."
+                try:
+                    while True:
+                        update = await anext(tool_executor)
+                        if update.get("type") == "final_tool_results":
+                            tool_results_for_llm = update.get("results", [])
+                            logger.debug(
+                                f"Tool execution finished, received {len(tool_results_for_llm)} results via final yield."
+                            )
+                            break  # Exit the tool processing loop
+                        else:
+                            yield update  # Yield status updates
+                except StopAsyncIteration:
+                    logger.warning(
+                        "Tool executor finished without yielding final results marker."
                     )
-                    return
 
-                messages.append({"role": "user", "content": llm_results})
-                logger.debug(
-                    f"Appended Claude LLM tool results. New message count: {len(messages)}"
-                )
+                if tool_results_for_llm:
+                    messages.append({"role": "user", "content": tool_results_for_llm})
+                    logger.debug(
+                        f"Appended Claude LLM tool results. New message count: {len(messages)}"
+                    )
+                else:
+                    logger.debug("No tool results to append for Claude LLM.")
 
-                stop_reason = None
+                stop_reason = None  # Reset stop reason to continue the loop
                 continue
             else:
                 logger.info("No tool calls requested by Claude. Interaction complete.")
@@ -787,7 +825,9 @@ class BasicMemoryAgent(AgentInterface):
                     if isinstance(event, str):
                         current_turn_text += event
                         yield event
-                    elif isinstance(event, list) and all(isinstance(tc, ToolCallObject) for tc in event):
+                    elif isinstance(event, list) and all(
+                        isinstance(tc, ToolCallObject) for tc in event
+                    ):
                         pending_tool_calls = event
                         assistant_message_for_api = {
                             "role": "assistant",
@@ -821,7 +861,9 @@ class BasicMemoryAgent(AgentInterface):
                             f"Received unexpected event type from native OpenAI stream: {type(event)}"
                         )
             if goto_next_while_iteration:
-                logger.info("Restarting interaction loop iteration to apply prompt mode.")
+                logger.info(
+                    "Restarting interaction loop iteration to apply prompt mode."
+                )
                 continue
 
             if detected_prompt_json:
@@ -830,45 +872,86 @@ class BasicMemoryAgent(AgentInterface):
 
                 parsed_tools = self._process_tool_from_prompt_json(detected_prompt_json)
                 if parsed_tools:
-                    llm_results, status_updates = await self._execute_tools(
+                    tool_results_for_llm = []
+                    tool_executor = self._execute_tools(
                         parsed_tools,
                         caller_mode="Prompt",
                     )
-                    for update in status_updates:
-                        yield update
+                    try:
+                        while True:
+                            update = await anext(tool_executor)
+                            if update.get("type") == "final_tool_results":
+                                tool_results_for_llm = update.get("results", [])
+                                logger.debug(
+                                    f"Prompt mode tool execution finished, received {len(tool_results_for_llm)} results via final yield."
+                                )
+                                break  # Exit the tool processing loop
+                            else:
+                                yield update  # Yield status updates
+                    except StopAsyncIteration:
+                        logger.warning(
+                            "Prompt mode tool executor finished without yielding final results marker."
+                        )
 
-                    if llm_results:
-                        result_strings = [res.get("content", "Error: Malformed result") for res in llm_results]
+                    if tool_results_for_llm:
+                        result_strings = [
+                            res.get("content", "Error: Malformed result")
+                            for res in tool_results_for_llm
+                        ]
                         combined_results_str = "\n".join(result_strings)
-                        messages.append({"role": "user", "content": combined_results_str})
-                        logger.debug(f"Appended prompt mode LLM tool results. Msg count: {len(messages)}")
+                        messages.append(
+                            {"role": "user", "content": combined_results_str}
+                        )
+                        logger.debug(
+                            f"Appended prompt mode LLM tool results. Msg count: {len(messages)}"
+                        )
                     else:
-                        if not any(upd['status'] == 'error' for upd in status_updates):
-                           logger.error("Prompt mode tool execution finished but produced no results for LLM.")
+                        logger.warning(
+                            "Prompt mode tool execution finished but produced no results formatted for LLM."
+                        )
                 continue
 
             elif pending_tool_calls and assistant_message_for_api:
                 messages.append(assistant_message_for_api)
                 if current_turn_text:
-                    self._add_message(
-                        current_turn_text, "assistant"
-                    )
+                    self._add_message(current_turn_text, "assistant")
 
                 logger.debug("Executing OpenAI native tools...")
-                llm_results, status_updates = await self._execute_tools(
+                tool_results_for_llm = []
+                tool_executor = self._execute_tools(
                     pending_tool_calls,
                     caller_mode="OpenAI",
                 )
+                try:
+                    while True:
+                        update = await anext(tool_executor)
+                        if update.get("type") == "final_tool_results":
+                            tool_results_for_llm = update.get("results", [])
+                            logger.debug(
+                                f"OpenAI native tool execution finished, received {len(tool_results_for_llm)} results via final yield."
+                            )
+                            break  # Exit the tool processing loop
+                        else:
+                            yield update  # Yield status updates
+                except StopAsyncIteration:
+                    logger.warning(
+                        "OpenAI native tool executor finished without yielding final results marker."
+                    )
 
-                for update in status_updates:
-                    yield update
+                if tool_results_for_llm:
+                    messages.extend(
+                        tool_results_for_llm
+                    )  # Extend messages with tool results
+                    logger.debug(
+                        f"Appended OpenAI native LLM tool results. Msg count: {len(messages)}"
+                    )
+                else:
+                    logger.warning(
+                        "OpenAI native tool execution produced no results formatted for LLM."
+                    )
+                    # Consider stopping interaction?
+                    # return
 
-                if not llm_results:
-                     logger.error("OpenAI native tool execution failed to produce results for LLM.")
-                     return
-
-                messages.extend(llm_results)
-                logger.debug(f"Appended OpenAI native LLM tool results. Msg count: {len(messages)}")
                 continue
 
             else:
@@ -928,9 +1011,7 @@ class BasicMemoryAgent(AgentInterface):
                     )
                     tool_mode = "OpenAI"
                     tools = self._tool_manager.get_all_tools(mode=tool_mode)
-                    llm_supports_native_tools = (
-                        True
-                    )
+                    llm_supports_native_tools = True
 
                 if llm_supports_native_tools and not tools:
                     logger.warning(

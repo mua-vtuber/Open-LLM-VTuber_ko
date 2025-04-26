@@ -89,7 +89,7 @@ async def process_group_conversation(
 
         # Check if we should skip storing this input to history
         skip_history = metadata and metadata.get("skip_history", False)
-        
+
         if not skip_history:
             for member_uid in group_members:
                 member_context = client_contexts[member_uid]
@@ -104,19 +104,19 @@ async def process_group_conversation(
             logger.debug("Skipping storing proactive speak input to group history")
 
         state.conversation_history = [f"{human_name}: {input_text}"]
-        
+
         is_first_responder = False
         # Main conversation loop
         while state.group_queue:
             try:
                 current_member_uid = state.group_queue.pop(0)
-                
+
                 # Only pass metadata to the first responder
-                current_metadata = None  
+                current_metadata = None
                 if is_first_responder:
                     current_metadata = metadata
                     is_first_responder = False
-                    
+
                 await handle_group_member_turn(
                     current_member_uid=current_member_uid,
                     state=state,
@@ -247,8 +247,8 @@ async def handle_group_member_turn(
     new_context = "\n".join(new_messages) if new_messages else ""
 
     batch_input = create_batch_input(
-        input_text=new_context, 
-        images=images, 
+        input_text=new_context,
+        images=images,
         from_name="Human",
         metadata=metadata,
     )
@@ -354,13 +354,18 @@ async def process_member_response(
         agent_output_stream = context.agent_engine.chat(batch_input)
 
         async for output_item in agent_output_stream:
-            if isinstance(output_item, dict) and output_item.get("type") == "tool_call_status":
+            if (
+                isinstance(output_item, dict)
+                and output_item.get("type") == "tool_call_status"
+            ):
                 if broadcast_func and group_members:
-                     logger.debug(f"Broadcasting tool status update: {output_item}")
-                     output_item["name"] = context.character_config.character_name
-                     await broadcast_func(group_members, output_item)
+                    logger.debug(f"Broadcasting tool status update: {output_item}")
+                    output_item["name"] = context.character_config.character_name
+                    await broadcast_func(group_members, output_item)
                 else:
-                     logger.warning("Cannot broadcast tool status: broadcast_func or group_members missing.")
+                    logger.warning(
+                        "Cannot broadcast tool status: broadcast_func or group_members missing."
+                    )
             elif isinstance(output_item, (SentenceOutput, AudioOutput)):
                 # Handle SentenceOutput or AudioOutput: Send to current user, broadcast audio later if needed
                 response_part = await process_agent_output(
@@ -368,13 +373,15 @@ async def process_member_response(
                     character_config=context.character_config,
                     live2d_model=context.live2d_model,
                     tts_engine=context.tts_engine,
-                    websocket_send=current_ws_send, # Send TTS/display text directly to speaker's client
+                    websocket_send=current_ws_send,  # Send TTS/display text directly to speaker's client
                     tts_manager=tts_manager,
                     translate_engine=context.translate_engine,
                 )
-                full_response += response_part # Accumulate text response
+                full_response += response_part  # Accumulate text response
             else:
-                 logger.warning(f"Received unexpected item type from agent chat stream: {type(output_item)}")
+                logger.warning(
+                    f"Received unexpected item type from agent chat stream: {type(output_item)}"
+                )
 
     except Exception as e:
         logger.exception(f"Error processing group member response stream: {e}")
@@ -383,5 +390,5 @@ async def process_member_response(
                 {"type": "error", "message": f"Error processing response: {str(e)}"}
             )
         )
-        
+
     return full_response
