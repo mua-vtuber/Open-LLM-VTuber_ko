@@ -20,6 +20,8 @@ system_config:
     mcp_prompt: 'mcp_prompt'
     # Prompt used when AI is asked to speak proactively
     proactive_speak_prompt: 'proactive_speak_prompt'
+    # Prompt to enhance the LLM's ability to output speakable text
+    # speakable_prompt: 'speakable_prompt'
 
 # configuration for the default character
 character_config:

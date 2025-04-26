@@ -5,7 +5,7 @@ from loguru import logger
 from fastapi import WebSocket
 import numpy as np
 
-from open_llm_vtuber.agent.output_types import AudioOutput, SentenceOutput
+from ..agent.output_types import AudioOutput, SentenceOutput
 
 from .conversation_utils import (
     create_batch_input,
