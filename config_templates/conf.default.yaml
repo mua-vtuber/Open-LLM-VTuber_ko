@@ -34,8 +34,7 @@ character_config:
 
   # ============== Prompts ==============
 
-  # Persona choice is DEAD
-  # Just enter the persona prompt you want to use below.
+  # Enter the persona prompt you want to use below.
   # If you want to create multiple characters and switch between them,
   #   add characters in characters folder
   persona_prompt: |
