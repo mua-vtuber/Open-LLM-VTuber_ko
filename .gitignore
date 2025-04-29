@@ -72,5 +72,4 @@ conf.yaml.backup
 tmp/
 formatted_tools.json
 servers_prompt.json
-mcp_servers.json
 mcp-server-browserbase/

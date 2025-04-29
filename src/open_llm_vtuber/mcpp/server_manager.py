@@ -12,7 +12,7 @@ from loguru import logger
 from .types import MCPServer, MCPServerType
 from .utils.path import validate_file
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent / "configs" / "mcp_servers.json"
+DEFAULT_CONFIG_PATH = "mcp_servers.json"
 
 
 class MCPServerManager:
