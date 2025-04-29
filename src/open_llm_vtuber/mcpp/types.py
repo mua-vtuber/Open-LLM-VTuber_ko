@@ -1,15 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Dict, List, Optional, Any
-from enum import Enum
 from pathlib import Path
-
-
-class MCPServerType(str, Enum):
-    """Enum for MCP Server Types."""
-
-    Official = 0
-    Custom = 1
 
 
 @dataclass
@@ -28,8 +20,6 @@ class MCPServer:
         args (List[str], optional): Arguments for the command. Defaults to an empty list.
         env (Optional[Dict[str, str]], optional): Environment variables for the command. Defaults to None.
         timeout (Optional[timedelta], optional): Timeout for the command. Defaults to 10 seconds.
-        type (MCPServerType, optional): Type of the server. Defaults to MCPServerType.Custom.
-        path (Optional[Path], optional): Path to the server executable. Defaults to None.
     """
 
     name: str
@@ -37,8 +27,6 @@ class MCPServer:
     args: List[str] = field(default_factory=list)
     env: Optional[Dict[str, str]] = None
     timeout: Optional[timedelta] = timedelta(seconds=30)
-    type: MCPServerType = MCPServerType.Custom
-    path: Optional[Path] = None
 
 
 @dataclass

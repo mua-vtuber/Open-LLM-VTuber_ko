@@ -73,3 +73,4 @@ tmp/
 formatted_tools.json
 servers_prompt.json
 mcp-server-browserbase/
+mcp_servers.json

@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from pathlib import Path
 from loguru import logger
 
-from .types import MCPServerPrompt, MCPServerType, FormattedTool
+from .types import MCPServerPrompt, FormattedTool
 from .client import MCPClient
 from .server_manager import MCPServerManager
 from .tool_manager import ToolManager
@@ -34,18 +34,36 @@ class MixedConstructor:
         tool_manager: Optional[ToolManager] = None,
     ) -> None:
         """Initialize with paths to prompt files and managers."""
-        self.servers_prompt = validate_file(
-            prompt_paths.get("servers_prompt", DEFAULT_SERVERS_PROMPT_PATH)
-        )
+        configs_dir = Path(__file__).parent / "configs"
+        configs_dir.mkdir(exist_ok=True)
+        
+        servers_prompt_path = prompt_paths.get("servers_prompt", DEFAULT_SERVERS_PROMPT_PATH)
+        if isinstance(servers_prompt_path, str):
+            servers_prompt_path = Path(servers_prompt_path)
+        
+        servers_prompt_path.parent.mkdir(exist_ok=True)
+        if not servers_prompt_path.exists():
+            servers_prompt_path.write_text("{}", encoding="utf-8")
+            
+        formatted_tools_path = prompt_paths.get("formatted_tools", DEFAULT_FORMATTED_TOOLS_PATH)
+        if isinstance(formatted_tools_path, str):
+            formatted_tools_path = Path(formatted_tools_path)
+            
+        formatted_tools_path.parent.mkdir(exist_ok=True)
+        if not formatted_tools_path.exists():
+            formatted_tools_path.write_text("{}", encoding="utf-8")
+            
+        servers_prompt_path.write_text("{}", encoding="utf-8")
+        formatted_tools_path.write_text("{}", encoding="utf-8")
+        
+        self.servers_prompt = validate_file(servers_prompt_path)
 
         self.prompts: Dict[str, Dict[str, str | float] | MCPServerPrompt] = json.loads(
             self.servers_prompt.read_text(encoding="utf-8")
         )
 
         self.server_manager = server_manager or MCPServerManager()
-        self.tool_manager = tool_manager or ToolManager(
-            prompt_paths.get("formatted_tools", DEFAULT_FORMATTED_TOOLS_PATH)
-        )
+        self.tool_manager = tool_manager or ToolManager(formatted_tools_path)
 
         # Structure: server name -> tool name -> tool details (description, parameters, required)
         self.servers_info: Dict[str, Dict[str, str]] = {}
@@ -136,30 +154,17 @@ class MixedConstructor:
                     self.servers_info[server_name] = {}
                 continue
 
-    def construct_servers_prompt(self, force: bool = False) -> None:
-        """Build prompt for each server and its tools.
-        
-        Args:
-            force: If True, reconstruct all prompts regardless of changes.
-        """
+    def construct_servers_prompt(self) -> None:
+        """Build prompt for each server and its tools."""
         for server_name, tools in self.servers_info.items():
-            server = self.server_manager.get_server(server_name)
-            if server.type is MCPServerType.Custom:
-                mtime = os.path.getmtime(server.path)
-            else:
-                mtime = -1
+            mtime = -1
 
-            prompt = self.prompts.get(server_name, None)
-            if isinstance(prompt, MCPServerPrompt):
-                if not force and prompt.mtime == mtime and mtime > 0:
-                    continue
-
-            prompt = f"Server: {server_name}\n"
-            prompt += "    Tools:\n"
+            prompt_content = f"Server: {server_name}\\n"
+            prompt_content += "    Tools:\\n"
             for tool_name, tool_info in tools.items():
-                prompt += f"        {tool_name}:\n"
-                prompt += f"            Description: {tool_info['description']}\n"
-                prompt += "            Parameters:\n"
+                prompt_content += f"        {tool_name}:\\n"
+                prompt_content += f"            Description: {tool_info['description']}\\n"
+                prompt_content += "            Parameters:\\n"
                 for param_name, param_info in tool_info["parameters"].items():
                     description = param_info.get("description")
                     description = (
@@ -167,15 +172,15 @@ class MixedConstructor:
                         if description
                         else param_info.get("title", "No description provided.")
                     )
-                    prompt += f"                {param_name}:\n"
-                    prompt += f"                    Type: {param_info['type']}\n"
-                    prompt += f"                    Description: {description}\n"
+                    prompt_content += f"                {param_name}:\\n"
+                    prompt_content += f"                    Type: {param_info['type']}\\n"
+                    prompt_content += f"                    Description: {description}\\n"
                 if tool_info["required"]:
-                    prompt += (
-                        f"            Required: {', '.join(tool_info['required'])}\n"
+                    prompt_content += (
+                        f"            Required: {', '.join(tool_info['required'])}\\n"
                     )
 
-            self.prompts[server_name] = MCPServerPrompt(content=prompt, mtime=mtime)
+            self.prompts[server_name] = MCPServerPrompt(content=prompt_content, mtime=mtime)
             logger.info(f"MC: Constructed prompt for server '{server_name}'.")
 
         self._dump_prompts()
@@ -218,14 +223,14 @@ class MixedConstructor:
 
         self._dump_tools()
 
-    async def run(self, force: bool = False) -> None:
+    async def run(self) -> None:
         """Run the complete process."""
         await self.get_servers_info()
-        self.construct_servers_prompt(force)
+        self.construct_servers_prompt()
         self.format_tools()
 
 # if __name__ == "__main__":
 #     import asyncio
-#     prompt_constructor = PromptConstructor()
+#     prompt_constructor = MixedConstructor()
 #     asyncio.run(prompt_constructor.run())
 #     logger.info("PC: Prompt construction completed.")
