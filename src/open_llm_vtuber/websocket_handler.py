@@ -190,6 +190,8 @@ class WebSocketHandler:
             vad_engine=self.default_context_cache.vad_engine,
             agent_engine=self.default_context_cache.agent_engine,
             translate_engine=self.default_context_cache.translate_engine,
+            mcp_server_manager=self.default_context_cache.mcp_server_manager,
+            tool_manager=self.default_context_cache.tool_manager,
         )
         return session_service_context
 
@@ -298,6 +300,11 @@ class WebSocketHandler:
             if task and not task.done():
                 task.cancel()
             self.current_conversation_tasks.pop(client_uid, None)
+
+        # Call context close to clean up resources (e.g., MCPClient)
+        context = self.client_contexts.get(client_uid)
+        if context:
+            await context.close()
 
         logger.info(f"Client {client_uid} disconnected")
         message_handler.cleanup_client(client_uid)

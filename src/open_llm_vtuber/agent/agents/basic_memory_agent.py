@@ -48,6 +48,10 @@ class BasicMemoryAgent(AgentInterface):
         mcp_prompt: str = None,
         interrupt_method: Literal["system", "user"] = "user",
         tool_prompts: Dict[str, str] = None,
+        mcp_server_manager: Optional[MCPServerManager] = None,
+        tool_manager: Optional[ToolManager] = None,
+        mcp_client: Optional[MCPClient] = None,
+        tool_executor: Optional[ToolExecutor] = None,
     ):
         """Initialize agent with LLM and configuration."""
         super().__init__()
@@ -58,26 +62,30 @@ class BasicMemoryAgent(AgentInterface):
         self._segment_method = segment_method
         self._use_mcpp = use_mcpp
         self._mcp_prompt = mcp_prompt
-        self._mcp_server_manager = MCPServerManager() if use_mcpp else None
-        self._tool_manager = ToolManager() if use_mcpp else None
-        self._json_detector = StreamJSONDetector() if use_mcpp else None
-        self.prompt_mode_flag = False
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
         self._interrupt_handled = False
+        self.prompt_mode_flag = False
+
+        self._mcp_server_manager = mcp_server_manager
+        self._tool_manager = tool_manager
+        self._mcp_client = mcp_client
+        self._tool_executor = tool_executor
+        self._json_detector = StreamJSONDetector()
+
+        logger.debug(f"Agent received MCPServerManager: {'Yes' if self._mcp_server_manager else 'No'}")
+        logger.debug(f"Agent received ToolManager: {'Yes' if self._tool_manager else 'No'}")
+        logger.debug(f"Agent received MCPClient: {'Yes' if self._mcp_client else 'No'}")
+        logger.debug(f"Agent received ToolExecutor: {'Yes' if self._tool_executor else 'No'}")
+        logger.debug(f"Agent received StreamJSONDetector: {'Yes' if self._json_detector else 'No'}")
+
         self._set_llm(llm)
         self.set_system(system if system else self._system)
 
-        self._mcp_client: Optional[MCPClient] = None
-        if self._use_mcpp and self._mcp_server_manager:
-            self._mcp_client = MCPClient(self._mcp_server_manager)
-            logger.info("MCP Client initialized for this agent instance.")
-        elif self._use_mcpp:
-            logger.error("MCP enabled but Server Manager failed to initialize. MCPClient not created.")
-            
-        if self._use_mcpp and self._mcp_client:
-            self._tool_executor = ToolExecutor(self._mcp_client, self._tool_manager)
-
+        if self._use_mcpp and not all([self._mcp_server_manager, self._tool_manager, self._mcp_client, self._tool_executor, self._json_detector]):
+            logger.warning("use_mcpp is True, but some MCP components are missing in the agent. Tool calling might not work as expected.")
+        elif not self._use_mcpp and any([self._mcp_server_manager, self._tool_manager, self._mcp_client, self._tool_executor, self._json_detector]):
+            logger.warning("use_mcpp is False, but some MCP components were passed to the agent.")
 
         logger.info("BasicMemoryAgent initialized.")
 
@@ -328,14 +336,19 @@ class BasicMemoryAgent(AgentInterface):
                         self._add_message(assistant_text_for_memory, "assistant")
 
                 tool_results_for_llm = []
-                tool_executor = self._tool_executor.execute_tools(
+                if not self._tool_executor:
+                    logger.error("Claude Tool interaction requested but ToolExecutor is not available.")
+                    yield "[Error: ToolExecutor not configured]"
+                    return
+
+                tool_executor_iterator = self._tool_executor.execute_tools(
                     mcp_client=self._mcp_client,
                     tool_calls=pending_tool_calls,
                     caller_mode="Claude",
                 )
                 try:
                     while True:
-                        update = await anext(tool_executor)
+                        update = await anext(tool_executor_iterator)
                         if update.get("type") == "final_tool_results":
                             tool_results_for_llm = update.get("results", [])
                             break
@@ -364,6 +377,7 @@ class BasicMemoryAgent(AgentInterface):
         current_turn_text = ""
         pending_tool_calls: Union[List[ToolCallObject], List[Dict[str, Any]]] = []
         current_system_prompt = self._system
+        tool_executor_available = self._tool_executor and self._mcp_client
 
         while True:
             if self.prompt_mode_flag:
@@ -403,7 +417,11 @@ class BasicMemoryAgent(AgentInterface):
                                         break
                                 except Exception as e:
                                     logger.error(f"Error parsing detected JSON: {e}")
-                                    self._json_detector.reset()
+                                    if self._json_detector:
+                                        self._json_detector.reset()
+                                    yield f"[Error parsing tool JSON: {e}]"
+                                    goto_next_while_iteration = True
+                                    break
                         yield event
                 else:
                     if isinstance(event, str):
@@ -448,14 +466,19 @@ class BasicMemoryAgent(AgentInterface):
                 parsed_tools = self._tool_executor.process_tool_from_prompt_json(detected_prompt_json)
                 if parsed_tools:
                     tool_results_for_llm = []
-                    tool_executor = self._tool_executor.execute_tools(
+                    if not tool_executor_available:
+                        logger.error("Prompt Tool interaction requested but ToolExecutor/MCPClient is not available.")
+                        yield "[Error: ToolExecutor/MCPClient not configured for prompt mode]"
+                        continue
+
+                    tool_executor_iterator = self._tool_executor.execute_tools(
                         mcp_client=self._mcp_client,
                         tool_calls=parsed_tools,
                         caller_mode="Prompt",
                     )
                     try:
                         while True:
-                            update = await anext(tool_executor)
+                            update = await anext(tool_executor_iterator)
                             if update.get("type") == "final_tool_results":
                                 tool_results_for_llm = update.get("results", [])
                                 break
@@ -481,14 +504,19 @@ class BasicMemoryAgent(AgentInterface):
                     self._add_message(current_turn_text, "assistant")
 
                 tool_results_for_llm = []
-                tool_executor = self._tool_executor.execute_tools(
+                if not tool_executor_available:
+                    logger.error("OpenAI Tool interaction requested but ToolExecutor/MCPClient is not available.")
+                    yield "[Error: ToolExecutor/MCPClient not configured for OpenAI mode]"
+                    continue
+
+                tool_executor_iterator = self._tool_executor.execute_tools(
                     mcp_client=self._mcp_client,
                     tool_calls=pending_tool_calls,
                     caller_mode="OpenAI",
                 )
                 try:
                     while True:
-                        update = await anext(tool_executor)
+                        update = await anext(tool_executor_iterator)
                         if update.get("type") == "final_tool_results":
                             tool_results_for_llm = update.get("results", [])
                             break
@@ -619,10 +647,3 @@ class BasicMemoryAgent(AgentInterface):
             logger.error(f"Missing formatting key in group conversation prompt: {e}")
         except Exception as e:
             logger.error(f"Failed to load group conversation prompt: {e}")
-
-    async def close(self):
-        """Clean up resources."""
-        if self._mcp_client:
-            logger.info(f"Closing MCPClient for agent instance {id(self)}...")
-            await self._mcp_client.aclose()
-            self._mcp_client = None

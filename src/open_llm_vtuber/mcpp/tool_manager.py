@@ -71,7 +71,7 @@ class ToolManager:
 
     def get_all_tools(
         self, mode: Literal["OpenAI", "Claude"] = "OpenAI"
-    ) -> Union[List[Dict[str, Any]], type(NOT_GIVEN)]:
+    ) -> Any: # TODO: fix this
         """Get all generic schemas formatted for the specified API mode."""
         if not self.__enabled:
             return NOT_GIVEN

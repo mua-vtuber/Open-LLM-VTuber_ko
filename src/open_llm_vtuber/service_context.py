@@ -12,6 +12,11 @@ from .vad.vad_interface import VADInterface
 from .agent.agents.agent_interface import AgentInterface
 from .translate.translate_interface import TranslateInterface
 
+from .mcpp.server_manager import MCPServerManager
+from .mcpp.tool_manager import ToolManager
+from .mcpp.client import MCPClient
+from .mcpp.tool_executor import ToolExecutor
+
 from .asr.asr_factory import ASRFactory
 from .tts.tts_factory import TTSFactory
 from .vad.vad_factory import VADFactory
@@ -49,6 +54,11 @@ class ServiceContext:
         self.vad_engine: VADInterface | None = None
         self.translate_engine: TranslateInterface | None = None
 
+        self.mcp_server_manager: MCPServerManager | None = None
+        self.tool_manager: ToolManager | None = None
+        self.mcp_client: MCPClient | None = None
+        self.tool_executor: ToolExecutor | None = None
+
         # the system prompt is a combination of the persona prompt and live2d expression prompt
         self.system_prompt: str = None
 
@@ -70,10 +80,60 @@ class ServiceContext:
             f"    Agent Config: {json.dumps(self.character_config.agent_config.model_dump(), indent=6) if self.character_config.agent_config else 'None'}\n"
             f"  VAD Engine: {type(self.vad_engine).__name__ if self.vad_engine else 'Not Loaded'}\n"
             f"    Agent Config: {json.dumps(self.character_config.vad_config.model_dump(), indent=6) if self.character_config.vad_config else 'None'}\n"
-            f"  System Prompt: {self.system_prompt or 'Not Set'}"
+            f"  System Prompt: {self.system_prompt or 'Not Set'}\n"
+            f"  MCP Enabled: {'Yes' if self.mcp_client else 'No'}"
         )
 
     # ==== Initializers
+
+    def _init_mcp_components(self):
+        """Initializes MCP components based on configuration."""
+        use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
+        logger.debug(f"Initializing MCP components, use_mcpp={use_mcpp}")
+
+        if use_mcpp:
+            # Initialize Managers only if they don't exist (can be shared via load_cache)
+            if not self.mcp_server_manager:
+                self.mcp_server_manager = MCPServerManager()
+                logger.info("MCPServerManager initialized.")
+            if not self.tool_manager:
+                self.tool_manager = ToolManager()
+                logger.info("ToolManager initialized.")
+
+            # Initialize Client and Executor (should be session-specific)
+            if self.mcp_server_manager:
+                self.mcp_client = MCPClient(self.mcp_server_manager)
+                logger.info("MCPClient initialized for this session.")
+            else:
+                logger.error("MCP enabled but MCPServerManager failed to initialize. MCPClient not created.")
+                self.mcp_client = None # Ensure it's None if manager failed
+
+            if self.mcp_client and self.tool_manager:
+                 # TODO: fix this
+                self.tool_executor = ToolExecutor(self.mcp_client, self.tool_manager)
+                logger.info("ToolExecutor initialized for this session.")
+            else:
+                 logger.warning("MCPClient or ToolManager not available. ToolExecutor not created.")
+                 self.tool_executor = None # Ensure it's None
+
+        else:
+            # Ensure all MCP components are None if use_mcpp is False
+            self.mcp_server_manager = None
+            self.tool_manager = None
+            self.mcp_client = None
+            self.tool_executor = None
+            logger.debug("MCP components set to None as use_mcpp is False.")
+
+    async def close(self):
+        """Clean up resources, especially the MCPClient."""
+        logger.info("Closing ServiceContext resources...")
+        if self.mcp_client:
+            logger.info(f"Closing MCPClient for context instance {id(self)}...")
+            await self.mcp_client.aclose()
+            self.mcp_client = None
+        if self.agent_engine and hasattr(self.agent_engine, 'close'):
+             await self.agent_engine.close() # Ensure agent resources are also closed
+        logger.info("ServiceContext closed.")
 
     def load_cache(
         self,
@@ -86,6 +146,9 @@ class ServiceContext:
         vad_engine: VADInterface,
         agent_engine: AgentInterface,
         translate_engine: TranslateInterface | None,
+        # Add MCP Managers to be passed by reference
+        mcp_server_manager: MCPServerManager | None = None,
+        tool_manager: ToolManager | None = None,
     ) -> None:
         """
         Load the ServiceContext with the reference of the provided instances.
@@ -105,6 +168,12 @@ class ServiceContext:
         self.vad_engine = vad_engine
         self.agent_engine = agent_engine
         self.translate_engine = translate_engine
+        # Load shared MCP managers by reference
+        self.mcp_server_manager = mcp_server_manager
+        self.tool_manager = tool_manager
+
+        # Initialize session-specific MCP components (Client, Executor, Detector)
+        self._init_mcp_components()
 
         logger.debug(f"Loaded service context with cache: {character_config}")
 
@@ -138,6 +207,9 @@ class ServiceContext:
 
         # init vad from character config
         self.init_vad(config.character_config.vad_config)
+
+        # Initialize MCP Components before initializing Agent
+        self._init_mcp_components()
 
         # init agent from character config
         await self.init_agent(
@@ -227,6 +299,11 @@ class ServiceContext:
                 tts_preprocessor_config=self.character_config.tts_preprocessor_config,
                 character_avatar=avatar,
                 system_config=self.system_config.model_dump(),
+                # Pass MCP components from ServiceContext
+                mcp_server_manager=self.mcp_server_manager,
+                tool_manager=self.tool_manager,
+                mcp_client=self.mcp_client,
+                tool_executor=self.tool_executor,
             )
 
             logger.debug(f"Agent choice: {agent_config.conversation_agent_choice}")
