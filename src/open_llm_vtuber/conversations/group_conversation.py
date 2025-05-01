@@ -147,7 +147,7 @@ async def process_group_conversation(
         raise
     finally:
         # Cleanup all TTS managers
-        for uid, tts_manager in tts_managers.items():
+        for tts_manager in tts_managers.values():
             cleanup_conversation(tts_manager, session_emoji)
         # Clean up
         GroupConversationState.remove_state(state.group_id)
