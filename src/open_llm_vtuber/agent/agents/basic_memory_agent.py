@@ -31,6 +31,7 @@ from ...mcpp.json_detector import StreamJSONDetector
 from ...mcpp.types import ToolCallObject
 from ...mcpp.tool_executor import ToolExecutor
 
+
 class BasicMemoryAgent(AgentInterface):
     """Agent with basic chat memory and tool calling support."""
 
@@ -45,13 +46,12 @@ class BasicMemoryAgent(AgentInterface):
         faster_first_response: bool = True,
         segment_method: str = "pysbd",
         use_mcpp: bool = False,
-        mcp_prompt: str = None,
         interrupt_method: Literal["system", "user"] = "user",
         tool_prompts: Dict[str, str] = None,
-        mcp_server_manager: Optional[MCPServerManager] = None,
         tool_manager: Optional[ToolManager] = None,
         mcp_client: Optional[MCPClient] = None,
         tool_executor: Optional[ToolExecutor] = None,
+        mcp_prompt_string: str = "",
     ):
         """Initialize agent with LLM and configuration."""
         super().__init__()
@@ -61,31 +61,59 @@ class BasicMemoryAgent(AgentInterface):
         self._faster_first_response = faster_first_response
         self._segment_method = segment_method
         self._use_mcpp = use_mcpp
-        self._mcp_prompt = mcp_prompt
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
         self._interrupt_handled = False
         self.prompt_mode_flag = False
 
-        self._mcp_server_manager = mcp_server_manager
         self._tool_manager = tool_manager
         self._mcp_client = mcp_client
         self._tool_executor = tool_executor
+        self._mcp_prompt_string = mcp_prompt_string
         self._json_detector = StreamJSONDetector()
 
-        logger.debug(f"Agent received MCPServerManager: {'Yes' if self._mcp_server_manager else 'No'}")
-        logger.debug(f"Agent received ToolManager: {'Yes' if self._tool_manager else 'No'}")
-        logger.debug(f"Agent received MCPClient: {'Yes' if self._mcp_client else 'No'}")
-        logger.debug(f"Agent received ToolExecutor: {'Yes' if self._tool_executor else 'No'}")
-        logger.debug(f"Agent received StreamJSONDetector: {'Yes' if self._json_detector else 'No'}")
+        self._formatted_tools_openai = []
+        self._formatted_tools_claude = []
+        if self._tool_manager:
+            self._formatted_tools_openai = self._tool_manager.get_formatted_tools(
+                "OpenAI"
+            )
+            self._formatted_tools_claude = self._tool_manager.get_formatted_tools(
+                "Claude"
+            )
+            logger.debug(
+                f"Agent received pre-formatted tools - OpenAI: {len(self._formatted_tools_openai)}, Claude: {len(self._formatted_tools_claude)}"
+            )
+        else:
+            logger.debug(
+                "ToolManager not provided, agent will not have pre-formatted tools."
+            )
 
         self._set_llm(llm)
         self.set_system(system if system else self._system)
 
-        if self._use_mcpp and not all([self._mcp_server_manager, self._tool_manager, self._mcp_client, self._tool_executor, self._json_detector]):
-            logger.warning("use_mcpp is True, but some MCP components are missing in the agent. Tool calling might not work as expected.")
-        elif not self._use_mcpp and any([self._mcp_server_manager, self._tool_manager, self._mcp_client, self._tool_executor, self._json_detector]):
-            logger.warning("use_mcpp is False, but some MCP components were passed to the agent.")
+        if self._use_mcpp and not all(
+            [
+                self._tool_manager,
+                self._mcp_client,
+                self._tool_executor,
+                self._json_detector,
+            ]
+        ):
+            logger.warning(
+                "use_mcpp is True, but some MCP components are missing in the agent. Tool calling might not work as expected."
+            )
+        elif not self._use_mcpp and any(
+            [
+                self._tool_manager,
+                self._mcp_client,
+                self._tool_executor,
+                self._json_detector,
+            ]
+        ):
+            logger.warning(
+                "use_mcpp is False, but some MCP components were passed to the agent."
+            )
 
         logger.info("BasicMemoryAgent initialized.")
 
@@ -123,7 +151,9 @@ class BasicMemoryAgent(AgentInterface):
         elif isinstance(message, str):
             text_content = message
         else:
-            logger.warning(f"_add_message received unexpected message type: {type(message)}")
+            logger.warning(
+                f"_add_message received unexpected message type: {type(message)}"
+            )
             text_content = str(message)
 
         if not text_content and role == "assistant":
@@ -237,10 +267,14 @@ class BasicMemoryAgent(AgentInterface):
                     )
                     image_added = True
                 else:
-                    logger.error(f"Invalid image data format: {type(img_data.data)}. Skipping image.")
+                    logger.error(
+                        f"Invalid image data format: {type(img_data.data)}. Skipping image."
+                    )
 
             if not image_added and not text_prompt:
-                logger.warning("User input contains images but none could be processed.")
+                logger.warning(
+                    "User input contains images but none could be processed."
+                )
 
         if user_content:
             user_message = {"role": "user", "content": user_content}
@@ -291,7 +325,9 @@ class BasicMemoryAgent(AgentInterface):
                         current_assistant_message_content[-1]["text"] += text
                 elif event["type"] == "tool_use_complete":
                     tool_call_data = event["data"]
-                    logger.info(f"Tool request: {tool_call_data['name']} (ID: {tool_call_data['id']})")
+                    logger.info(
+                        f"Tool request: {tool_call_data['name']} (ID: {tool_call_data['id']})"
+                    )
                     pending_tool_calls.append(tool_call_data)
                     current_assistant_message_content.append(
                         {
@@ -337,7 +373,9 @@ class BasicMemoryAgent(AgentInterface):
 
                 tool_results_for_llm = []
                 if not self._tool_executor:
-                    logger.error("Claude Tool interaction requested but ToolExecutor is not available.")
+                    logger.error(
+                        "Claude Tool interaction requested but ToolExecutor is not available."
+                    )
                     yield "[Error: ToolExecutor not configured]"
                     return
 
@@ -355,7 +393,9 @@ class BasicMemoryAgent(AgentInterface):
                         else:
                             yield update
                 except StopAsyncIteration:
-                    logger.warning("Tool executor finished without final results marker.")
+                    logger.warning(
+                        "Tool executor finished without final results marker."
+                    )
 
                 if tool_results_for_llm:
                     messages.append({"role": "user", "content": tool_results_for_llm})
@@ -381,10 +421,12 @@ class BasicMemoryAgent(AgentInterface):
 
         while True:
             if self.prompt_mode_flag:
-                if self._mcp_prompt:
-                    current_system_prompt = f"{self._system}\n\n{self._mcp_prompt}"
+                if self._mcp_prompt_string:
+                    current_system_prompt = (
+                        f"{self._system}\n\n{self._mcp_prompt_string}"
+                    )
                 else:
-                    logger.warning("Prompt mode active but mcp_prompt is not configured!")
+                    logger.warning("Prompt mode active but mcp_prompt_string is empty!")
                     current_system_prompt = self._system
                 tools_for_api = None
             else:
@@ -448,7 +490,9 @@ class BasicMemoryAgent(AgentInterface):
                         }
                         break
                     elif event == "__API_NOT_SUPPORT_TOOLS__":
-                        logger.warning(f"LLM {getattr(self._llm, 'model', '')} has no native tool support. Switching to prompt mode.")
+                        logger.warning(
+                            f"LLM {getattr(self._llm, 'model', '')} has no native tool support. Switching to prompt mode."
+                        )
                         self.prompt_mode_flag = True
                         if self._tool_manager:
                             self._tool_manager.disable()
@@ -463,11 +507,15 @@ class BasicMemoryAgent(AgentInterface):
                 logger.info("Processing tools detected via prompt mode JSON.")
                 self._add_message(current_turn_text, "assistant")
 
-                parsed_tools = self._tool_executor.process_tool_from_prompt_json(detected_prompt_json)
+                parsed_tools = self._tool_executor.process_tool_from_prompt_json(
+                    detected_prompt_json
+                )
                 if parsed_tools:
                     tool_results_for_llm = []
                     if not tool_executor_available:
-                        logger.error("Prompt Tool interaction requested but ToolExecutor/MCPClient is not available.")
+                        logger.error(
+                            "Prompt Tool interaction requested but ToolExecutor/MCPClient is not available."
+                        )
                         yield "[Error: ToolExecutor/MCPClient not configured for prompt mode]"
                         continue
 
@@ -485,7 +533,9 @@ class BasicMemoryAgent(AgentInterface):
                             else:
                                 yield update
                     except StopAsyncIteration:
-                        logger.warning("Prompt mode tool executor finished without final results marker.")
+                        logger.warning(
+                            "Prompt mode tool executor finished without final results marker."
+                        )
 
                     if tool_results_for_llm:
                         result_strings = [
@@ -505,7 +555,9 @@ class BasicMemoryAgent(AgentInterface):
 
                 tool_results_for_llm = []
                 if not tool_executor_available:
-                    logger.error("OpenAI Tool interaction requested but ToolExecutor/MCPClient is not available.")
+                    logger.error(
+                        "OpenAI Tool interaction requested but ToolExecutor/MCPClient is not available."
+                    )
                     yield "[Error: ToolExecutor/MCPClient not configured for OpenAI mode]"
                     continue
 
@@ -523,7 +575,9 @@ class BasicMemoryAgent(AgentInterface):
                         else:
                             yield update
                 except StopAsyncIteration:
-                    logger.warning("OpenAI tool executor finished without final results marker.")
+                    logger.warning(
+                        "OpenAI tool executor finished without final results marker."
+                    )
 
                 if tool_results_for_llm:
                     messages.extend(tool_results_for_llm)
@@ -563,26 +617,39 @@ class BasicMemoryAgent(AgentInterface):
             tool_mode = None
             llm_supports_native_tools = False
 
-            if self._use_mcpp and self._tool_manager and self._mcp_server_manager:
+            if self._use_mcpp and self._tool_manager:
+                tools = None
                 if isinstance(self._llm, ClaudeAsyncLLM):
                     tool_mode = "Claude"
-                    tools = self._tool_manager.get_all_tools(mode=tool_mode)
+                    tools = self._formatted_tools_claude
                     llm_supports_native_tools = True
                 elif isinstance(self._llm, OpenAICompatibleAsyncLLM):
                     tool_mode = "OpenAI"
-                    tools = self._tool_manager.get_all_tools(mode=tool_mode)
+                    tools = self._formatted_tools_openai
                     llm_supports_native_tools = True
+                else:
+                    logger.warning(
+                        f"LLM type {type(self._llm)} not explicitly handled for tool mode determination."
+                    )
 
                 if llm_supports_native_tools and not tools:
-                    logger.warning(f"No tools available for '{tool_mode}' mode.")
+                    logger.warning(
+                        f"No tools available/formatted for '{tool_mode}' mode, despite MCP being enabled."
+                    )
 
             if self._use_mcpp and tool_mode == "Claude":
+                logger.debug(
+                    f"Starting Claude tool interaction loop with {len(tools)} tools."
+                )
                 async for output in self._claude_tool_interaction_loop(
                     messages, tools if tools else []
                 ):
                     yield output
                 return
             elif self._use_mcpp and tool_mode == "OpenAI":
+                logger.debug(
+                    f"Starting OpenAI tool interaction loop with {len(tools)} tools."
+                )
                 async for output in self._openai_tool_interaction_loop(
                     messages, tools if tools else []
                 ):

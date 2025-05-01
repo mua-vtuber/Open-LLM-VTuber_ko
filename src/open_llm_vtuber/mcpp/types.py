@@ -5,12 +5,6 @@ from pathlib import Path
 
 
 @dataclass
-class MCPServerPrompt:
-    content: str
-    mtime: Optional[float] = None
-
-
-@dataclass
 class MCPServer:
     """Class representing a MCP Server
 
@@ -27,6 +21,7 @@ class MCPServer:
     args: List[str] = field(default_factory=list)
     env: Optional[Dict[str, str]] = None
     timeout: Optional[timedelta] = timedelta(seconds=30)
+    description: str = "No description available."
 
 
 @dataclass
@@ -44,23 +39,6 @@ class FormattedTool:
     related_server: str
     generic_schema: Optional[Dict[str, Any]] = None
     description: str = "No description available."
-
-
-@dataclass
-class CallableTool:
-    """Class representing a callable tool
-
-    Args:
-        name (str): Name of the tool.
-        server (str): The name of the server that contains the tool.
-        args (Dict[str, Any], optional): Arguments for the tool. Defaults to an empty dictionary.
-        id (Optional[str], optional): ID of the tool. Defaults to None.
-    """
-
-    name: str
-    server: str
-    args: Dict[str, Any] = field(default_factory=dict)
-    id: Optional[str] = None
 
 
 @dataclass

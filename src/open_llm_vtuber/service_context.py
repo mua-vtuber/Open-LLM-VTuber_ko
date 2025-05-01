@@ -16,6 +16,8 @@ from .mcpp.server_manager import MCPServerManager
 from .mcpp.tool_manager import ToolManager
 from .mcpp.client import MCPClient
 from .mcpp.tool_executor import ToolExecutor
+from .mcpp.json_detector import StreamJSONDetector
+from .mcpp.prompt_constructor import PromptConstructor
 
 from .asr.asr_factory import ASRFactory
 from .tts.tts_factory import TTSFactory
@@ -58,11 +60,13 @@ class ServiceContext:
         self.tool_manager: ToolManager | None = None
         self.mcp_client: MCPClient | None = None
         self.tool_executor: ToolExecutor | None = None
+        self.json_detector: StreamJSONDetector | None = None
 
         # the system prompt is a combination of the persona prompt and live2d expression prompt
         self.system_prompt: str = None
 
-        self.mcp_prompt = ""  # Placeholder for MCP prompt
+        # Store the generated MCP prompt string (if MCP enabled)
+        self.mcp_prompt: str = ""
 
         self.history_uid: str = ""  # Add history_uid field
 
@@ -86,43 +90,100 @@ class ServiceContext:
 
     # ==== Initializers
 
-    def _init_mcp_components(self):
-        """Initializes MCP components based on configuration."""
+    async def _init_mcp_components(self):
+        """Initializes MCP components based on configuration, dynamically fetching tool info."""
         use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
-        logger.debug(f"Initializing MCP components, use_mcpp={use_mcpp}")
+        enabled_servers = self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers
+        logger.debug(
+            f"Initializing MCP components: use_mcpp={use_mcpp}, enabled_servers={enabled_servers}"
+        )
 
-        if use_mcpp:
-            # Initialize Managers only if they don't exist (can be shared via load_cache)
-            if not self.mcp_server_manager:
-                self.mcp_server_manager = MCPServerManager()
-                logger.info("MCPServerManager initialized.")
-            if not self.tool_manager:
-                self.tool_manager = ToolManager()
-                logger.info("ToolManager initialized.")
+        # Reset MCP components first
+        self.mcp_server_manager = None
+        self.tool_manager = None
+        self.mcp_client = None
+        self.tool_executor = None
+        self.json_detector = None
+        self.mcp_prompt = ""
 
-            # Initialize Client and Executor (should be session-specific)
+        if use_mcpp and enabled_servers:
+            # 1. Initialize ServerManager (can be shared via cache, but init here if needed)
+            #    If loaded from cache, this instance will be overwritten but that's okay if it points to the same shared manager.
+            #    If not loaded from cache, a new one is created.
+            self.mcp_server_manager = MCPServerManager()
+            logger.info("MCPServerManager initialized or referenced.")
+
+            # 2. Use PromptConstructor temporarily to fetch and format
+            try:
+                prompt_constructor = PromptConstructor(
+                    server_manager=self.mcp_server_manager
+                )
+                (
+                    mcp_prompt_string,
+                    openai_tools,
+                    claude_tools,
+                ) = await prompt_constructor.run(enabled_servers)
+                # Store the generated prompt string
+                self.mcp_prompt = mcp_prompt_string
+                logger.info(
+                    f"Dynamically generated MCP prompt string (length: {len(self.mcp_prompt)})."
+                )
+                logger.info(
+                    f"Dynamically formatted tools - OpenAI: {len(openai_tools)}, Claude: {len(claude_tools)}."
+                )
+
+                # 3. Initialize ToolManager with the fetched formats
+                #    ToolManager instance itself isn't strictly needed if MC generates lists directly,
+                #    but keeping it maintains structure and the enable/disable flag.
+                #    Pass the raw tools dict from MC if needed for get_tool.
+                _, raw_tools_dict = await prompt_constructor.get_server_and_tool_info(
+                    enabled_servers
+                )  # Reuse MC to get raw dict
+                self.tool_manager = ToolManager(
+                    formatted_tools_openai=openai_tools,
+                    formatted_tools_claude=claude_tools,
+                    initial_tools_dict=raw_tools_dict,
+                )
+                logger.info("ToolManager initialized with dynamically fetched tools.")
+
+            except Exception as e:
+                logger.error(
+                    f"Failed during dynamic MCP tool construction: {e}", exc_info=True
+                )
+                # Ensure dependent components are not created if construction fails
+                self.tool_manager = None
+                self.mcp_prompt = "[Error constructing MCP tools/prompt]"
+
+            # 4. Initialize Client and Executor (session-specific)
             if self.mcp_server_manager:
                 self.mcp_client = MCPClient(self.mcp_server_manager)
                 logger.info("MCPClient initialized for this session.")
             else:
-                logger.error("MCP enabled but MCPServerManager failed to initialize. MCPClient not created.")
-                self.mcp_client = None # Ensure it's None if manager failed
+                logger.error(
+                    "MCP enabled but MCPServerManager not available. MCPClient not created."
+                )
+                self.mcp_client = None  # Ensure it's None
 
             if self.mcp_client and self.tool_manager:
-                 # TODO: fix this
                 self.tool_executor = ToolExecutor(self.mcp_client, self.tool_manager)
                 logger.info("ToolExecutor initialized for this session.")
             else:
-                 logger.warning("MCPClient or ToolManager not available. ToolExecutor not created.")
-                 self.tool_executor = None # Ensure it's None
+                logger.warning(
+                    "MCPClient or ToolManager not available. ToolExecutor not created."
+                )
+                self.tool_executor = None  # Ensure it's None
 
+            self.json_detector = StreamJSONDetector()
+            logger.info("StreamJSONDetector initialized for this session.")
+
+        elif use_mcpp and not enabled_servers:
+            logger.warning(
+                "use_mcpp is True, but mcp_enabled_servers list is empty. MCP components not initialized."
+            )
         else:
-            # Ensure all MCP components are None if use_mcpp is False
-            self.mcp_server_manager = None
-            self.tool_manager = None
-            self.mcp_client = None
-            self.tool_executor = None
-            logger.debug("MCP components set to None as use_mcpp is False.")
+            logger.debug(
+                "MCP components not initialized (use_mcpp is False or no enabled servers)."
+            )
 
     async def close(self):
         """Clean up resources, especially the MCPClient."""
@@ -131,8 +192,8 @@ class ServiceContext:
             logger.info(f"Closing MCPClient for context instance {id(self)}...")
             await self.mcp_client.aclose()
             self.mcp_client = None
-        if self.agent_engine and hasattr(self.agent_engine, 'close'):
-             await self.agent_engine.close() # Ensure agent resources are also closed
+        if self.agent_engine and hasattr(self.agent_engine, "close"):
+            await self.agent_engine.close()  # Ensure agent resources are also closed
         logger.info("ServiceContext closed.")
 
     def load_cache(
@@ -208,8 +269,9 @@ class ServiceContext:
         # init vad from character config
         self.init_vad(config.character_config.vad_config)
 
-        # Initialize MCP Components before initializing Agent
-        self._init_mcp_components()
+        # Initialize MCP Components *before* initializing Agent
+        # This now dynamically fetches tools based on config
+        await self._init_mcp_components()
 
         # init agent from character config
         await self.init_agent(
@@ -300,10 +362,13 @@ class ServiceContext:
                 character_avatar=avatar,
                 system_config=self.system_config.model_dump(),
                 # Pass MCP components from ServiceContext
-                mcp_server_manager=self.mcp_server_manager,
+                # Agent now receives the ToolManager instance and the generated prompt string
                 tool_manager=self.tool_manager,
                 mcp_client=self.mcp_client,
                 tool_executor=self.tool_executor,
+                json_detector=self.json_detector,
+                # Pass the dynamically generated MCP prompt string
+                mcp_prompt_string=self.mcp_prompt,
             )
 
             logger.debug(f"Agent choice: {agent_config.conversation_agent_choice}")
@@ -372,40 +437,7 @@ class ServiceContext:
                     "[<insert_emomap_keys>]", self.live2d_model.emo_str
                 )
 
-            # Note: Now wether to use MCP prompt or not is up to the agent
-            # Here we just construct it and ready to pass it to the agent
             if prompt_name == "mcp_prompt":
-                use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
-                if not use_mcpp:
-                    logger.debug(
-                        "MCP prompt is not constructed because use_mcpp is False"
-                    )
-                    self.mcp_prompt = None
-                    continue
-
-                logger.info("MCP Plus is enabled, constructing MCP prompt...")
-
-                from .mcpp.mixed_constructor import MixedConstructor
-
-                mc = MixedConstructor()
-                await mc.run()
-                if mc.prompts == {}:
-                    logger.warning(
-                        "MCP Servers prompt is empty while 'use_mcpp' is True"
-                    )
-                    logger.warning("This means MCP won't be running in expected way.")
-                    self.mcp_prompt = ""
-                    continue
-                prompt = ""
-
-                for server_prompt in mc.prompts.values():
-                    prompt += server_prompt["content"]
-
-                self.mcp_prompt = prompt_content.replace(
-                    "[<insert_mcp_servers_with_tools>]", prompt
-                )
-
-                logger.info(f"Constructed MCP prompt.")
                 continue
 
             persona_prompt += prompt_content

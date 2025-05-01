@@ -54,13 +54,10 @@ class TTSEngine(TTSInterface):
 
         try:
             # Initialize OpenAI client
-            # Initialize OpenAI client to connect to the specified base_url
             self.client = OpenAI(api_key=api_key, base_url=base_url, **kwargs)
             logger.info(
                 f"OpenAI-compatible TTS Engine initialized, targeting endpoint: {base_url}"
             )
-            # Optional: Add a check here to list models or voices if needed
-            # self.client.models.list() # Example check
         except Exception as e:
             logger.critical(f"Failed to initialize OpenAI client: {e}")
             self.client = None  # Ensure client is None if init fails
@@ -82,11 +79,8 @@ class TTSEngine(TTSInterface):
             return None
 
         # Use the configured file extension
-        # self.file_extension = response_format # Removed: Use configured extension
         file_name = self.generate_cache_file_name(file_name_no_ext, self.file_extension)
-        speech_file_path = Path(
-            file_name
-        )  # generate_cache_file_name likely includes the cache dir already
+        speech_file_path = Path(file_name)
 
         try:
             logger.debug(

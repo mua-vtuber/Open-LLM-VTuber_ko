@@ -21,7 +21,6 @@ class AgentFactory:
         agent_settings: dict,
         llm_configs: dict,
         system_prompt: str,
-        mcp_prompt=None,
         live2d_model=None,
         tts_preprocessor_config=None,
         **kwargs,
@@ -65,10 +64,11 @@ class AgentFactory:
 
             tool_prompts = kwargs.get("system_config", {}).get("tool_prompts", {})
 
-            mcp_server_manager: Optional[MCPServerManager] = kwargs.get("mcp_server_manager")
+            # Extract MCP components/data needed by BasicMemoryAgent from kwargs
             tool_manager: Optional[ToolManager] = kwargs.get("tool_manager")
             mcp_client: Optional[MCPClient] = kwargs.get("mcp_client")
             tool_executor: Optional[ToolExecutor] = kwargs.get("tool_executor")
+            mcp_prompt_string: str = kwargs.get("mcp_prompt_string", "")
 
             # Create the agent with the LLM and live2d_model
             return BasicMemoryAgent(
@@ -81,13 +81,12 @@ class AgentFactory:
                 ),
                 segment_method=basic_memory_settings.get("segment_method", "pysbd"),
                 use_mcpp=basic_memory_settings.get("use_mcpp", False),
-                mcp_prompt=mcp_prompt,
                 interrupt_method=interrupt_method,
                 tool_prompts=tool_prompts,
-                mcp_server_manager=mcp_server_manager,
                 tool_manager=tool_manager,
                 mcp_client=mcp_client,
                 tool_executor=tool_executor,
+                mcp_prompt_string=mcp_prompt_string,
             )
 
         elif conversation_agent_choice == "mem0_agent":

@@ -1,13 +1,31 @@
 import json
 import datetime
 from loguru import logger
-from typing import Dict, Any, List, Literal, Union, Optional, AsyncIterator, Callable, Awaitable
+from typing import (
+    Dict,
+    Any,
+    List,
+    Literal,
+    Union,
+    Optional,
+    AsyncIterator,
+    Callable,
+    Awaitable,
+)
 
 from .types import ToolCallObject
 from .client import MCPClient
 from .tool_manager import ToolManager
+
+
 class ToolExecutor:
-    def __init__(self, mcp_client: MCPClient, tool_manager: ToolManager, client_uid: str = None, websocket_send: Callable[[str], Awaitable[None]] = None):
+    def __init__(
+        self,
+        mcp_client: MCPClient,
+        tool_manager: ToolManager,
+        client_uid: str = None,
+        websocket_send: Callable[[str], Awaitable[None]] = None,
+    ):
         self._mcp_client = mcp_client
         self._tool_manager = tool_manager
         self._client_uid = client_uid

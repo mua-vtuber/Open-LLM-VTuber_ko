@@ -71,8 +71,9 @@ class MCPClient:
             return session
         except Exception as e:
             logger.exception(f"MCPC: Failed to connect to server '{server_name}': {e}")
-            raise RuntimeError(f"MCPC: Failed to connect to server '{server_name}'.") from e
-
+            raise RuntimeError(
+                f"MCPC: Failed to connect to server '{server_name}'."
+            ) from e
 
     async def list_tools(self, server_name: str) -> List[Tool]:
         """List all available tools on the specified server."""
@@ -84,7 +85,7 @@ class MCPClient:
         self, server_name: str, tool_name: str, tool_args: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Call a tool on the specified server.
-        
+
         Returns:
             Dict containing the result text and any metadata from the tool response.
         """
@@ -94,24 +95,31 @@ class MCPClient:
         response = await session.call_tool(tool_name, tool_args)
 
         if response.isError:
-            error_text = response.content[0].text if response.content else "Unknown server error"
-            logger.error(
-                f"MCPC: Error calling tool '{tool_name}': {error_text}"
+            error_text = (
+                response.content[0].text if response.content else "Unknown server error"
             )
-            raise ValueError(f"MCPC: Error from server '{server_name}' executing tool '{tool_name}': {error_text}")
+            logger.error(f"MCPC: Error calling tool '{tool_name}': {error_text}")
+            raise ValueError(
+                f"MCPC: Error from server '{server_name}' executing tool '{tool_name}': {error_text}"
+            )
 
-        result_text = response.content[0].text if response.content and hasattr(response.content[0], 'text') else ""
+        result_text = (
+            response.content[0].text
+            if response.content and hasattr(response.content[0], "text")
+            else ""
+        )
         if not result_text and response.content:
-             logger.warning(f"MCPC: Tool '{tool_name}' returned non-text content. Returning empty string.")
+            logger.warning(
+                f"MCPC: Tool '{tool_name}' returned non-text content. Returning empty string."
+            )
         elif not response.content:
-             logger.warning(f"MCPC: Tool '{tool_name}' returned no content. Returning empty string.")
+            logger.warning(
+                f"MCPC: Tool '{tool_name}' returned no content. Returning empty string."
+            )
 
         # Create result object with content and metadata
-        result = {
-            "content": result_text,
-            "metadata": getattr(response, "metadata", {})
-        }
-        
+        result = {"content": result_text, "metadata": getattr(response, "metadata", {})}
+
         # Add content items to result if available
         if response.content and len(response.content) > 0:
             result["content_items"] = []
@@ -125,12 +133,14 @@ class MCPClient:
 
         # For backwards compatibility, make the result string-castable
         result["__str__"] = result_text
-        
+
         return result
 
     async def aclose(self) -> None:
         """Closes all active server connections."""
-        logger.info(f"MCPC: Closing client instance and {len(self.active_sessions)} active connections...")
+        logger.info(
+            f"MCPC: Closing client instance and {len(self.active_sessions)} active connections..."
+        )
         await self.exit_stack.aclose()
         self.active_sessions.clear()
         self.exit_stack = AsyncExitStack()

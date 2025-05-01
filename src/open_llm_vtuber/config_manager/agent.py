@@ -4,7 +4,7 @@ different types of agents.
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, ClassVar, Optional, Literal
+from typing import Dict, ClassVar, Optional, Literal, List
 from .i18n import I18nMixin, Description
 from .stateless_llm import StatelessLLMConfigs
 
@@ -32,6 +32,7 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
     faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
     use_mcpp: Optional[bool] = Field(False, alias="use_mcpp")
+    mcp_enabled_servers: Optional[List[str]] = Field([], alias="mcp_enabled_servers")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "llm_provider": Description(
@@ -49,6 +50,10 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
         "use_mcpp": Description(
             en="Whether to use MCP (Model Context Protocol) for the agent (default: True)",
             zh="是否使用为智能体启用 MCP (Model Context Protocol) Plus（默认：False）",
+        ),
+        "mcp_enabled_servers": Description(
+            en="List of MCP servers to enable for the agent",
+            zh="为智能体启用 MCP 服务器列表",
         ),
     }
 

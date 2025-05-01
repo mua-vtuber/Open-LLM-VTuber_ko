@@ -21,8 +21,12 @@ class MCPServerManager:
         try:
             config_path = validate_file(config_path, ".json")
         except ValueError:
-            logger.error(f"MCPSM: File '{config_path}' does not exist, or is not a json file.")
-            raise ValueError(f"MCPSM: File '{config_path}' does not exist, or is not a json file.")
+            logger.error(
+                f"MCPSM: File '{config_path}' does not exist, or is not a json file."
+            )
+            raise ValueError(
+                f"MCPSM: File '{config_path}' does not exist, or is not a json file."
+            )
 
         self.config: Dict[str, Union[str, dict]] = json.loads(
             config_path.read_text(encoding="utf-8")
@@ -50,22 +54,30 @@ class MCPServerManager:
 
         for server_name, server_details in servers_config.items():
             if "command" not in server_details or "args" not in server_details:
-                logger.warning(f"MCPSM: Invalid server details for '{server_name}'. Ignoring.")
+                logger.warning(
+                    f"MCPSM: Invalid server details for '{server_name}'. Ignoring."
+                )
                 continue
 
             command = server_details["command"]
             if command == "npx":
                 if not self.npx_available:
-                    logger.warning(f"MCPSM: npx is not available. Cannot load server '{server_name}'.")
+                    logger.warning(
+                        f"MCPSM: npx is not available. Cannot load server '{server_name}'."
+                    )
                     continue
             elif command == "uvx":
                 if not self.uvx_available:
-                    logger.warning(f"MCPSM: uvx is not available. Cannot load server '{server_name}'.")
+                    logger.warning(
+                        f"MCPSM: uvx is not available. Cannot load server '{server_name}'."
+                    )
                     continue
-                
+
             elif command == "node":
                 if not self.node_available:
-                    logger.warning(f"MCPSM: node is not available. Cannot load server '{server_name}'.")
+                    logger.warning(
+                        f"MCPSM: node is not available. Cannot load server '{server_name}'."
+                    )
                     continue
 
             self.servers[server_name] = MCPServer(
