@@ -111,7 +111,7 @@ class WebSocketHandler:
             Exception: If initialization fails
         """
         try:
-            session_service_context = await self._init_service_context()
+            session_service_context = await self._init_service_context(websocket.send_text, client_uid)
 
             await self._store_client_data(
                 websocket, client_uid, session_service_context
@@ -173,7 +173,7 @@ class WebSocketHandler:
         # Start microphone
         await websocket.send_text(json.dumps({"type": "control", "text": "start-mic"}))
 
-    async def _init_service_context(self) -> ServiceContext:
+    async def _init_service_context(self, send_text: Callable, client_uid: str) -> ServiceContext:
         """Initialize service context for a new session by cloning the default context"""
         session_service_context = ServiceContext()
         session_service_context.load_cache(
@@ -192,6 +192,8 @@ class WebSocketHandler:
             translate_engine=self.default_context_cache.translate_engine,
             mcp_server_registery=self.default_context_cache.mcp_server_registery,
             prompt_constructor=self.default_context_cache.prompt_constructor,
+            send_text=send_text,
+            client_uid=client_uid,
         )
         return session_service_context
 

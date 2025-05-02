@@ -1,6 +1,6 @@
 import os
 import json
-
+from typing import Callable
 from loguru import logger
 from fastapi import WebSocket
 
@@ -61,7 +61,6 @@ class ServiceContext:
         self.tool_manager: ToolManager | None = None
         self.mcp_client: MCPClient | None = None
         self.tool_executor: ToolExecutor | None = None
-        self.json_detector: StreamJSONDetector | None = None
 
         # the system prompt is a combination of the persona prompt and live2d expression prompt
         self.system_prompt: str = None
@@ -70,6 +69,9 @@ class ServiceContext:
         self.mcp_prompt: str = ""
 
         self.history_uid: str = ""  # Add history_uid field
+        
+        self.send_text: Callable = None
+        self.client_uid: str = None
 
     def __str__(self):
         return (
@@ -106,13 +108,11 @@ class ServiceContext:
         self.mcp_prompt = ""
 
         if use_mcpp and enabled_servers:
-            # 1. Initialize ServerManager (can be shared via cache, but init here if needed)
-            # If loaded from cache, this instance will be overwritten but that's okay if it points to the same shared manager.
-            # If not loaded from cache, a new one is created.
+            # 1. Initialize ServerRegistry
             self.mcp_server_registery = ServerRegistry()
             logger.info("ServerRegistry initialized or referenced.")
 
-            # 2. Use PromptConstructor temporarily to fetch and format
+            # 2. Use PromptConstructor to get the MCP prompt and tools
             if not self.prompt_constructor:
                 logger.error("PromptConstructor not initialized before calling _init_mcp_components.")
                 self.mcp_prompt = "[Error: PromptConstructor not initialized]"
@@ -133,7 +133,7 @@ class ServiceContext:
                     f"Dynamically formatted tools - OpenAI: {len(openai_tools)}, Claude: {len(claude_tools)}."
                 )
 
-                # 3. Initialize ToolManager with the fetched formats
+                # 3. Initialize ToolManager with the fetched formatted tools
                
                 _, raw_tools_dict = await self.prompt_constructor.get_server_and_tool_info(
                     enabled_servers
@@ -153,9 +153,9 @@ class ServiceContext:
                 self.tool_manager = None
                 self.mcp_prompt = "[Error constructing MCP tools/prompt]"
 
-            # 4. Initialize Client and Executor (session-specific)
+            # 4. Initialize MCPClient
             if self.mcp_server_registery:
-                self.mcp_client = MCPClient(self.mcp_server_registery)
+                self.mcp_client = MCPClient(self.mcp_server_registery, self.send_text, self.client_uid)
                 logger.info("MCPClient initialized for this session.")
             else:
                 logger.error(
@@ -163,6 +163,7 @@ class ServiceContext:
                 )
                 self.mcp_client = None  # Ensure it's None
 
+            # 5. Initialize ToolExecutor
             if self.mcp_client and self.tool_manager:
                 self.tool_executor = ToolExecutor(self.mcp_client, self.tool_manager)
                 logger.info("ToolExecutor initialized for this session.")
@@ -172,7 +173,6 @@ class ServiceContext:
                 )
                 self.tool_executor = None  # Ensure it's None
 
-            self.json_detector = StreamJSONDetector()
             logger.info("StreamJSONDetector initialized for this session.")
 
         elif use_mcpp and not enabled_servers:
@@ -208,6 +208,8 @@ class ServiceContext:
         translate_engine: TranslateInterface | None,
         mcp_server_registery: ServerRegistry | None = None,
         prompt_constructor: PromptConstructor | None = None,
+        send_text: Callable = None,
+        client_uid: str = None,
     ) -> None:
         """
         Load the ServiceContext with the reference of the provided instances.
@@ -230,8 +232,10 @@ class ServiceContext:
         # Load potentially shared components by reference
         self.mcp_server_registery = mcp_server_registery
         self.prompt_constructor = prompt_constructor
+        self.send_text = send_text
+        self.client_uid = client_uid
 
-        # Initialize session-specific MCP components (Client, Executor, Detector)
+        # Initialize session-specific MCP components
         self._init_mcp_components(self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
 
         logger.debug(f"Loaded service context with cache: {character_config}")

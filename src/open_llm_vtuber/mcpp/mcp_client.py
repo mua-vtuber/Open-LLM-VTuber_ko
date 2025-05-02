@@ -1,7 +1,7 @@
 """MCP Client for Open-LLM-Vtuber."""
-
+import json
 from contextlib import AsyncExitStack
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Callable
 from loguru import logger
 from datetime import timedelta
 
@@ -10,7 +10,7 @@ from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
 from .server_registry import ServerRegistry
-
+from ..message_handler import message_handler
 
 DEFAULT_TIMEOUT = timedelta(seconds=30)
 
@@ -20,11 +20,13 @@ class MCPClient:
     Manages persistent connections to multiple MCP servers.
     """
 
-    def __init__(self, server_registery: ServerRegistry) -> None:
+    def __init__(self, server_registery: ServerRegistry, send_text: Callable = None, client_uid: str = None) -> None:
         """Initialize the MCP Client."""
         self.exit_stack: AsyncExitStack = AsyncExitStack()
         self.active_sessions: Dict[str, ClientSession] = {}
         self._list_tools_cache: Dict[str, List[Tool]] = {}  # Cache for list_tools
+        self._send_text: Callable = send_text
+        self._client_uid: str = client_uid
 
         if isinstance(server_registery, ServerRegistry):
             self.server_registery = server_registery
@@ -100,10 +102,15 @@ class MCPClient:
         Returns:
             Dict containing the result text and any metadata from the tool response.
         """
-        session = await self._ensure_server_running_and_get_session(server_name)
-        logger.info(f"MCPC: Calling tool '{tool_name}' on server '{server_name}'...")
-
-        response = await session.call_tool(tool_name, tool_args)
+        
+        if server_name.startswith("remote:"):
+            # Make sure send_text is not None
+            self._send_text(json.dumps({"type": "operation", "operation_text": ""}))
+            # TODO: Implement remote server call
+        else:
+            session = await self._ensure_server_running_and_get_session(server_name)
+            logger.info(f"MCPC: Calling tool '{tool_name}' on server '{server_name}'...")
+            response = await session.call_tool(tool_name, tool_args)
 
         if response.isError:
             error_text = (

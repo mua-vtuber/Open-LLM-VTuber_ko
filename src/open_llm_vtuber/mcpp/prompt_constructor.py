@@ -162,16 +162,29 @@ class PromptConstructor:
             # Format for OpenAI
             openai_function_params = {
                 "type": "object",
-                "properties": {
-                    param_name: {
-                        "type": param_info.get("type", "string"),
-                        "description": param_info.get("description")
-                        or param_info.get("title", "No description provided."),
-                    }
-                    for param_name, param_info in properties.items()
-                },
+                "properties": {},
                 "required": required_params,
+                "additionalProperties": False # Disallow extra properties
             }
+            for param_name, param_info in properties.items():
+                param_schema = {
+                    "type": param_info.get("type", "string"),
+                    "description": param_info.get("description")
+                    or param_info.get("title", "No description provided."),
+                }
+                # Add enum if present
+                if "enum" in param_info:
+                    param_schema["enum"] = param_info["enum"]
+                # Handle array type correctly
+                if param_schema["type"] == "array" and "items" in param_info:
+                    param_schema["items"] = param_info["items"]
+                elif param_schema["type"] == "array" and "items" not in param_info:
+                     logger.warning(f"MC: Array parameter '{param_name}' in tool '{tool_name}' is missing 'items' definition. Assuming items are strings.")
+                     param_schema["items"] = {"type": "string"} # Default or log warning
+
+                openai_function_params["properties"][param_name] = param_schema
+
+
             openai_tools.append(
                 {
                     "type": "function",

@@ -7,10 +7,7 @@ from typing import (
     List,
     Literal,
     Union,
-    Optional,
     AsyncIterator,
-    Callable,
-    Awaitable,
 )
 
 from .types import ToolCallObject
@@ -23,13 +20,9 @@ class ToolExecutor:
         self,
         mcp_client: MCPClient,
         tool_manager: ToolManager,
-        client_uid: str = None,
-        websocket_send: Callable[[str], Awaitable[None]] = None,
     ):
         self._mcp_client = mcp_client
         self._tool_manager = tool_manager
-        self._client_uid = client_uid
-        self._websocket_send = websocket_send
 
     def parse_tool_call(self, call: Union[Dict[str, Any], ToolCallObject]) -> tuple:
         """Parse tool call from different formats.
@@ -41,7 +34,7 @@ class ToolExecutor:
         tool_id: str = ""
         tool_input: Any = None
         is_error: bool = False
-        result_content: str = ""
+        result_content: str | dict = ""
         parse_error: bool = False
 
         if isinstance(call, ToolCallObject):
@@ -91,20 +84,38 @@ class ToolExecutor:
     ) -> Dict[str, Any] | None:
         """Format tool result for LLM API."""
         if caller_mode == "Claude":
+            # Claude expects content as a list of blocks or a simple string
+            # We will return a list if there are multiple items or non-text items
+            if isinstance(result_content, list):
+                # Already formatted as list of blocks
+                content_to_send = result_content
+            elif isinstance(result_content, str) and result_content:
+                 # Simple text result
+                content_to_send = result_content
+            elif not result_content and is_error:
+                 # Error case, send error message as string
+                 content_to_send = "Error occurred during tool execution."
+            else:
+                 # Fallback for empty or unexpected content
+                 content_to_send = ""
+
             return {
                 "type": "tool_result",
                 "tool_use_id": tool_id,
-                "content": result_content,
+                "content": content_to_send,
                 "is_error": is_error,
             }
         elif caller_mode == "OpenAI":
-            return {"role": "tool", "tool_call_id": tool_id, "content": result_content}
+            # OpenAI expects content as a string
+            return {"role": "tool", "tool_call_id": tool_id, "content": str(result_content)}
         elif caller_mode == "Prompt":
+            # Prompt mode also expects a string content for now
             return {
                 "tool_id": tool_id,
-                "content": result_content,
+                "content": str(result_content),
                 "is_error": is_error,
             }
+        return None
 
     def process_tool_from_prompt_json(
         self, data: List[Dict[str, Any]]
@@ -155,12 +166,14 @@ class ToolExecutor:
                 result_content,
                 parse_error,
             ) = self.parse_tool_call(call)
-
+            
+            logger.info(f"Executing tool: {call}")
+            
             if parse_error:
                 logger.warning(
                     f"Skipping tool call due to parsing error: {result_content}"
                 )
-                yield {
+                status_update = {
                     "type": "tool_call_status",
                     "tool_id": tool_id
                     or f"parse_error_{datetime.datetime.now(datetime.timezone.utc).isoformat()}",
@@ -172,49 +185,99 @@ class ToolExecutor:
                     ).isoformat()
                     + "Z",
                 }
-            else:
-                yield {
-                    "type": "tool_call_status",
-                    "tool_id": tool_id,
-                    "tool_name": tool_name,
-                    "status": "running",
-                    "content": f"Input: {json.dumps(tool_input)}",
-                    "timestamp": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat()
-                    + "Z",
-                }
-
-                is_error, result_content, metadata = await self.run_single_tool(
-                    tool_name, tool_id, tool_input
-                )
-
-                # Prepare tool call status update
-                status_update = {
-                    "type": "tool_call_status",
-                    "tool_id": tool_id,
-                    "tool_name": tool_name,
-                    "status": "error" if is_error else "completed",
-                    "content": result_content,
-                    "timestamp": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat()
-                    + "Z",
-                }
-
-                # For stagehand_navigate tool, include browser view links if available
-                if tool_name == "stagehand_navigate" and not is_error:
-                    live_view_data = metadata.get("liveViewData", {})
-                    if live_view_data:
-                        logger.info(
-                            f"Found live view data for stagehand_navigate: {live_view_data}"
-                        )
-                        status_update["browser_view"] = live_view_data
-
                 yield status_update
+                # Even on parse error, we might need to format a result for the LLM
+                # Use dummy values or the error message
+                formatted_result = self.format_tool_result(
+                     caller_mode,
+                     tool_id or f"parse_error_{datetime.datetime.now(datetime.timezone.utc).isoformat()}",
+                     result_content,
+                     True # is_error
+                 )
+                if formatted_result:
+                    tool_results_for_llm.append(formatted_result)
+                continue # Skip execution logic for this call
 
+            # Yield 'running' status before execution
+            yield {
+                "type": "tool_call_status",
+                "tool_id": tool_id,
+                "tool_name": tool_name,
+                "status": "running",
+                "content": f"Input: {json.dumps(tool_input)}",
+                "timestamp": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat()
+                + "Z",
+            }
+
+            # Execute the tool
+            (
+                is_error,
+                text_content,
+                metadata,
+                content_items,
+            ) = await self.run_single_tool(tool_name, tool_id, tool_input)
+
+            # Determine content for status update and LLM result format
+            status_content = text_content # Default to text content
+            llm_formatted_content = text_content # Default to text content for LLM
+
+            has_image = False
+            if content_items:
+                image_items = [item for item in content_items if item.get('type') == 'image']
+                if image_items:
+                    has_image = True
+                    num_images = len(image_items)
+                    status_content = f"{text_content}\n[Tool returned {num_images} image(s)]".strip()
+
+                    if caller_mode == "Claude":
+                        # Format for Claude: list of blocks
+                        claude_blocks = []
+                        if text_content:
+                            claude_blocks.append({"type": "text", "text": text_content})
+                        for item in content_items:
+                             if item.get('type') == 'image' and 'data' in item and 'mimeType' in item:
+                                 claude_blocks.append({
+                                     "type": "image",
+                                     "source": {
+                                         "type": "base64",
+                                         "media_type": item['mimeType'],
+                                         "data": item['data'],
+                                     }
+                                 })
+                             # Add other non-text types here
+                        llm_formatted_content = claude_blocks if claude_blocks else "" # Use blocks or empty string
+                    elif caller_mode in ["OpenAI", "Prompt"]:
+                        llm_formatted_content = status_content
+
+            # Prepare and yield tool call status update
+            status_update = {
+                "type": "tool_call_status",
+                "tool_id": tool_id,
+                "tool_name": tool_name,
+                "status": "error" if is_error else "completed",
+                "content": status_content if not is_error else f"Error: {text_content}", # Use descriptive content or error message
+                "timestamp": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat()
+                + "Z",
+            }
+
+            # For stagehand_navigate tool, include browser view links if available
+            if tool_name == "stagehand_navigate" and not is_error:
+                live_view_data = metadata.get("liveViewData", {})
+                if live_view_data:
+                    logger.info(
+                        f"Found live view data for stagehand_navigate: {live_view_data}"
+                    )
+                    status_update["browser_view"] = live_view_data
+
+            yield status_update
+
+            # Format result for LLM and add to list
             formatted_result = self.format_tool_result(
-                caller_mode, tool_id, result_content, is_error
+                caller_mode, tool_id, llm_formatted_content, is_error
             )
             if formatted_result:
                 tool_results_for_llm.append(formatted_result)
@@ -226,48 +289,68 @@ class ToolExecutor:
 
     async def run_single_tool(
         self, tool_name: str, tool_id: str, tool_input: Any
-    ) -> tuple[bool, str, Dict[str, Any]]:
-        """Run a single tool using MCPClient."""
+    ) -> tuple[bool, str, Dict[str, Any], List[Dict[str, Any]]]:
+        """Run a single tool using MCPClient.
+
+        Returns:
+            tuple: (is_error, text_content, metadata, content_items)
+        """
         logger.info(f"Executing tool: {tool_name} (ID: {tool_id})")
         tool_info = self._tool_manager.get_tool(tool_name)
+
         is_error = False
-        result_content = ""
+        text_content = ""
         metadata = {}
+        content_items = [] # Initialize content_items
 
         if tool_input is None:
             tool_input = {}
 
         if not tool_info:
             logger.error(f"Tool '{tool_name}' not found in ToolManager.")
-            result_content = f"Error: Tool '{tool_name}' is not available."
+            text_content = f"Error: Tool '{tool_name}' is not available."
             is_error = True
         elif not tool_info.related_server:
             logger.error(f"Tool '{tool_name}' does not have a related server defined.")
-            result_content = f"Error: Configuration error for tool '{tool_name}'. No server specified."
+            text_content = f"Error: Configuration error for tool '{tool_name}'. No server specified."
             is_error = True
         else:
             try:
-                result = await self._mcp_client.call_tool(
+                # Call MCPClient which returns a dict including 'content', 'metadata', 'content_items'
+                result_dict = await self._mcp_client.call_tool(
                     server_name=tool_info.related_server,
                     tool_name=tool_name,
                     tool_args=tool_input,
                 )
 
-                # Handle result as dictionary or string for backwards compatibility
-                if isinstance(result, dict):
-                    result_content = result.get("content", "")
-                    metadata = result.get("metadata", {})
-                else:
-                    result_content = str(result)
+                # Extract information from the result dictionary
+                text_content = result_dict.get("content", "") # Default text content
+                metadata = result_dict.get("metadata", {})
+                content_items = result_dict.get("content_items", []) # Get content items
+
+                # Log details if content items are present
+                if content_items:
+                    logger.info(f"Content items from tool '{tool_name}':")
+                    for item in content_items:
+                        item_type = item.get('type', 'unknown')
+                        logger.info(f"  Type: {item_type}")
+                        # Log keys, but maybe not large data like base64 image
+                        for key, value in item.items():
+                             if key != 'type':
+                                 log_value = f"(length: {len(value)})" if isinstance(value, str) and len(value) > 100 else value
+                                 logger.info(f"    {key}: {log_value}")
 
                 logger.info(f"Tool '{tool_name}' executed successfully.")
+
             except (ValueError, RuntimeError, ConnectionError) as e:
                 logger.exception(f"Error executing tool '{tool_name}': {e}")
-                result_content = f"Error executing tool '{tool_name}': {e}"
+                text_content = f"Error executing tool '{tool_name}': {e}"
                 is_error = True
+                content_items = [] # Ensure content_items is empty on error
             except Exception as e:
                 logger.exception(f"Unexpected error executing tool '{tool_name}': {e}")
-                result_content = f"Error executing tool '{tool_name}': {e}"
+                text_content = f"Error executing tool '{tool_name}': {e}"
                 is_error = True
+                content_items = [] # Ensure content_items is empty on error
 
-        return is_error, result_content, metadata
+        return is_error, text_content, metadata, content_items
