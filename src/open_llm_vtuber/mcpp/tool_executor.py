@@ -141,35 +141,9 @@ class ToolExecutor:
         self,
         tool_calls: Union[List[Dict[str, Any]], List[ToolCallObject]],
         caller_mode: Literal["Claude", "OpenAI", "Prompt"],
-        mcp_client: Optional[MCPClient] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """Execute tools and yield status updates."""
         tool_results_for_llm = []
-
-        if not mcp_client:
-            logger.error("MCP Client not provided for tool execution.")
-            for i, call in enumerate(tool_calls):
-                tool_id = getattr(
-                    call,
-                    "id",
-                    call.get(
-                        "id",
-                        f"error_{i}_{datetime.datetime.now(datetime.timezone.utc).isoformat()}",
-                    ),
-                )
-                tool_name = getattr(call, "function.name", call.get("name", "Unknown"))
-                error_content = "Error: Tool execution environment not configured."
-                yield {
-                    "type": "tool_call_status",
-                    "tool_id": tool_id,
-                    "tool_name": tool_name,
-                    "status": "error",
-                    "content": error_content,
-                    "timestamp": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat()
-                    + "Z",
-                }
 
         logger.info(f"Executing {len(tool_calls)} tool(s) for {caller_mode} caller.")
         for call in tool_calls:
@@ -212,7 +186,7 @@ class ToolExecutor:
                 }
 
                 is_error, result_content, metadata = await self.run_single_tool(
-                    mcp_client, tool_name, tool_id, tool_input
+                    tool_name, tool_id, tool_input
                 )
 
                 # Prepare tool call status update
@@ -251,7 +225,7 @@ class ToolExecutor:
         yield {"type": "final_tool_results", "results": tool_results_for_llm}
 
     async def run_single_tool(
-        self, client: MCPClient, tool_name: str, tool_id: str, tool_input: Any
+        self, tool_name: str, tool_id: str, tool_input: Any
     ) -> tuple[bool, str, Dict[str, Any]]:
         """Run a single tool using MCPClient."""
         logger.info(f"Executing tool: {tool_name} (ID: {tool_id})")
@@ -273,7 +247,7 @@ class ToolExecutor:
             is_error = True
         else:
             try:
-                result = await client.call_tool(
+                result = await self._mcp_client.call_tool(
                     server_name=tool_info.related_server,
                     tool_name=tool_name,
                     tool_args=tool_input,

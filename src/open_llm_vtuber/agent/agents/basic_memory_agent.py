@@ -379,7 +379,6 @@ class BasicMemoryAgent(AgentInterface):
                     return
 
                 tool_executor_iterator = self._tool_executor.execute_tools(
-                    mcp_client=self._mcp_client,
                     tool_calls=pending_tool_calls,
                     caller_mode="Claude",
                 )
@@ -519,7 +518,6 @@ class BasicMemoryAgent(AgentInterface):
                         continue
 
                     tool_executor_iterator = self._tool_executor.execute_tools(
-                        mcp_client=self._mcp_client,
                         tool_calls=parsed_tools,
                         caller_mode="Prompt",
                     )
@@ -561,7 +559,6 @@ class BasicMemoryAgent(AgentInterface):
                     continue
 
                 tool_executor_iterator = self._tool_executor.execute_tools(
-                    mcp_client=self._mcp_client,
                     tool_calls=pending_tool_calls,
                     caller_mode="OpenAI",
                 )
