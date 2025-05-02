@@ -24,6 +24,7 @@ class MCPClient:
         """Initialize the MCP Client."""
         self.exit_stack: AsyncExitStack = AsyncExitStack()
         self.active_sessions: Dict[str, ClientSession] = {}
+        self._list_tools_cache: Dict[str, List[Tool]] = {}  # Cache for list_tools
 
         if isinstance(server_registery, ServerRegistry):
             self.server_registery = server_registery
@@ -77,8 +78,18 @@ class MCPClient:
 
     async def list_tools(self, server_name: str) -> List[Tool]:
         """List all available tools on the specified server."""
+        # Check cache first
+        if server_name in self._list_tools_cache:
+            logger.debug(f"MCPC: Cache hit for list_tools on server '{server_name}'.")
+            return self._list_tools_cache[server_name]
+
+        logger.debug(f"MCPC: Cache miss for list_tools on server '{server_name}'. Fetching...")
         session = await self._ensure_server_running_and_get_session(server_name)
         response = await session.list_tools()
+
+        # Store in cache before returning
+        self._list_tools_cache[server_name] = response.tools
+        logger.debug(f"MCPC: Cached list_tools result for server '{server_name}'.")
         return response.tools
 
     async def call_tool(
@@ -143,6 +154,7 @@ class MCPClient:
         )
         await self.exit_stack.aclose()
         self.active_sessions.clear()
+        self._list_tools_cache.clear() # Clear cache on close
         self.exit_stack = AsyncExitStack()
         logger.info("MCPC: Client instance closed.")
 

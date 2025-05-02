@@ -4,7 +4,7 @@ from typing import Dict, Optional, List, Tuple, Any
 from loguru import logger
 
 from .types import FormattedTool
-from .client import MCPClient
+from .mcp_client import MCPClient
 from .server_registry import ServerRegistry
 
 

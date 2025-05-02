@@ -14,7 +14,7 @@ from .translate.translate_interface import TranslateInterface
 
 from .mcpp.server_registry import ServerRegistry
 from .mcpp.tool_manager import ToolManager
-from .mcpp.client import MCPClient
+from .mcpp.mcp_client import MCPClient
 from .mcpp.tool_executor import ToolExecutor
 from .mcpp.json_detector import StreamJSONDetector
 from .mcpp.prompt_constructor import PromptConstructor
@@ -57,6 +57,7 @@ class ServiceContext:
         self.translate_engine: TranslateInterface | None = None
 
         self.mcp_server_registery: ServerRegistry | None = None
+        self.prompt_constructor: PromptConstructor | None = None
         self.tool_manager: ToolManager | None = None
         self.mcp_client: MCPClient | None = None
         self.tool_executor: ToolExecutor | None = None
@@ -112,15 +113,17 @@ class ServiceContext:
             logger.info("ServerRegistry initialized or referenced.")
 
             # 2. Use PromptConstructor temporarily to fetch and format
+            if not self.prompt_constructor:
+                logger.error("PromptConstructor not initialized before calling _init_mcp_components.")
+                self.mcp_prompt = "[Error: PromptConstructor not initialized]"
+                return # Exit if PromptConstructor is mandatory and not initialized
+
             try:
-                prompt_constructor = PromptConstructor(
-                    server_registery=self.mcp_server_registery
-                )
                 (
                     mcp_prompt_string,
                     openai_tools,
                     claude_tools,
-                ) = await prompt_constructor.run(enabled_servers)
+                ) = await self.prompt_constructor.run(enabled_servers)
                 # Store the generated prompt string
                 self.mcp_prompt = mcp_prompt_string
                 logger.info(
@@ -131,12 +134,10 @@ class ServiceContext:
                 )
 
                 # 3. Initialize ToolManager with the fetched formats
-                #    ToolManager instance itself isn't strictly needed if MC generates lists directly,
-                #    but keeping it maintains structure and the enable/disable flag.
-                #    Pass the raw tools dict from MC if needed for get_tool.
-                _, raw_tools_dict = await prompt_constructor.get_server_and_tool_info(
+               
+                _, raw_tools_dict = await self.prompt_constructor.get_server_and_tool_info(
                     enabled_servers
-                )  # Reuse MC to get raw dict
+                )
                 self.tool_manager = ToolManager(
                     formatted_tools_openai=openai_tools,
                     formatted_tools_claude=claude_tools,
@@ -205,9 +206,8 @@ class ServiceContext:
         vad_engine: VADInterface,
         agent_engine: AgentInterface,
         translate_engine: TranslateInterface | None,
-        # Add MCP Managers to be passed by reference
         mcp_server_registery: ServerRegistry | None = None,
-        tool_manager: ToolManager | None = None,
+        prompt_constructor: PromptConstructor | None = None,
     ) -> None:
         """
         Load the ServiceContext with the reference of the provided instances.
@@ -227,9 +227,9 @@ class ServiceContext:
         self.vad_engine = vad_engine
         self.agent_engine = agent_engine
         self.translate_engine = translate_engine
-        # Load shared MCP managers by reference
+        # Load potentially shared components by reference
         self.mcp_server_registery = mcp_server_registery
-        self.tool_manager = tool_manager
+        self.prompt_constructor = prompt_constructor
 
         # Initialize session-specific MCP components (Client, Executor, Detector)
         self._init_mcp_components(self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
@@ -266,6 +266,14 @@ class ServiceContext:
 
         # init vad from character config
         self.init_vad(config.character_config.vad_config)
+
+        # Initialize shared PromptConstructor if it doesn't exist yet
+        if not self.prompt_constructor and config.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp:
+            if not self.mcp_server_registery:
+                logger.info("Initializing shared ServerRegistry within load_from_config.")
+                self.mcp_server_registery = ServerRegistry()
+            logger.info("Initializing shared PromptConstructor within load_from_config.")
+            self.prompt_constructor = PromptConstructor(server_registery=self.mcp_server_registery)
 
         # Initialize MCP Components before initializing Agent
         await self._init_mcp_components(config.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, config.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)

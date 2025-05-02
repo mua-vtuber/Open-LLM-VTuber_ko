@@ -9,7 +9,7 @@ from .agents.letta_agent import LettaAgent
 
 from ..mcpp.server_registry import ServerRegistry
 from ..mcpp.tool_manager import ToolManager
-from ..mcpp.client import MCPClient
+from ..mcpp.mcp_client import MCPClient
 from ..mcpp.tool_executor import ToolExecutor
 from typing import Optional
 

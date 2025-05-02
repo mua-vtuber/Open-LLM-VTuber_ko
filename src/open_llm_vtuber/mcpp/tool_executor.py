@@ -14,7 +14,7 @@ from typing import (
 )
 
 from .types import ToolCallObject
-from .client import MCPClient
+from .mcp_client import MCPClient
 from .tool_manager import ToolManager
 
 
