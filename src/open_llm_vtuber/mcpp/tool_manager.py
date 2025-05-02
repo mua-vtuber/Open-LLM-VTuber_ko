@@ -26,7 +26,6 @@ class ToolManager:
             formatted_tools_claude or []
         )
 
-        self.__enabled = True
         logger.info(
             f"ToolManager initialized with {len(self._formatted_tools_openai)} OpenAI tools and {len(self._formatted_tools_claude)} Claude tools."
         )
@@ -45,26 +44,8 @@ class ToolManager:
         self, mode: Literal["OpenAI", "Claude"]
     ) -> List[Dict[str, Any]] | Any:
         """Get the pre-formatted list of tools for the specified API mode."""
-        if not self.__enabled:
-            logger.debug("TM: Tool Manager is disabled. Returning NOT_GIVEN.")
-            return NOT_GIVEN
 
         if mode == "OpenAI":
             return self._formatted_tools_openai
         elif mode == "Claude":
             return self._formatted_tools_claude
-        else:
-            logger.warning(
-                f"TM: Invalid mode '{mode}'. Expected 'OpenAI' or 'Claude'. Returning NOT_GIVEN."
-            )
-            return NOT_GIVEN
-
-    def enable(self) -> None:
-        """Enable the tool manager."""
-        logger.debug("TM: Enabling Tool Manager.")
-        self.__enabled = True
-
-    def disable(self) -> None:
-        """Disable the tool manager."""
-        logger.debug("TM: Disabling Tool Manager.")
-        self.__enabled = False

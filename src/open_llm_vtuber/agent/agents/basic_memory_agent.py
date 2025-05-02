@@ -606,10 +606,6 @@ class BasicMemoryAgent(AgentInterface):
             """Process chat with memory and tools."""
             self.reset_interrupt()
             self.prompt_mode_flag = False
-            if self._tool_manager:
-                self._tool_manager.enable()
-            if self._json_detector:
-                self._json_detector.reset()
 
             messages = self._to_messages(input_data)
             tools = None
