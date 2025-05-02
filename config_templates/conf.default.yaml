@@ -17,7 +17,7 @@ system_config:
     group_conversation_prompt: 'group_conversation_prompt'
     # Enable mcp_prompt to let LLMs with MCP (Model Context Protocol) to interact with tools.
     # Please note that Agent will decide whether to use this prompt or not.
-    # mcp_prompt: 'mcp_prompt'
+    mcp_prompt: 'mcp_prompt'
     # Prompt used when AI is asked to speak proactively
     proactive_speak_prompt: 'proactive_speak_prompt'
     # Prompt to enhance the LLM's ability to output speakable text
