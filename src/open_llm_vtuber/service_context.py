@@ -90,10 +90,8 @@ class ServiceContext:
 
     # ==== Initializers
 
-    async def _init_mcp_components(self):
+    async def _init_mcp_components(self, use_mcpp, enabled_servers):
         """Initializes MCP components based on configuration, dynamically fetching tool info."""
-        use_mcpp = self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp
-        enabled_servers = self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers
         logger.debug(
             f"Initializing MCP components: use_mcpp={use_mcpp}, enabled_servers={enabled_servers}"
         )
@@ -234,7 +232,7 @@ class ServiceContext:
         self.tool_manager = tool_manager
 
         # Initialize session-specific MCP components (Client, Executor, Detector)
-        self._init_mcp_components()
+        self._init_mcp_components(self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
 
         logger.debug(f"Loaded service context with cache: {character_config}")
 
@@ -270,7 +268,7 @@ class ServiceContext:
         self.init_vad(config.character_config.vad_config)
 
         # Initialize MCP Components before initializing Agent
-        await self._init_mcp_components()
+        await self._init_mcp_components(config.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, config.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
 
         # init agent from character config
         await self.init_agent(
@@ -355,18 +353,13 @@ class ServiceContext:
                 agent_settings=agent_config.agent_settings.model_dump(),
                 llm_configs=agent_config.llm_configs.model_dump(),
                 system_prompt=system_prompt,
-                mcp_prompt=self.mcp_prompt,
                 live2d_model=self.live2d_model,
                 tts_preprocessor_config=self.character_config.tts_preprocessor_config,
                 character_avatar=avatar,
                 system_config=self.system_config.model_dump(),
-                # Pass MCP components from ServiceContext
-                # Agent now receives the ToolManager instance and the generated prompt string
                 tool_manager=self.tool_manager,
                 mcp_client=self.mcp_client,
                 tool_executor=self.tool_executor,
-                json_detector=self.json_detector,
-                # Pass the dynamically generated MCP prompt string
                 mcp_prompt_string=self.mcp_prompt,
             )
 
