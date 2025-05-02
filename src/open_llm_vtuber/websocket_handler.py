@@ -190,7 +190,7 @@ class WebSocketHandler:
             vad_engine=self.default_context_cache.vad_engine,
             agent_engine=self.default_context_cache.agent_engine,
             translate_engine=self.default_context_cache.translate_engine,
-            mcp_server_manager=self.default_context_cache.mcp_server_manager,
+            mcp_server_registery=self.default_context_cache.mcp_server_registery,
             tool_manager=self.default_context_cache.tool_manager,
         )
         return session_service_context

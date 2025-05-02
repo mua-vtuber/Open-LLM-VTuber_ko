@@ -7,7 +7,7 @@ from .stateless_llm_factory import LLMFactory as StatelessLLMFactory
 from .agents.hume_ai import HumeAIAgent
 from .agents.letta_agent import LettaAgent
 
-from ..mcpp.server_manager import MCPServerManager
+from ..mcpp.server_registry import ServerRegistry
 from ..mcpp.tool_manager import ToolManager
 from ..mcpp.client import MCPClient
 from ..mcpp.tool_executor import ToolExecutor

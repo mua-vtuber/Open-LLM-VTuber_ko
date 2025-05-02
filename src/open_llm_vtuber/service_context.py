@@ -12,7 +12,7 @@ from .vad.vad_interface import VADInterface
 from .agent.agents.agent_interface import AgentInterface
 from .translate.translate_interface import TranslateInterface
 
-from .mcpp.server_manager import MCPServerManager
+from .mcpp.server_registry import ServerRegistry
 from .mcpp.tool_manager import ToolManager
 from .mcpp.client import MCPClient
 from .mcpp.tool_executor import ToolExecutor
@@ -56,7 +56,7 @@ class ServiceContext:
         self.vad_engine: VADInterface | None = None
         self.translate_engine: TranslateInterface | None = None
 
-        self.mcp_server_manager: MCPServerManager | None = None
+        self.mcp_server_registery: ServerRegistry | None = None
         self.tool_manager: ToolManager | None = None
         self.mcp_client: MCPClient | None = None
         self.tool_executor: ToolExecutor | None = None
@@ -99,7 +99,7 @@ class ServiceContext:
         )
 
         # Reset MCP components first
-        self.mcp_server_manager = None
+        self.mcp_server_registery = None
         self.tool_manager = None
         self.mcp_client = None
         self.tool_executor = None
@@ -108,15 +108,15 @@ class ServiceContext:
 
         if use_mcpp and enabled_servers:
             # 1. Initialize ServerManager (can be shared via cache, but init here if needed)
-            #    If loaded from cache, this instance will be overwritten but that's okay if it points to the same shared manager.
-            #    If not loaded from cache, a new one is created.
-            self.mcp_server_manager = MCPServerManager()
-            logger.info("MCPServerManager initialized or referenced.")
+            # If loaded from cache, this instance will be overwritten but that's okay if it points to the same shared manager.
+            # If not loaded from cache, a new one is created.
+            self.mcp_server_registery = ServerRegistry()
+            logger.info("ServerRegistry initialized or referenced.")
 
             # 2. Use PromptConstructor temporarily to fetch and format
             try:
                 prompt_constructor = PromptConstructor(
-                    server_manager=self.mcp_server_manager
+                    server_registery=self.mcp_server_registery
                 )
                 (
                     mcp_prompt_string,
@@ -155,12 +155,12 @@ class ServiceContext:
                 self.mcp_prompt = "[Error constructing MCP tools/prompt]"
 
             # 4. Initialize Client and Executor (session-specific)
-            if self.mcp_server_manager:
-                self.mcp_client = MCPClient(self.mcp_server_manager)
+            if self.mcp_server_registery:
+                self.mcp_client = MCPClient(self.mcp_server_registery)
                 logger.info("MCPClient initialized for this session.")
             else:
                 logger.error(
-                    "MCP enabled but MCPServerManager not available. MCPClient not created."
+                    "MCP enabled but ServerRegistry not available. MCPClient not created."
                 )
                 self.mcp_client = None  # Ensure it's None
 
@@ -208,7 +208,7 @@ class ServiceContext:
         agent_engine: AgentInterface,
         translate_engine: TranslateInterface | None,
         # Add MCP Managers to be passed by reference
-        mcp_server_manager: MCPServerManager | None = None,
+        mcp_server_registery: ServerRegistry | None = None,
         tool_manager: ToolManager | None = None,
     ) -> None:
         """
@@ -230,7 +230,7 @@ class ServiceContext:
         self.agent_engine = agent_engine
         self.translate_engine = translate_engine
         # Load shared MCP managers by reference
-        self.mcp_server_manager = mcp_server_manager
+        self.mcp_server_registery = mcp_server_registery
         self.tool_manager = tool_manager
 
         # Initialize session-specific MCP components (Client, Executor, Detector)
@@ -269,8 +269,7 @@ class ServiceContext:
         # init vad from character config
         self.init_vad(config.character_config.vad_config)
 
-        # Initialize MCP Components *before* initializing Agent
-        # This now dynamically fetches tools based on config
+        # Initialize MCP Components before initializing Agent
         await self._init_mcp_components()
 
         # init agent from character config

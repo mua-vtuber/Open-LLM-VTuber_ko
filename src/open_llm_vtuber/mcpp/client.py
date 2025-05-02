@@ -9,7 +9,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
-from .server_manager import MCPServerManager
+from .server_registry import ServerRegistry
 
 
 DEFAULT_TIMEOUT = timedelta(seconds=30)
@@ -20,16 +20,16 @@ class MCPClient:
     Manages persistent connections to multiple MCP servers.
     """
 
-    def __init__(self, server_manager: MCPServerManager) -> None:
+    def __init__(self, server_registery: ServerRegistry) -> None:
         """Initialize the MCP Client."""
         self.exit_stack: AsyncExitStack = AsyncExitStack()
         self.active_sessions: Dict[str, ClientSession] = {}
 
-        if isinstance(server_manager, MCPServerManager):
-            self.server_manager = server_manager
+        if isinstance(server_registery, ServerRegistry):
+            self.server_registery = server_registery
         else:
             raise TypeError(
-                "MCPC: Invalid server manager. Must be an instance of MCPServerManager."
+                "MCPC: Invalid server manager. Must be an instance of ServerRegistry."
             )
         logger.info("MCPC: Initialized MCPClient instance.")
 
@@ -41,7 +41,7 @@ class MCPClient:
             return self.active_sessions[server_name]
 
         logger.info(f"MCPC: Starting and connecting to server '{server_name}'...")
-        server = self.server_manager.get_server(server_name)
+        server = self.server_registery.get_server(server_name)
         if not server:
             raise ValueError(
                 f"MCPC: Server '{server_name}' not found in available servers."
@@ -160,8 +160,8 @@ class MCPClient:
 # if __name__ == "__main__":
 #     # Test the MCPClient.
 #     async def main():
-#         server_manager = MCPServerManager()
-#         async with MCPClient(server_manager) as client:
+#         server_registery = ServerRegistry()
+#         async with MCPClient(server_registery) as client:
 #             # Assuming 'example' server and 'example_tool' exist
 #             # The old call used: await client.call_tool("example_tool", {"arg1": "value1"})
 #             # The new call needs server name:

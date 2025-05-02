@@ -5,15 +5,15 @@ from loguru import logger
 
 from .types import FormattedTool
 from .client import MCPClient
-from .server_manager import MCPServerManager
+from .server_registry import ServerRegistry
 
 
 class PromptConstructor:
     """Dynamically fetches tool information from enabled MCP servers and formats it."""
 
-    def __init__(self, server_manager: Optional[MCPServerManager] = None) -> None:
-        """Initialize with an MCPServerManager."""
-        self.server_manager = server_manager or MCPServerManager()
+    def __init__(self, server_registery: Optional[ServerRegistry] = None) -> None:
+        """Initialize with an ServerRegistry."""
+        self.server_registery = server_registery or ServerRegistry()
 
     async def get_server_and_tool_info(
         self, enabled_servers: List[str]
@@ -31,9 +31,9 @@ class PromptConstructor:
         logger.debug(f"MC: Fetching tool info for enabled servers: {enabled_servers}")
 
         # Use a single client instance for efficiency
-        async with MCPClient(self.server_manager) as client:
+        async with MCPClient(self.server_registery) as client:
             for server_name in enabled_servers:
-                if server_name not in self.server_manager.servers:
+                if server_name not in self.server_registery.servers:
                     logger.warning(
                         f"MC: Enabled server '{server_name}' not found in Server Manager. Skipping."
                     )

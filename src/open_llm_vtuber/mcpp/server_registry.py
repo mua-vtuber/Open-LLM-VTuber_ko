@@ -13,7 +13,7 @@ from .utils.path import validate_file
 DEFAULT_CONFIG_PATH = "mcp_servers.json"
 
 
-class MCPServerManager:
+class ServerRegistry:
     """MCP Server Manager for managing server files."""
 
     def __init__(self, config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
