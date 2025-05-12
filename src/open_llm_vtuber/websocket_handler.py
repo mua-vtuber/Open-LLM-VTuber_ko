@@ -176,7 +176,7 @@ class WebSocketHandler:
     async def _init_service_context(self, send_text: Callable, client_uid: str) -> ServiceContext:
         """Initialize service context for a new session by cloning the default context"""
         session_service_context = ServiceContext()
-        session_service_context.load_cache(
+        await session_service_context.load_cache(
             config=self.default_context_cache.config.model_copy(deep=True),
             system_config=self.default_context_cache.system_config.model_copy(
                 deep=True

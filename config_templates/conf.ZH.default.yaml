@@ -410,7 +410,7 @@ character_config:
 
   # =================== Voice Activity Detection ===================
   vad_config:
-    vad_model: 'silero_vad'
+    vad_model: null
 
     silero_vad:
       orig_sr: 16000 # 原始音频采样率

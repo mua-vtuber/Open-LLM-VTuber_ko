@@ -28,7 +28,6 @@ dependencies = [
     "ruff>=0.8.6",
     "scipy>=1.14.1",
     "sherpa-onnx>=1.10.39",
-    "silero-vad>=5.1.2",
     "soundfile>=0.12.1",
     "tomli>=2.2.1",
     "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",

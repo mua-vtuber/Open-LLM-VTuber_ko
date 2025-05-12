@@ -195,7 +195,7 @@ class ServiceContext:
             await self.agent_engine.close()  # Ensure agent resources are also closed
         logger.info("ServiceContext closed.")
 
-    def load_cache(
+    async def load_cache(
         self,
         config: Config,
         system_config: SystemConfig,
@@ -236,7 +236,7 @@ class ServiceContext:
         self.client_uid = client_uid
 
         # Initialize session-specific MCP components
-        self._init_mcp_components(self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
+        await self._init_mcp_components(self.character_config.agent_config.agent_settings.basic_memory_agent.use_mcpp, self.character_config.agent_config.agent_settings.basic_memory_agent.mcp_enabled_servers)
 
         logger.debug(f"Loaded service context with cache: {character_config}")
 
@@ -331,6 +331,11 @@ class ServiceContext:
             logger.info("TTS already initialized with the same config.")
 
     def init_vad(self, vad_config: VADConfig) -> None:
+        if vad_config.vad_model is None:
+            logger.info("VAD is disabled.")
+            self.vad_engine = None
+            return
+            
         if not self.vad_engine or (self.character_config.vad_config != vad_config):
             logger.info(f"Initializing VAD: {vad_config.vad_model}")
             self.vad_engine = VADFactory.get_vad_engine(
