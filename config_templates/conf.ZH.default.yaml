@@ -6,7 +6,7 @@
 
 # 系统设置：与服务器初始化相关的设置
 system_config:
-  conf_version: 'v1.1.1' # 配置文件版本
+  conf_version: 'v1.2.0' # 配置文件版本
   host: 'localhost' # 服务器监听的地址，'0.0.0.0' 表示监听所有网络接口；如果需要安全，可以使用 '127.0.0.1'（仅本地访问）
   port: 12393 # 服务器监听的端口
   config_alts_dir: 'characters' # 用于存放替代配置的目录
@@ -29,11 +29,11 @@ system_config:
 
 # 默认角色的配置
 character_config:
-  conf_name: 'shizuku-local' # 角色配置文件的名称
-  conf_uid: 'shizuku-local-001' # 角色配置的唯一标识符
-  live2d_model_name: 'shizuku-local' # Live2D 模型名称
-  character_name: 'Shizuku' # 将在群聊中使用，并显示为 AI 的名称。
-  avatar: 'shizuku.png' # 建议使用正方形图像作为头像。将其保存到 avatars 文件夹中。留空则使用角色名称的首字母作为头像。
+  conf_name: 'mao_pro' # 角色配置文件的名称
+  conf_uid: 'mao_pro_001' # 角色配置的唯一标识符
+  live2d_model_name: 'mao_pro' # Live2D 模型名称
+  character_name: 'Mao' # 将在群聊中使用，并显示为 AI 的名称。
+  avatar: 'mao.png' # 建议使用正方形图像作为头像。将其保存到 avatars 文件夹中。留空则使用角色名称的首字母作为头像。
   human_name: 'Human' # 将在群聊中使用，并显示为人类的名称。
 
   # ============== 提示词 ==============
@@ -68,31 +68,6 @@ character_config:
         # 'Plus' 意味着它包含了通过 OpenAI API 调用工具的能力。
         use_mcpp: False
         mcp_enabled_servers: ["time", "ddg-search"] # 启用的 MCP 服务器
-
-      mem0_agent:
-        vector_store:
-          provider: 'qdrant' # 向量存储提供商
-          config:
-            collection_name: 'test' # 集合名称
-            host: 'localhost' # 主机地址
-            port: 6333 # 端口号
-            embedding_model_dims: 1024 # 嵌入模型维度
-
-        # mem0 有自己的 llm 设置，与我们的 llm_config 不同。
-        # 有关更多详细信息，请查看他们的文档      
-        llm:
-          provider: 'ollama' # 使用的 LLM 提供商
-          config:
-            model: 'llama3.1:latest' # 使用的模型
-            temperature: 0 # 温度
-            max_tokens: 8000 # 最大令牌数
-            ollama_base_url: 'http://localhost:11434' # Ollama 基础 URL
-
-        embedder:
-          provider: 'ollama' # 使用的嵌入提供商
-          config:
-            model: 'mxbai-embed-large:latest' # 使用的模型
-            ollama_base_url: 'http://localhost:11434' # Ollama 基础 URL
 
       hume_ai_agent:
         api_key: ''
