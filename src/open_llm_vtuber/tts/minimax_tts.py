@@ -38,11 +38,11 @@ class TTSEngine(TTSInterface):
         # 处理 pronunciation_dict 字符串为 dict，如果为空则传 {"tone": []}
         try:
             pronunciation_dict = (
-                eval(self.pronunciation_dict)
+                json.loads(self.pronunciation_dict)
                 if self.pronunciation_dict.strip()
                 else {"tone": []}
             )
-        except Exception as e:
+        except json.JSONDecodeError as e:
             logger.error(f"Failed to parse pronunciation_dict: {e}")
             pronunciation_dict = {"tone": []}
 
