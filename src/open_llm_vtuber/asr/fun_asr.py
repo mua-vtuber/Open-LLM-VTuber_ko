@@ -14,8 +14,6 @@ try:
     MODEL_SCOPE_DOWNLOAD_AVAILABLE = True
 except ImportError:
     print("Warning: Unable to import modelscope.hub.snapshot_download.")
-    print("Please ensure modelscope library is properly installed (e.g., pip install modelscope).")
-    print("Subsequent local cache checks will not be available, will directly use model ID/alias.")
     MODEL_SCOPE_DOWNLOAD_AVAILABLE = False
 
 # Model alias to actual ModelScope ID mapping table
