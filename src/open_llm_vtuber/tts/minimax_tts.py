@@ -1,5 +1,4 @@
 import os
-import base64
 import requests
 from loguru import logger
 from .tts_interface import TTSInterface
