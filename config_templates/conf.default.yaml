@@ -180,6 +180,7 @@ character_config:
       print_realtime: False
       print_progress: False
       language: 'auto' # en, zh, auto,
+      prompt: '' # You can put a prompt here to help the model understand the context of the audio
 
     whisper:
       name: 'medium'

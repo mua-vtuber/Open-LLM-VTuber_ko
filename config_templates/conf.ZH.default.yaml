@@ -178,6 +178,7 @@ character_config:
       print_realtime: False # 是否实时打印
       print_progress: False # 是否打印进度
       language: 'auto' # 语言，en、zh、auto
+      prompt: '' # 提示词，用于辅助生成正确的文本
 
     whisper:
       name: 'medium' # 模型名称
