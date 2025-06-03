@@ -183,6 +183,7 @@ character_config:
       name: 'medium' # 模型名称
       download_root: 'models/whisper' # 模型下载根目录
       device: 'cpu' # 设备
+      prompt: '' # 提示词，用于辅助生成正确的文本
 
     # FunASR 目前需要在启动时连接互联网以下载/检查模型。您可以在初始化后断开互联网连接。
     # 或者您可以使用 Faster-Whisper 获得完全离线的体验

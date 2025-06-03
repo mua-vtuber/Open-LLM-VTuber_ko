@@ -185,6 +185,7 @@ character_config:
       name: 'medium'
       download_root: 'models/whisper'
       device: 'cpu'
+      prompt: '' # You can put a prompt here to help the model understand the context of the audio
 
     # FunASR currently needs internet connection on launch
     # to download / check the models. You can disconnect the internet after initialization.
