@@ -371,6 +371,26 @@ class SparkTTSConfig(I18nMixin):
     }
 
 
+class MinimaxTTSConfig(I18nMixin):
+    """Configuration for Minimax TTS."""
+
+    group_id: str = Field(..., alias="group_id")
+    api_key: str = Field(..., alias="api_key")
+    model: str = Field("speech-02-turbo", alias="model")
+    voice_id: str = Field("male-qn-qingse", alias="voice_id")
+    pronunciation_dict: str = Field("", alias="pronunciation_dict")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "group_id": Description(en="Minimax group_id", zh="Minimax 的 group_id"),
+        "api_key": Description(en="Minimax API key", zh="Minimax 的 API key"),
+        "model": Description(en="Minimax model name", zh="Minimax 模型名称"),
+        "voice_id": Description(en="Minimax voice id", zh="Minimax 语音 id"),
+        "pronunciation_dict": Description(
+            en="Custom pronunciation dictionary (string)", zh="自定义发音字典（字符串）"
+        ),
+    }
+
+
 class TTSConfig(I18nMixin):
     """Configuration for Text-to-Speech."""
 
@@ -388,6 +408,7 @@ class TTSConfig(I18nMixin):
         "sherpa_onnx_tts",
         "openai_tts",  # Add openai_tts here
         "spark_tts",
+        "minimax_tts",
     ] = Field(..., alias="tts_model")
 
     azure_tts: Optional[AzureTTSConfig] = Field(None, alias="azure_tts")
@@ -405,6 +426,7 @@ class TTSConfig(I18nMixin):
     )
     openai_tts: Optional[OpenAITTSConfig] = Field(None, alias="openai_tts")
     spark_tts: Optional[SparkTTSConfig] = Field(None, alias="spark_tts")
+    minimax_tts: Optional[MinimaxTTSConfig] = Field(None, alias="minimax_tts")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "tts_model": Description(
@@ -435,6 +457,9 @@ class TTSConfig(I18nMixin):
             en="Configuration for OpenAI-compatible TTS", zh="OpenAI 兼容 TTS 配置"
         ),
         "spark_tts": Description(en="Configuration for Spark TTS", zh="Spark TTS 配置"),
+        "minimax_tts": Description(
+            en="Configuration for Minimax TTS", zh="Minimax TTS 配置"
+        ),
     }
 
     @model_validator(mode="after")
@@ -467,5 +492,8 @@ class TTSConfig(I18nMixin):
         elif tts_model == "openai_tts" and values.openai_tts is not None:
             values.openai_tts.model_validate(values.openai_tts.model_dump())
         elif tts_model == "spark_tts" and values.spark_tts is not None:
-            values.spark_tts.model_validate(values.spark_tts.model_dump())
+            values.spark_tts.model_validate(values.spark_tts.model_dump())        
+        elif tts_model == "minimax_tts" and values.minimax_tts is not None:
+            values.minimax_tts.model_validate(values.minimax_tts.model_dump())
+
         return values
