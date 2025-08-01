@@ -5,6 +5,7 @@ from upgrade_codes.upgrade_core.constants import TEXTS
 upgrade_manager = UpgradeManager()
 upgrade_manager.check_user_config_exists()
 
+
 def run_upgrade():
     logger = upgrade_manager.logger
     start_time = time.time()
@@ -24,7 +25,9 @@ def run_upgrade():
     if response != "y":
         return
 
-    success, error_msg = upgrade_manager.run_command("git rev-parse --is-inside-work-tree")
+    success, error_msg = upgrade_manager.run_command(
+        "git rev-parse --is-inside-work-tree"
+    )
     if not success:
         logger.error(texts["not_git_repo"])
         logger.error(f"Error details: {error_msg}")
@@ -57,7 +60,9 @@ def run_upgrade():
         logger.debug(texts["detected_changes"].format(count=change_count))
         logger.warning(texts["uncommitted"])
 
-        operation, elapsed = upgrade_manager.time_operation(upgrade_manager.run_command, "git stash")
+        operation, elapsed = upgrade_manager.time_operation(
+            upgrade_manager.run_command, "git stash"
+        )
         success, output = operation
         logger.debug(
             texts["operation_time"].format(operation="git stash", time=elapsed)
@@ -71,7 +76,9 @@ def run_upgrade():
 
     # Check remote status
     logger.info(texts["checking_remote"])
-    operation, elapsed = upgrade_manager.time_operation(upgrade_manager.run_command, "git fetch")
+    operation, elapsed = upgrade_manager.time_operation(
+        upgrade_manager.run_command, "git fetch"
+    )
     success, output = operation
     logger.debug(texts["operation_time"].format(operation="git fetch", time=elapsed))
 
@@ -88,7 +95,9 @@ def run_upgrade():
 
     # Pull updates
     logger.info(texts["pulling"])
-    operation, elapsed = upgrade_manager.time_operation(upgrade_manager.run_command, "git pull")
+    operation, elapsed = upgrade_manager.time_operation(
+        upgrade_manager.run_command, "git pull"
+    )
     success, output = operation
     logger.debug(texts["operation_time"].format(operation="git pull", time=elapsed))
 
@@ -106,15 +115,17 @@ def run_upgrade():
     submodules = upgrade_manager.get_submodule_list()
     if submodules:
         logger.info(texts["updating_submodules"])
-        
+
         operation, elapsed = upgrade_manager.time_operation(
             upgrade_manager.run_command, "git submodule update --init --recursive"
         )
         success, output = operation
         logger.debug(
-            texts["operation_time"].format(operation="git submodule update", time=elapsed)
+            texts["operation_time"].format(
+                operation="git submodule update", time=elapsed
+            )
         )
-        
+
         if not success:
             logger.error(texts["submodule_update_error"])
             logger.error(f"Error details: {output}")
@@ -124,14 +135,15 @@ def run_upgrade():
     else:
         logger.info(texts["no_submodules"])
 
-
     # Update config
     upgrade_manager.sync_user_config()
     upgrade_manager.update_user_config()
 
     if has_changes:
         logger.warning(texts["restoring"])
-        operation, elapsed = upgrade_manager.time_operation(upgrade_manager.run_command, "git stash pop")
+        operation, elapsed = upgrade_manager.time_operation(
+            upgrade_manager.run_command, "git stash pop"
+        )
         success, output = operation
         logger.debug(
             texts["operation_time"].format(operation="git stash pop", time=elapsed)
@@ -153,6 +165,7 @@ def run_upgrade():
     logger.info(texts["check_config"])
     logger.info(texts["resolve_conflicts"])
     logger.info(texts["check_backup"])
+
 
 if __name__ == "__main__":
     run_upgrade()

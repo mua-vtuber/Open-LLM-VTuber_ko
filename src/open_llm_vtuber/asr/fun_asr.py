@@ -11,6 +11,7 @@ from typing import Optional
 # Try to import modelscope for local cache detection
 try:
     from modelscope.hub.snapshot_download import snapshot_download
+
     MODEL_SCOPE_DOWNLOAD_AVAILABLE = True
 except ImportError:
     print("Warning: Unable to import modelscope.hub.snapshot_download.")
@@ -52,8 +53,10 @@ class VoiceRecognition(ASRInterface):
         # Resolve model paths
         final_model_input = self._get_final_model_input(model_name)
         final_vad_input = self._get_final_model_input(vad_model) if vad_model else None
-        final_punc_input = self._get_final_model_input(punc_model) if punc_model else None
-        
+        final_punc_input = (
+            self._get_final_model_input(punc_model) if punc_model else None
+        )
+
         self.model = AutoModel(
             model=final_model_input,
             vad_model=final_vad_input,
@@ -88,7 +91,7 @@ class VoiceRecognition(ASRInterface):
                 local_path = snapshot_download(resolved_id, local_files_only=True)
                 if os.path.exists(local_path):  # Double check path exists
                     final_input_for_automodel = local_path  # Use local path if found
-                    #print(f"Successfully resolved '{resolved_id}' to local path: {local_path}")
+                    # print(f"Successfully resolved '{resolved_id}' to local path: {local_path}")
             except ValueError:
                 # Not found in local cache, use original ID
                 pass

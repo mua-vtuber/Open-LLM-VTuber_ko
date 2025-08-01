@@ -9,7 +9,7 @@ class VoiceRecognition(ASRInterface):
         name: str = "base",
         download_root: str = None,
         device="cpu",
-        prompt: str = None
+        prompt: str = None,
     ) -> None:
         self.model = whisper.load_model(
             name=name,
@@ -20,9 +20,7 @@ class VoiceRecognition(ASRInterface):
 
     def transcribe_np(self, audio: np.ndarray) -> str:
         if self.prompt is not None:
-            result = self.model.transcribe(
-                audio, prompt=self.prompt
-            )
+            result = self.model.transcribe(audio, prompt=self.prompt)
         else:
             result = self.model.transcribe(audio)
         full_text = result["text"]

@@ -92,12 +92,12 @@ class TTSFactory:
             from .siliconflow_tts import SiliconFlowTTS
 
             return SiliconFlowTTS(
-                api_url=kwargs.get("api_url"), 
+                api_url=kwargs.get("api_url"),
                 api_key=kwargs.get("api_key"),
                 default_model=kwargs.get("default_model"),
                 default_voice=kwargs.get("default_voice"),
                 sample_rate=kwargs.get("sample_rate"),
-                response_format=kwargs.get("response_format"),  
+                response_format=kwargs.get("response_format"),
                 stream=kwargs.get("stream"),
                 speed=kwargs.get("speed"),
                 gain=kwargs.get("gain"),
