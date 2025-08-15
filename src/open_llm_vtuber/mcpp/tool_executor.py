@@ -144,12 +144,12 @@ class ToolExecutor:
                     logger.info(f"Parsed tool call from prompt JSON: {tool_name}")
                 except json.JSONDecodeError:
                     logger.error(
-                        f"Failed to decode arguments JSON in prompt mode tool call"
+                        "Failed to decode arguments JSON in prompt mode tool call"
                     )
                 except Exception as e:
                     logger.error(f"Error processing prompt mode tool dict: {e}")
             else:
-                logger.warning(f"Skipping invalid tool structure in prompt mode JSON")
+                logger.warning("Skipping invalid tool structure in prompt mode JSON")
         return parsed_tools
 
     async def execute_tools(
@@ -226,13 +226,11 @@ class ToolExecutor:
             status_content = text_content  # Default to text content
             llm_formatted_content = text_content  # Default to text content for LLM
 
-            has_image = False
             if content_items:
                 image_items = [
                     item for item in content_items if item.get("type") == "image"
                 ]
                 if image_items:
-                    has_image = True
                     num_images = len(image_items)
                     status_content = (
                         f"{text_content}\n[Tool returned {num_images} image(s)]".strip()

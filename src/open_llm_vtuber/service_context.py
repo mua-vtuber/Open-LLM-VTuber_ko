@@ -16,7 +16,6 @@ from .mcpp.server_registry import ServerRegistry
 from .mcpp.tool_manager import ToolManager
 from .mcpp.mcp_client import MCPClient
 from .mcpp.tool_executor import ToolExecutor
-from .mcpp.json_detector import StreamJSONDetector
 from .mcpp.tool_adapter import ToolAdapter
 
 from .asr.asr_factory import ASRFactory

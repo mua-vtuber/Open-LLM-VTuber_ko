@@ -1,6 +1,5 @@
 """MCP Client for Open-LLM-Vtuber."""
 
-import json
 from contextlib import AsyncExitStack
 from typing import Dict, Any, List, Callable
 from loguru import logger
@@ -11,7 +10,6 @@ from mcp.types import Tool
 from mcp.client.stdio import stdio_client
 
 from .server_registry import ServerRegistry
-from ..message_handler import message_handler
 
 DEFAULT_TIMEOUT = timedelta(seconds=30)
 
