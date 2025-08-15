@@ -18,6 +18,7 @@ os.environ["MODELSCOPE_CACHE"] = str(Path(__file__).parent / "models")
 
 upgrade_manager = UpgradeManager()
 
+
 def get_version() -> str:
     with open("pyproject.toml", "rb") as f:
         pyproject = tomli.load(f)

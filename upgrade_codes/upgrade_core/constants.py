@@ -14,6 +14,7 @@ yaml = YAML()
 # user_config = yaml.load(load_text_file_with_guess_encoding(USER_CONF))
 # CURRENT_SCRIPT_VERSION = user_config.get("system_config", {}).get("conf_version")
 
+
 def load_user_config():
     if not os.path.exists(USER_CONF):
         return None
@@ -22,11 +23,13 @@ def load_user_config():
         return None
     return yaml.load(text)
 
+
 def get_current_script_version():
     config = load_user_config()
     if config:
         return config.get("system_config", {}).get("conf_version", "UNKNOWN")
     return "UNKNOWN"
+
 
 CURRENT_SCRIPT_VERSION = get_current_script_version()
 

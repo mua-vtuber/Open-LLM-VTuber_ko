@@ -5,7 +5,7 @@ from upgrade_codes.upgrade_core.upgrade_utils import UpgradeUtility
 import os
 from datetime import datetime
 import sys
-from upgrade_codes.upgrade_core.constants import USER_CONF,TEXTS
+from upgrade_codes.upgrade_core.constants import USER_CONF, TEXTS
 
 
 class UpgradeManager:

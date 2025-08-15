@@ -111,7 +111,9 @@ class WebSocketHandler:
             Exception: If initialization fails
         """
         try:
-            session_service_context = await self._init_service_context(websocket.send_text, client_uid)
+            session_service_context = await self._init_service_context(
+                websocket.send_text, client_uid
+            )
 
             await self._store_client_data(
                 websocket, client_uid, session_service_context
@@ -173,7 +175,9 @@ class WebSocketHandler:
         # Start microphone
         await websocket.send_text(json.dumps({"type": "control", "text": "start-mic"}))
 
-    async def _init_service_context(self, send_text: Callable, client_uid: str) -> ServiceContext:
+    async def _init_service_context(
+        self, send_text: Callable, client_uid: str
+    ) -> ServiceContext:
         """Initialize service context for a new session by cloning the default context"""
         session_service_context = ServiceContext()
         await session_service_context.load_cache(
@@ -317,13 +321,13 @@ class WebSocketHandler:
         self.client_contexts.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
         self.chat_group_manager.client_group_map.pop(client_uid, None)
-        
+
         if client_uid in self.current_conversation_tasks:
             task = self.current_conversation_tasks[client_uid]
             if task and not task.done():
                 task.cancel()
             self.current_conversation_tasks.pop(client_uid, None)
-        
+
         message_handler.cleanup_client(client_uid)
 
     async def broadcast_to_group(
