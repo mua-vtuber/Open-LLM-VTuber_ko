@@ -98,17 +98,17 @@ class LLM(AgentInterface):
                         faster_first_response=self._faster_first_response,
                         segment_method=self._segment_method,
                         valid_tags=["think"],
-                    )(self._chat_impl)
+                    )(self.chat)
                 )
             )
         )
 
         logger.info(f"mem0 LLM Agent 초기화 완료 (user_id: {self._user_id})")
 
-    async def _chat_impl(self, input_data: BatchInput) -> AsyncIterator[str]:
+    async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
         """
-        실제 채팅 로직 구현 (내부 메서드).
-        LLM API 호출 및 mem0 메모리 검색/저장 통합.
+        채팅 로직 구현 - LLM API 호출 및 mem0 메모리 검색/저장 통합.
+        데코레이터를 통해 문장 분할, 표정 추출, TTS 필터링이 적용됩니다.
 
         Args:
             input_data: 사용자 입력 데이터

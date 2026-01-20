@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0/**)",
+      "Write(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0/**)",
+      "Edit(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0/**)",
+      "Glob(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0/**)",
+      "Grep(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0/**)",
+      "Read(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0\\.auto-claude\\specs\\001-mem0/**)",
+      "Write(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0\\.auto-claude\\specs\\001-mem0/**)",
+      "Edit(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude\\worktrees\\tasks\\001-mem0\\.auto-claude\\specs\\001-mem0/**)",
+      "Read(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude/**)",
+      "Write(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude/**)",
+      "Edit(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude/**)",
+      "Glob(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude/**)",
+      "Grep(D:\\Taniar\\Documents\\Git\\Open-LLM-VTuber\\.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
