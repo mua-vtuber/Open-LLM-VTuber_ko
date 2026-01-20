@@ -192,26 +192,6 @@ class LLM(AgentInterface):
             except Exception as e:
                 logger.error(f"mem0 메모리 저장 실패: {e}")
 
-    async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
-        """
-        사용자 입력을 받아 LLM 응답을 생성하고 mem0 메모리에 저장.
-
-        이 메서드는 __init__에서 데코레이터로 래핑됨:
-        - sentence_divider: 문장 단위로 분할
-        - actions_extractor: Live2D 액션 추출
-        - display_processor: 디스플레이 텍스트 처리
-        - tts_filter: TTS 전처리 필터 적용
-
-        Args:
-            input_data: BatchInput - 사용자 입력 데이터
-
-        Yields:
-            SentenceOutput: 문장 단위 출력 (display_text, tts_text, actions)
-        """
-        # 이 메서드는 __init__에서 데코레이터가 적용된 버전으로 교체됨
-        # 실제 구현은 _chat_impl에 있음
-        pass
-
     def handle_interrupt(self, heard_response: str) -> None:
         """
         사용자의 중단(interrupt)을 처리.
