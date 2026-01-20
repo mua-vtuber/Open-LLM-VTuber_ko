@@ -88,6 +88,35 @@ character_config:
         # 一旦选择letta作为agent，那么实际运行时候的llm是在letta上配置的，因此用户需要自己运行letta server
         # 有关更多详细信息，请查看他们的文档
 
+      mem0_agent:
+        # 基于 mem0 的长期记忆代理，使用向量数据库存储
+        # 需要 mem0ai 包：pip install mem0ai
+        base_url: 'http://localhost:11434/v1' # LLM API 端点（兼容 OpenAI）
+        model: 'qwen2.5:latest' # LLM 模型名称
+        # 是否在第一句回应时遇上逗号就直接生成音频以减少首句延迟
+        faster_first_response: True
+        # 句子分割方法：'regex' 或 'pysbd'
+        segment_method: 'pysbd'
+        # mem0 配置，用于向量存储、LLM 和嵌入模型
+        mem0_config:
+          vector_store:
+            provider: 'qdrant' # 选项：'qdrant'、'chroma'、'milvus' 等
+            config:
+              host: 'localhost'
+              port: 6333
+              # collection_name: 'mem0' # 可选：自定义集合名称
+          llm:
+            provider: 'openai' # mem0 内部 LLM 的提供商（用于记忆提取）
+            config:
+              model: 'gpt-4o-mini' # 用于记忆提取的模型
+              temperature: 0.2
+              # api_key: 'your-api-key' # OpenAI 提供商需要
+          embedder:
+            provider: 'openai' # 选项：'openai'、'huggingface'、'ollama'
+            config:
+              model: 'text-embedding-3-small' # 嵌入模型
+              # api_key: 'your-api-key' # OpenAI 提供商需要
+
     llm_configs:
       # 一个配置池，用于不同代理中使用的所有无状态 llm 提供商的凭据和连接详细信息
 
