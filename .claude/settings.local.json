@@ -25,7 +25,8 @@
       "Bash(ruff check:*)",
       "Bash(git stash push:*)",
       "Bash(git stash pop:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)"
     ]
   }
 }

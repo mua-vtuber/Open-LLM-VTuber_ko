@@ -84,7 +84,36 @@ character_config:
         host: 'api.hume.ai' # Do not change this in most cases
         config_id: '' # Optional
         idle_timeout: 15 # How many seconds to wait before disconnecting
- 
+
+      mem0_agent:
+        # mem0-based long-term memory agent with vector database storage
+        # Requires mem0ai package: pip install mem0ai
+        base_url: 'http://localhost:11434/v1' # LLM API endpoint (OpenAI-compatible)
+        model: 'qwen2.5:latest' # LLM model name
+        # Let AI speak as soon as the first comma is received on the first sentence
+        faster_first_response: True
+        # Method for segmenting sentences: 'regex' or 'pysbd'
+        segment_method: 'pysbd'
+        # mem0 configuration for vector store, LLM, and embedder
+        mem0_config:
+          vector_store:
+            provider: 'qdrant' # Options: 'qdrant', 'chroma', 'milvus', etc.
+            config:
+              host: 'localhost'
+              port: 6333
+              # collection_name: 'mem0' # Optional: custom collection name
+          llm:
+            provider: 'openai' # Provider for mem0 internal LLM (for memory extraction)
+            config:
+              model: 'gpt-4o-mini' # Model for memory extraction
+              temperature: 0.2
+              # api_key: 'your-api-key' # Required for OpenAI provider
+          embedder:
+            provider: 'openai' # Options: 'openai', 'huggingface', 'ollama'
+            config:
+              model: 'text-embedding-3-small' # Embedding model
+              # api_key: 'your-api-key' # Required for OpenAI provider
+
       # MemGPT Configurations: MemGPT is temporarily removed
       ##
 

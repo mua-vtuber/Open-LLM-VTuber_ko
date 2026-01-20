@@ -27,7 +27,6 @@ from .conversations.conversation_handler import (
     handle_group_interrupt,
     handle_individual_interrupt,
 )
-from .chat_monitor import ChatMonitorManager, ChatMessage
 
 
 class MessageType(Enum):
@@ -71,14 +70,8 @@ class WebSocketHandler:
         self.default_context_cache = default_context_cache
         self.received_data_buffers: Dict[str, np.ndarray] = {}
 
-        # Chat monitor manager (initialized later if enabled)
-        self.chat_monitor_manager: Optional[ChatMonitorManager] = None
-
         # Message handlers mapping
         self._message_handlers = self._init_message_handlers()
-
-        # Initialize chat monitor if enabled
-        asyncio.create_task(self._init_chat_monitor())
 
     def _init_message_handlers(self) -> Dict[str, Callable]:
         """Initialize message type to handler mapping"""
@@ -102,9 +95,10 @@ class WebSocketHandler:
             "audio-play-start": self._handle_audio_play_start,
             "request-init-config": self._handle_init_config_request,
             "heartbeat": self._handle_heartbeat,
-            "start-chat-monitor": self._handle_start_chat_monitor,
-            "stop-chat-monitor": self._handle_stop_chat_monitor,
-            "chat-monitor-status": self._handle_chat_monitor_status,
+            # Memory Management Handlers
+            "get_memories": self._handle_get_memories,
+            "delete_memory": self._handle_delete_memory,
+            "delete_all_memories": self._handle_delete_all_memories,
         }
 
     async def handle_new_connection(
@@ -621,214 +615,172 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"Error sending heartbeat acknowledgment: {e}")
 
-    # ==== Chat Monitor Methods ====
-
-    async def _init_chat_monitor(self) -> None:
-        """Initialize chat monitoring if enabled in configuration."""
-        try:
-            # Check if chat monitoring is enabled
-            config = self.default_context_cache.config
-            if not config or not config.live_config:
-                logger.debug("[ChatMonitor] Live config not available, skipping initialization")
-                return
-
-            chat_monitor_config = config.live_config.chat_monitor
-            if not chat_monitor_config.enabled:
-                logger.debug("[ChatMonitor] Chat monitoring is disabled in configuration")
-                return
-
-            # Create chat monitor manager
-            self.chat_monitor_manager = ChatMonitorManager(
-                config=chat_monitor_config,
-                message_callback=self._handle_chat_message,
-            )
-
-            # Initialize and start monitoring
-            initialized = await self.chat_monitor_manager.initialize()
-            if initialized:
-                await self.chat_monitor_manager.start_monitoring()
-                logger.success("[ChatMonitor] Chat monitoring started successfully")
-            else:
-                logger.warning("[ChatMonitor] Failed to initialize chat monitoring")
-
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error initializing chat monitor: {e}")
-
-    def _handle_chat_message(self, message: ChatMessage) -> None:
+    async def _handle_get_memories(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
         """
-        Handle incoming chat messages from monitoring platforms.
-
-        This callback is called by the chat monitor when a new message is received.
-        It injects the message into the conversation system.
+        사용자의 모든 메모리를 조회하여 반환.
 
         Args:
-            message: Chat message from YouTube or Chzzk
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 클라이언트로부터 받은 데이터 (사용하지 않음)
+
+        Returns:
+            WebSocket으로 memories_list 또는 error 메시지 전송
         """
-        try:
-            # Format the message for display
-            platform = message["platform"].upper()
-            author = message["author"]
-            content = message["message"]
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                    }
+                )
+            )
+            return
 
-            # Create a text input for the conversation system
-            formatted_text = f"[{platform} Chat] {author}: {content}"
+        if hasattr(context.agent_engine, "get_all_memories"):
+            try:
+                memories = context.agent_engine.get_all_memories()
+                await websocket.send_text(
+                    json.dumps({"type": "memories_list", "memories": memories})
+                )
+            except Exception as e:
+                logger.error(f"메모리 조회 실패: {e}")
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"메모리 조회 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+                )
+        else:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                    }
+                )
+            )
 
-            logger.info(f"[ChatMonitor] Processing: {formatted_text}")
-
-            # Send message to all connected clients (broadcast)
-            # You can modify this to send to specific clients if needed
-            asyncio.create_task(self._broadcast_chat_message(formatted_text, message))
-
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error handling chat message: {e}")
-
-    async def _broadcast_chat_message(self, formatted_text: str, message: ChatMessage) -> None:
+    async def _handle_delete_memory(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
         """
-        Broadcast chat message to all connected clients or trigger AI response.
+        특정 메모리를 삭제.
 
         Args:
-            formatted_text: Formatted message text
-            message: Original chat message
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: {"memory_id": "mem_xxx"} 형식의 데이터
+
+        Returns:
+            WebSocket으로 memory_deleted 또는 error 메시지 전송
         """
-        try:
-            # Option 1: Broadcast to all clients as a notification
-            for client_uid, websocket in self.client_connections.items():
-                try:
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "chat-message",
-                                "platform": message["platform"],
-                                "author": message["author"],
-                                "message": message["message"],
-                                "formatted_text": formatted_text,
-                            }
-                        )
-                    )
-                except Exception as e:
-                    logger.error(f"[ChatMonitor] Error sending to client {client_uid}: {e}")
+        memory_id = data.get("memory_id")
 
-            # Option 2: Trigger AI response (using the first connected client)
-            if self.client_connections:
-                first_client_uid = next(iter(self.client_connections))
-                websocket = self.client_connections[first_client_uid]
+        if not memory_id:
+            await websocket.send_text(
+                json.dumps({"type": "error", "message": "memory_id가 필요합니다"})
+            )
+            return
 
-                # Inject as text-input to trigger conversation
-                await self._handle_conversation_trigger(
-                    websocket=websocket,
-                    client_uid=first_client_uid,
-                    data={
-                        "type": "text-input",
-                        "text": formatted_text,
-                    },
-                )
-
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error broadcasting chat message: {e}")
-
-    async def _handle_start_chat_monitor(
-        self, websocket: WebSocket, client_uid: str, data: WSMessage
-    ) -> None:
-        """Handle request to start chat monitoring."""
-        try:
-            if not self.chat_monitor_manager:
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": "chat-monitor-error",
-                            "message": "Chat monitoring is not configured",
-                        }
-                    )
-                )
-                return
-
-            success = await self.chat_monitor_manager.start_monitoring()
+        context = self.client_contexts.get(client_uid)
+        if not context:
             await websocket.send_text(
                 json.dumps(
                     {
-                        "type": "chat-monitor-started",
-                        "success": success,
-                        "status": self.chat_monitor_manager.get_status(),
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                    }
+                )
+            )
+            return
+
+        if hasattr(context.agent_engine, "delete_memory"):
+            try:
+                success = context.agent_engine.delete_memory(memory_id)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "memory_deleted",
+                            "success": success,
+                            "memory_id": memory_id,
+                        }
+                    )
+                )
+            except Exception as e:
+                logger.error(f"메모리 삭제 실패: {e}")
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"메모리 삭제 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+                )
+        else:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
                     }
                 )
             )
 
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error starting monitor: {e}")
-            await websocket.send_text(
-                json.dumps(
-                    {"type": "chat-monitor-error", "message": str(e)}
-                )
-            )
-
-    async def _handle_stop_chat_monitor(
-        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    async def _handle_delete_all_memories(
+        self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
-        """Handle request to stop chat monitoring."""
-        try:
-            if not self.chat_monitor_manager:
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": "chat-monitor-error",
-                            "message": "Chat monitoring is not configured",
-                        }
-                    )
-                )
-                return
+        """
+        사용자의 모든 메모리를 삭제.
 
-            await self.chat_monitor_manager.stop_monitoring()
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 클라이언트로부터 받은 데이터 (사용하지 않음)
+
+        Returns:
+            WebSocket으로 all_memories_deleted 또는 error 메시지 전송
+        """
+        context = self.client_contexts.get(client_uid)
+        if not context:
             await websocket.send_text(
                 json.dumps(
                     {
-                        "type": "chat-monitor-stopped",
-                        "success": True,
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
                     }
                 )
             )
+            return
 
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error stopping monitor: {e}")
-            await websocket.send_text(
-                json.dumps(
-                    {"type": "chat-monitor-error", "message": str(e)}
+        if hasattr(context.agent_engine, "delete_all_memories"):
+            try:
+                success = context.agent_engine.delete_all_memories()
+                await websocket.send_text(
+                    json.dumps({"type": "all_memories_deleted", "success": success})
                 )
-            )
-
-    async def _handle_chat_monitor_status(
-        self, websocket: WebSocket, client_uid: str, data: WSMessage
-    ) -> None:
-        """Handle request for chat monitor status."""
-        try:
-            if not self.chat_monitor_manager:
+            except Exception as e:
+                logger.error(f"모든 메모리 삭제 실패: {e}")
                 await websocket.send_text(
                     json.dumps(
                         {
-                            "type": "chat-monitor-status",
-                            "enabled": False,
-                            "running": False,
-                            "platforms": {},
+                            "type": "error",
+                            "message": f"모든 메모리 삭제 중 오류가 발생했습니다: {str(e)}",
                         }
                     )
                 )
-                return
-
-            status = self.chat_monitor_manager.get_status()
+        else:
             await websocket.send_text(
                 json.dumps(
                     {
-                        "type": "chat-monitor-status",
-                        "enabled": True,
-                        "running": self.chat_monitor_manager.is_running,
-                        "platforms": status,
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
                     }
-                )
-            )
-
-        except Exception as e:
-            logger.error(f"[ChatMonitor] Error getting status: {e}")
-            await websocket.send_text(
-                json.dumps(
-                    {"type": "chat-monitor-error", "message": str(e)}
                 )
             )
