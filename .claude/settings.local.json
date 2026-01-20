@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(git submodule:*)",
+      "Bash(git checkout:*)",
+      "Bash(python test_i18n.py:*)",
+      "Bash(uv run:*)",
+      "Bash($env:PYTHONIOENCODING=\"utf-8\")",
+      "WebFetch(domain:docs.llmvtuber.com)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(ruff format:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run typecheck:web:*)",
+      "Bash(npm run lint:*)",
+      "Bash(git remote add:*)",
+      "Bash(ruff check:*)",
+      "Bash(git stash push:*)",
+      "Bash(git stash pop:*)",
+      "Bash(git branch:*)"
+    ]
+  }
+}
