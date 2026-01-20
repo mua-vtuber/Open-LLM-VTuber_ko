@@ -527,3 +527,35 @@ live_config:
     room_ids: [1991478060]
     # SESSDATA cookie value (optional, for authenticated requests)
     sessdata: ""
+
+  # Live Chat Monitoring Configuration
+  chat_monitor:
+    # Enable chat monitoring system
+    enabled: false
+    # Maximum retry attempts for reconnection
+    max_retries: 10
+    # Retry interval in seconds
+    retry_interval: 60
+
+    # YouTube Live Chat monitoring
+    youtube:
+      enabled: false
+      # YouTube Data API v3 key (get from Google Cloud Console)
+      api_key: ''
+      # YouTube channel ID to monitor
+      channel_id: ''
+
+    # Chzzk (치지직) Live Chat monitoring using official OAuth API
+    chzzk:
+      enabled: false
+      # Chzzk channel ID to monitor
+      channel_id: ''
+      # OAuth2 Client ID from CHZZK Developer Center
+      client_id: ''
+      # OAuth2 Client Secret from CHZZK Developer Center
+      client_secret: ''
+      # OAuth2 redirect URI (must match Developer Center settings)
+      redirect_uri: 'http://localhost:12393/chzzk/callback'
+      # OAuth2 tokens (automatically set after authorization via /chzzk/auth)
+      access_token: ''
+      refresh_token: ''

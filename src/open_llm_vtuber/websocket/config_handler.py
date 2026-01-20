@@ -1,8 +1,9 @@
 """Configuration operations handler for WebSocket communication."""
 
-from typing import Dict
+from typing import Dict, Any
 from fastapi import WebSocket
 import json
+from loguru import logger
 
 from ..service_context import ServiceContext
 from ..config_manager.utils import scan_config_alts_directory, scan_bg_directory
@@ -18,6 +19,10 @@ class ConfigHandler:
     ):
         self.client_contexts = client_contexts
         self.default_context_cache = default_context_cache
+
+    def _get_context(self, client_uid: str) -> ServiceContext:
+        """Get context for a client, falling back to default."""
+        return self.client_contexts.get(client_uid, self.default_context_cache)
 
     async def handle_fetch_configs(
         self, websocket: WebSocket, client_uid: str, data: dict
@@ -51,9 +56,7 @@ class ConfigHandler:
         self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
         """Handle request for initialization configuration."""
-        context = self.client_contexts.get(client_uid)
-        if not context:
-            context = self.default_context_cache
+        context = self._get_context(client_uid)
 
         await websocket.send_text(
             json.dumps(
@@ -66,3 +69,53 @@ class ConfigHandler:
                 }
             )
         )
+
+    async def handle_fetch_tts_config(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Handle fetching TTS configuration."""
+        context = self._get_context(client_uid)
+
+        try:
+            tts_config = context.character_config.tts_config
+            tts_model = tts_config.tts_model
+
+            # Get the active TTS engine config
+            active_config = getattr(tts_config, tts_model, None)
+            active_config_dict = {}
+            if active_config:
+                active_config_dict = active_config.model_dump()
+
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "tts-config",
+                        "tts_model": tts_model,
+                        "config": active_config_dict,
+                    }
+                )
+            )
+        except Exception as e:
+            logger.error(f"Error fetching TTS config: {e}")
+            await websocket.send_text(
+                json.dumps({"type": "tts-config-error", "error": str(e)})
+            )
+
+    async def handle_fetch_live_config(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Handle fetching live streaming configuration."""
+        context = self._get_context(client_uid)
+
+        try:
+            live_config = context.config.live_config
+            config_dict = live_config.model_dump()
+
+            await websocket.send_text(
+                json.dumps({"type": "live-config", "config": config_dict})
+            )
+        except Exception as e:
+            logger.error(f"Error fetching live config: {e}")
+            await websocket.send_text(
+                json.dumps({"type": "live-config-error", "error": str(e)})
+            )

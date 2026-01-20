@@ -523,3 +523,35 @@ live_config:
     room_ids: [1991478060]
     # SESSDATA cookie value (optional, for authenticated requests, allows viewing danmaku sender usernames)
     sessdata: ""
+
+  # 直播聊天监控配置
+  chat_monitor:
+    # 启用聊天监控系统
+    enabled: false
+    # 重连最大重试次数
+    max_retries: 10
+    # 重试间隔（秒）
+    retry_interval: 60
+
+    # YouTube直播聊天监控
+    youtube:
+      enabled: false
+      # YouTube Data API v3 密钥（从Google Cloud Console获取）
+      api_key: ''
+      # 要监控的YouTube频道ID
+      channel_id: ''
+
+    # Chzzk（치지직）直播聊天监控，使用官方OAuth API
+    chzzk:
+      enabled: false
+      # 要监控的Chzzk频道ID
+      channel_id: ''
+      # 来自CHZZK开发者中心的OAuth2客户端ID
+      client_id: ''
+      # 来自CHZZK开发者中心的OAuth2客户端密钥
+      client_secret: ''
+      # OAuth2重定向URI（必须与开发者中心设置匹配）
+      redirect_uri: 'http://localhost:12393/chzzk/callback'
+      # OAuth2令牌（通过/chzzk/auth授权后自动设置）
+      access_token: ''
+      refresh_token: ''

@@ -120,6 +120,8 @@ class WebSocketHandler:
             "switch-config": self.config_handler.handle_config_switch,
             "fetch-backgrounds": self.config_handler.handle_fetch_backgrounds,
             "request-init-config": self.config_handler.handle_init_config_request,
+            "fetch-tts-config": self.config_handler.handle_fetch_tts_config,
+            "fetch-live-config": self.config_handler.handle_fetch_live_config,
             # Memory operations
             "get_memories": self.memory_handler.handle_get_memories,
             "delete_memory": self.memory_handler.handle_delete_memory,
