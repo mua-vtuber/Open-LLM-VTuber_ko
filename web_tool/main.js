@@ -166,20 +166,20 @@ function connectWebSocket() {
             // Wait for any pending audio loads to complete
             if (pendingAudioPaths.size > 0) {
                 ttsStatus.textContent = 'Finalizing audio...';
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, NETWORK.PENDING_AUDIO_WAIT_MS));
             }
 
             try {
                 // Combine all audio buffers
-                const targetSampleRate = 16000;
+                const targetSampleRate = AUDIO.SAMPLE_RATE;
                 const totalLength = audioBuffers.reduce((acc, buffer) => {
                     // Calculate resampled length if needed
                     const ratio = targetSampleRate / buffer.sampleRate;
                     return acc + Math.ceil(buffer.length * ratio);
                 }, 0);
-                
+
                 const combinedBuffer = audioContext.createBuffer(
-                    1,  // mono
+                    AUDIO.NUM_CHANNELS,  // mono
                     totalLength,
                     targetSampleRate
                 );
@@ -240,7 +240,7 @@ function connectWebSocket() {
             currentAudioPath = null;
         }
         
-        setTimeout(connectWebSocket, 5000);
+        setTimeout(connectWebSocket, NETWORK.WEBSOCKET_RECONNECT_DELAY_MS);
     };
 
     ws.onerror = (error) => {
@@ -262,17 +262,17 @@ function connectWebSocket() {
 async function audioBufferToWav(buffer) {
     // Resample to 16kHz if needed
     let audioData = buffer.getChannelData(0);
-    if (buffer.sampleRate !== 16000) {
-        audioData = await resampleAudio(audioData, buffer.sampleRate, 16000);
+    if (buffer.sampleRate !== AUDIO.SAMPLE_RATE) {
+        audioData = await resampleAudio(audioData, buffer.sampleRate, AUDIO.SAMPLE_RATE);
     }
-    
-    const numChannels = 1; // Mono
-    const sampleRate = 16000;
-    const format = 1; // PCM
-    const bitDepth = 16;
-    
+
+    const numChannels = AUDIO.NUM_CHANNELS; // Mono
+    const sampleRate = AUDIO.SAMPLE_RATE;
+    const format = AUDIO.PCM_FORMAT; // PCM
+    const bitDepth = AUDIO.BIT_DEPTH;
+
     const dataLength = audioData.length * (bitDepth / 8);
-    const headerLength = 44;
+    const headerLength = AUDIO.WAV_HEADER_SIZE;
     const totalLength = headerLength + dataLength;
     
     const arrayBuffer = new ArrayBuffer(totalLength);
@@ -283,7 +283,7 @@ async function audioBufferToWav(buffer) {
     view.setUint32(4, totalLength - 8, true);
     writeString(view, 8, 'WAVE');
     writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
+    view.setUint32(16, AUDIO.FMT_CHUNK_SIZE, true);
     view.setUint16(20, format, true);
     view.setUint16(22, numChannels, true);
     view.setUint32(24, sampleRate, true);
@@ -292,9 +292,9 @@ async function audioBufferToWav(buffer) {
     view.setUint16(34, bitDepth, true);
     writeString(view, 36, 'data');
     view.setUint32(40, dataLength, true);
-    
+
     // Write audio data
-    floatTo16BitPCM(view, 44, audioData);
+    floatTo16BitPCM(view, AUDIO.WAV_HEADER_SIZE, audioData);
     
     return arrayBuffer;
 }
@@ -328,7 +328,7 @@ function writeString(view, offset, string) {
 function floatTo16BitPCM(view, offset, input) {
     for (let i = 0; i < input.length; i++, offset += 2) {
         const s = Math.max(-1, Math.min(1, input[i]));
-        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        view.setInt16(offset, s < 0 ? s * AUDIO.INT16_MIN_ABS : s * AUDIO.INT16_MAX, true);
     }
 }
 
@@ -382,7 +382,7 @@ window.addEventListener('beforeunload', () => {
 // Initialize WebSocket connection
 connectWebSocket();
 
-async function fetchWithRetry(url, maxRetries = 3, retryDelay = 1000) {
+async function fetchWithRetry(url, maxRetries = NETWORK.MAX_FETCH_RETRIES, retryDelay = NETWORK.RETRY_DELAY_MS) {
     for (let i = 0; i < maxRetries; i++) {
         try {
             const response = await fetch(url);
