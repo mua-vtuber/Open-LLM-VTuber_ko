@@ -76,3 +76,6 @@ private/
 mcp_servers.json
 
 .vscode/
+
+# Auto Claude data directory
+.auto-claude/
