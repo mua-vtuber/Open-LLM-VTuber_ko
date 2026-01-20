@@ -1,3 +1,8 @@
+/**
+ * 오디오 녹음 및 WAV 파일 생성 클래스
+ *
+ * 주의: 이 파일은 constants.js가 먼저 로드된 후에 로드되어야 합니다.
+ */
 class AudioRecorder {
     constructor() {
         this.mediaRecorder = null;
@@ -10,8 +15,8 @@ class AudioRecorder {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    channelCount: 1,
-                    sampleRate: 16000
+                    channelCount: AUDIO.NUM_CHANNELS,
+                    sampleRate: AUDIO.SAMPLE_RATE
                 }
             });
             this.mediaRecorder = new MediaRecorder(stream);
@@ -53,10 +58,10 @@ class AudioRecorder {
     }
 
     async createWAV(audioBuffer) {
-        const numChannels = 1; // Mono
-        const sampleRate = 16000; // Target sample rate
-        const format = 1; // PCM
-        const bitDepth = 16;
+        const numChannels = AUDIO.NUM_CHANNELS;
+        const sampleRate = AUDIO.SAMPLE_RATE;
+        const format = AUDIO.PCM_FORMAT;
+        const bitDepth = AUDIO.BIT_DEPTH;
 
         // Resample if needed
         let samples = audioBuffer.getChannelData(0);
@@ -65,7 +70,7 @@ class AudioRecorder {
         }
 
         const dataLength = samples.length * (bitDepth / 8);
-        const headerLength = 44;
+        const headerLength = AUDIO.WAV_HEADER_SIZE;
         const totalLength = headerLength + dataLength;
 
         const buffer = new ArrayBuffer(totalLength);
@@ -76,7 +81,7 @@ class AudioRecorder {
         view.setUint32(4, totalLength - 8, true);
         this.writeString(view, 8, 'WAVE');
         this.writeString(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
+        view.setUint32(16, AUDIO.FMT_CHUNK_SIZE, true);
         view.setUint16(20, format, true);
         view.setUint16(22, numChannels, true);
         view.setUint32(24, sampleRate, true);
@@ -87,7 +92,7 @@ class AudioRecorder {
         view.setUint32(40, dataLength, true);
 
         // Write audio data
-        this.floatTo16BitPCM(view, 44, samples);
+        this.floatTo16BitPCM(view, AUDIO.WAV_HEADER_SIZE, samples);
 
         return buffer;
     }
@@ -101,7 +106,7 @@ class AudioRecorder {
     floatTo16BitPCM(view, offset, input) {
         for (let i = 0; i < input.length; i++, offset += 2) {
             const s = Math.max(-1, Math.min(1, input[i]));
-            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            view.setInt16(offset, s < 0 ? s * AUDIO.INT16_MIN_ABS : s * AUDIO.INT16_MAX, true);
         }
     }
 
