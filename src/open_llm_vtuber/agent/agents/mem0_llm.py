@@ -1,4 +1,4 @@
-from typing import AsyncIterator, List, Dict, Any, Optional
+from typing import AsyncIterator, List, Dict, Any
 from loguru import logger
 
 from .agent_interface import AgentInterface
@@ -14,14 +14,20 @@ from ..input_types import BatchInput, TextSource
 
 try:
     from mem0 import Memory
+    from mem0.configs.base import MemoryConfig
 except ImportError:
-    logger.warning("mem0ai 패키지가 설치되지 않았습니다. pip install mem0ai를 실행하세요.")
+    logger.warning(
+        "mem0ai 패키지가 설치되지 않았습니다. pip install mem0ai를 실행하세요."
+    )
     Memory = None
+    MemoryConfig = None
 
 try:
     from openai import AsyncOpenAI
 except ImportError:
-    logger.warning("openai 패키지가 설치되지 않았습니다. pip install openai를 실행하세요.")
+    logger.warning(
+        "openai 패키지가 설치되지 않았습니다. pip install openai를 실행하세요."
+    )
     AsyncOpenAI = None
 
 
@@ -75,7 +81,16 @@ class LLM(AgentInterface):
             )
 
         try:
-            self._memory = Memory(config=mem0_config) if mem0_config else Memory()
+            if mem0_config:
+                # dict를 MemoryConfig 객체로 변환
+                config = MemoryConfig(
+                    vector_store=mem0_config.get("vector_store"),
+                    llm=mem0_config.get("llm"),
+                    embedder=mem0_config.get("embedder"),
+                )
+                self._memory = Memory(config)
+            else:
+                self._memory = Memory()
             logger.info(f"mem0 Memory 인스턴스 초기화 완료 (user_id: {user_id})")
         except Exception as e:
             logger.error(f"mem0 Memory 초기화 실패: {e}")
@@ -88,7 +103,9 @@ class LLM(AgentInterface):
             )
 
         self._openai_client = AsyncOpenAI(base_url=base_url)
-        logger.debug(f"OpenAI 클라이언트 초기화 완료 (base_url: {base_url}, model: {model})")
+        logger.debug(
+            f"OpenAI 클라이언트 초기화 완료 (base_url: {base_url}, model: {model})"
+        )
 
         # 데코레이터 적용 (letta_agent.py 패턴 참고)
         self.chat = tts_filter(self._tts_preprocessor_config)(
@@ -132,7 +149,17 @@ class LLM(AgentInterface):
                     query=user_message,
                     user_id=self._user_id,
                 )
-                relevant_memories = search_results if search_results else []
+                # mem0 v1.1+ returns {"results": [...]} format
+                if search_results:
+                    if isinstance(search_results, dict) and "results" in search_results:
+                        relevant_memories = search_results["results"]
+                    else:
+                        # fallback for older versions
+                        relevant_memories = (
+                            search_results if isinstance(search_results, list) else []
+                        )
+                else:
+                    relevant_memories = []
                 logger.debug(f"검색된 메모리 수: {len(relevant_memories)}")
             except Exception as e:
                 logger.error(f"mem0 메모리 검색 실패: {e}")
@@ -143,7 +170,9 @@ class LLM(AgentInterface):
             memory_context = "\n\n=== 관련 기억 ===\n"
             for idx, mem in enumerate(relevant_memories, 1):
                 # mem0 검색 결과는 딕셔너리 형태
-                memory_text = mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                memory_text = (
+                    mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                )
                 memory_context += f"{idx}. {memory_text}\n"
             system_prompt = f"{self._system}\n{memory_context}"
             logger.debug(f"메모리 컨텍스트 추가됨: {len(relevant_memories)}개")
@@ -188,7 +217,7 @@ class LLM(AgentInterface):
                     messages=messages_to_save,
                     user_id=self._user_id,
                 )
-                logger.debug(f"대화 내용을 mem0에 저장 완료")
+                logger.debug("대화 내용을 mem0에 저장 완료")
             except Exception as e:
                 logger.error(f"mem0 메모리 저장 실패: {e}")
 
@@ -218,6 +247,73 @@ class LLM(AgentInterface):
         # 별도의 히스토리 로딩이 필요 없을 수 있음
         # 필요시 subtask-2-2에서 구현
         pass
+
+    def get_all_memories(self) -> List[Dict[str, Any]]:
+        """
+        사용자의 모든 메모리를 조회.
+
+        Returns:
+            List[Dict]: 메모리 목록
+        """
+        if not self._memory:
+            logger.warning("Memory 인스턴스가 초기화되지 않았습니다")
+            return []
+
+        try:
+            # mem0의 get_all() 메서드 사용
+            all_memories = self._memory.get_all(user_id=self._user_id)
+
+            # v1.1+ format handling
+            if isinstance(all_memories, dict) and "results" in all_memories:
+                return all_memories["results"]
+            elif isinstance(all_memories, list):
+                return all_memories
+            else:
+                return []
+        except Exception as e:
+            logger.error(f"메모리 조회 실패: {e}")
+            return []
+
+    def delete_memory(self, memory_id: str) -> bool:
+        """
+        특정 메모리를 삭제.
+
+        Args:
+            memory_id: 삭제할 메모리 ID
+
+        Returns:
+            bool: 삭제 성공 여부
+        """
+        if not self._memory:
+            logger.warning("Memory 인스턴스가 초기화되지 않았습니다")
+            return False
+
+        try:
+            self._memory.delete(memory_id=memory_id)
+            logger.info(f"메모리 삭제 완료: {memory_id}")
+            return True
+        except Exception as e:
+            logger.error(f"메모리 삭제 실패: {e}")
+            return False
+
+    def delete_all_memories(self) -> bool:
+        """
+        사용자의 모든 메모리를 삭제.
+
+        Returns:
+            bool: 삭제 성공 여부
+        """
+        if not self._memory:
+            logger.warning("Memory 인스턴스가 초기화되지 않았습니다")
+            return False
+
+        try:
+            self._memory.delete_all(user_id=self._user_id)
+            logger.info(f"모든 메모리 삭제 완료 (user_id: {self._user_id})")
+            return True
+        except Exception as e:
+            logger.error(f"모든 메모리 삭제 실패: {e}")
+            return False
 
     def _to_text_prompt(self, input_data: BatchInput) -> str:
         """

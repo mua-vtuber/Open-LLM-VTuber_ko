@@ -104,6 +104,7 @@ class AgentFactory:
                 user_id=kwargs.get("user_id", "default"),
                 system=system_prompt,
                 live2d_model=live2d_model,
+                tts_preprocessor_config=tts_preprocessor_config,
                 **mem0_settings,
             )
 
