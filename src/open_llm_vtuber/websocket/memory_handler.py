@@ -8,6 +8,18 @@ from loguru import logger
 from ..service_context import ServiceContext
 
 
+# Error codes for i18n support - frontend translates these
+class MemoryErrorCode:
+    """Error codes for memory operations (translated in frontend)."""
+
+    CLIENT_CONTEXT_NOT_FOUND = "ERROR_CLIENT_CONTEXT_NOT_FOUND"
+    MEMORY_NOT_SUPPORTED = "ERROR_MEMORY_NOT_SUPPORTED"
+    MEMORY_ID_REQUIRED = "ERROR_MEMORY_ID_REQUIRED"
+    FETCH_MEMORIES_FAILED = "ERROR_FETCH_MEMORIES_FAILED"
+    DELETE_MEMORY_FAILED = "ERROR_DELETE_MEMORY_FAILED"
+    DELETE_ALL_MEMORIES_FAILED = "ERROR_DELETE_ALL_MEMORIES_FAILED"
+
+
 class MemoryHandler:
     """Handles memory-related WebSocket operations."""
 
@@ -34,7 +46,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                        "error_code": MemoryErrorCode.CLIENT_CONTEXT_NOT_FOUND,
                     }
                 )
             )
@@ -47,12 +59,13 @@ class MemoryHandler:
                     json.dumps({"type": "memories_list", "memories": memories})
                 )
             except Exception as e:
-                logger.error(f"메모리 조회 실패: {e}")
+                logger.error(f"Failed to fetch memories: {e}")
                 await websocket.send_text(
                     json.dumps(
                         {
                             "type": "error",
-                            "message": f"메모리 조회 중 오류가 발생했습니다: {str(e)}",
+                            "error_code": MemoryErrorCode.FETCH_MEMORIES_FAILED,
+                            "details": str(e),
                         }
                     )
                 )
@@ -61,7 +74,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                        "error_code": MemoryErrorCode.MEMORY_NOT_SUPPORTED,
                     }
                 )
             )
@@ -84,7 +97,12 @@ class MemoryHandler:
 
         if not memory_id:
             await websocket.send_text(
-                json.dumps({"type": "error", "message": "memory_id가 필요합니다"})
+                json.dumps(
+                    {
+                        "type": "error",
+                        "error_code": MemoryErrorCode.MEMORY_ID_REQUIRED,
+                    }
+                )
             )
             return
 
@@ -94,7 +112,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                        "error_code": MemoryErrorCode.CLIENT_CONTEXT_NOT_FOUND,
                     }
                 )
             )
@@ -113,12 +131,13 @@ class MemoryHandler:
                     )
                 )
             except Exception as e:
-                logger.error(f"메모리 삭제 실패: {e}")
+                logger.error(f"Failed to delete memory: {e}")
                 await websocket.send_text(
                     json.dumps(
                         {
                             "type": "error",
-                            "message": f"메모리 삭제 중 오류가 발생했습니다: {str(e)}",
+                            "error_code": MemoryErrorCode.DELETE_MEMORY_FAILED,
+                            "details": str(e),
                         }
                     )
                 )
@@ -127,7 +146,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                        "error_code": MemoryErrorCode.MEMORY_NOT_SUPPORTED,
                     }
                 )
             )
@@ -152,7 +171,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                        "error_code": MemoryErrorCode.CLIENT_CONTEXT_NOT_FOUND,
                     }
                 )
             )
@@ -165,12 +184,13 @@ class MemoryHandler:
                     json.dumps({"type": "all_memories_deleted", "success": success})
                 )
             except Exception as e:
-                logger.error(f"모든 메모리 삭제 실패: {e}")
+                logger.error(f"Failed to delete all memories: {e}")
                 await websocket.send_text(
                     json.dumps(
                         {
                             "type": "error",
-                            "message": f"모든 메모리 삭제 중 오류가 발생했습니다: {str(e)}",
+                            "error_code": MemoryErrorCode.DELETE_ALL_MEMORIES_FAILED,
+                            "details": str(e),
                         }
                     )
                 )
@@ -179,7 +199,7 @@ class MemoryHandler:
                 json.dumps(
                     {
                         "type": "error",
-                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                        "error_code": MemoryErrorCode.MEMORY_NOT_SUPPORTED,
                     }
                 )
             )
