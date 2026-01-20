@@ -1,6 +1,9 @@
 import abc
-import numpy as np
 import asyncio
+
+import numpy as np
+
+from ..constants.audio import FLOAT32_TO_INT16_MULTIPLIER
 
 
 class ASRInterface(metaclass=abc.ABCMeta):
@@ -48,7 +51,7 @@ class ASRInterface(metaclass=abc.ABCMeta):
         # Make sure the audio is in the range [-1, 1]
         audio = np.clip(audio, -1, 1)
         # Convert the audio to 16-bit PCM
-        audio_integer = (audio * 32767).astype(np.int16)
+        audio_integer = (audio * FLOAT32_TO_INT16_MULTIPLIER).astype(np.int16)
 
         with wave.open(file_path, "wb") as wf:
             wf.setnchannels(1)
