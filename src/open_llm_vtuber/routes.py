@@ -13,6 +13,7 @@ from .proxy_handler import ProxyHandler
 from .i18n_manager import I18nManager
 from .chat_monitor.chzzk_oauth_manager import ChzzkOAuthManager
 from starlette.responses import RedirectResponse, HTMLResponse
+from .constants.audio import WAV_HEADER_SIZE_BYTES, INT16_TO_FLOAT32_DIVISOR
 
 
 def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
@@ -360,11 +361,11 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             contents = await file.read()
 
             # Validate minimum file size
-            if len(contents) < 44:  # Minimum WAV header size
+            if len(contents) < WAV_HEADER_SIZE_BYTES:
                 raise ValueError("Invalid WAV file: File too small")
 
             # Decode the WAV header and get actual audio data
-            wav_header_size = 44  # Standard WAV header size
+            wav_header_size = WAV_HEADER_SIZE_BYTES
             audio_data = contents[wav_header_size:]
 
             # Validate audio data size
@@ -375,7 +376,7 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             try:
                 audio_array = (
                     np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
-                    / 32768.0
+                    / INT16_TO_FLOAT32_DIVISOR
                 )
             except ValueError as e:
                 raise ValueError(
