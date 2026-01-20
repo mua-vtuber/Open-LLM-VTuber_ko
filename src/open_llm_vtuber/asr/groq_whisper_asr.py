@@ -4,6 +4,7 @@ import numpy as np
 from loguru import logger
 from groq import Groq
 from .asr_interface import ASRInterface
+from ..constants.audio import FLOAT32_TO_INT16_MULTIPLIER
 
 
 class VoiceRecognition(ASRInterface):
@@ -30,7 +31,7 @@ class VoiceRecognition(ASRInterface):
         # Make sure the audio is in the range [-1, 1]
         audio = np.clip(audio, -1, 1)
         # Convert the audio to 16-bit PCM
-        audio_integer = (audio * 32767).astype(np.int16)
+        audio_integer = (audio * FLOAT32_TO_INT16_MULTIPLIER).astype(np.int16)
 
         # groq api requires a file-like object for the audio data, so we use a BytesIO object
         audio_buffer = io.BytesIO()

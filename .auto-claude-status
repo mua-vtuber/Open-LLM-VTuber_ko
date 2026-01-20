@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "001-mem0",
+  "spec": "005-extract-magic-numbers-to-named-constants",
   "state": "building",
   "subtasks": {
-    "completed": 8,
-    "total": 9,
+    "completed": 5,
+    "total": 13,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "\ud1b5\ud569 \ud14c\uc2a4\ud2b8 \ubc0f \uac80\uc99d",
+    "current": "Python \ubc31\uc5d4\ub4dc \ub9c8\uc774\uadf8\ub808\uc774\uc158",
     "id": null,
-    "total": 2
+    "total": 4
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 10,
-    "started_at": "2026-01-20T14:17:40.390812"
+    "number": 6,
+    "started_at": "2026-01-20T16:06:06.877845"
   },
-  "last_update": "2026-01-20T14:43:51.803989"
+  "last_update": "2026-01-20T16:17:10.952751"
 }
