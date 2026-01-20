@@ -14,7 +14,20 @@ Open-LLM-VTuber 상수 모듈.
     )
 """
 
-# audio.py가 생성되면 여기서 re-export됩니다
-# from .audio import *  # noqa: F401, F403
+# audio.py에서 오디오 관련 상수 re-export
+from .audio import (
+    WAV_HEADER_SIZE_BYTES,
+    INT16_TO_FLOAT32_DIVISOR,
+    FLOAT32_TO_INT16_MULTIPLIER,
+    VAD_WINDOW_SIZE_16KHZ,
+    VAD_WINDOW_SIZE_8KHZ,
+)
 
-__all__: list[str] = []
+__all__: list[str] = [
+    # audio.py 상수
+    "WAV_HEADER_SIZE_BYTES",
+    "INT16_TO_FLOAT32_DIVISOR",
+    "FLOAT32_TO_INT16_MULTIPLIER",
+    "VAD_WINDOW_SIZE_16KHZ",
+    "VAD_WINDOW_SIZE_8KHZ",
+]
