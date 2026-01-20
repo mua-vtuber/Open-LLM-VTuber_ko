@@ -12,6 +12,18 @@ from ..transformers import (
 from ...config_manager import TTSPreprocessorConfig
 from ..input_types import BatchInput, TextSource
 
+try:
+    from mem0 import Memory
+except ImportError:
+    logger.warning("mem0ai 패키지가 설치되지 않았습니다. pip install mem0ai를 실행하세요.")
+    Memory = None
+
+try:
+    from openai import AsyncOpenAI
+except ImportError:
+    logger.warning("openai 패키지가 설치되지 않았습니다. pip install openai를 실행하세요.")
+    AsyncOpenAI = None
+
 
 class LLM(AgentInterface):
     """
@@ -56,8 +68,27 @@ class LLM(AgentInterface):
         self._faster_first_response = faster_first_response
         self._segment_method = segment_method
 
-        # mem0 Memory 인스턴스는 subtask-2-2에서 초기화 예정
-        self._memory = None
+        # mem0 Memory 인스턴스 초기화
+        if Memory is None:
+            raise ImportError(
+                "mem0ai 패키지가 설치되지 않았습니다. 'pip install mem0ai'를 실행하세요."
+            )
+
+        try:
+            self._memory = Memory(config=mem0_config) if mem0_config else Memory()
+            logger.info(f"mem0 Memory 인스턴스 초기화 완료 (user_id: {user_id})")
+        except Exception as e:
+            logger.error(f"mem0 Memory 초기화 실패: {e}")
+            self._memory = None
+
+        # OpenAI 호환 LLM 클라이언트 초기화
+        if AsyncOpenAI is None:
+            raise ImportError(
+                "openai 패키지가 설치되지 않았습니다. 'pip install openai'를 실행하세요."
+            )
+
+        self._openai_client = AsyncOpenAI(base_url=base_url)
+        logger.debug(f"OpenAI 클라이언트 초기화 완료 (base_url: {base_url}, model: {model})")
 
         # 데코레이터 적용 (letta_agent.py 패턴 참고)
         self.chat = tts_filter(self._tts_preprocessor_config)(
@@ -72,12 +103,12 @@ class LLM(AgentInterface):
             )
         )
 
-        logger.info(f"mem0 LLM Agent initialized for user: {self._user_id}")
+        logger.info(f"mem0 LLM Agent 초기화 완료 (user_id: {self._user_id})")
 
     async def _chat_impl(self, input_data: BatchInput) -> AsyncIterator[str]:
         """
         실제 채팅 로직 구현 (내부 메서드).
-        LLM API 호출 및 mem0 메모리 검색/저장은 subtask-2-2에서 구현 예정.
+        LLM API 호출 및 mem0 메모리 검색/저장 통합.
 
         Args:
             input_data: 사용자 입력 데이터
@@ -85,13 +116,81 @@ class LLM(AgentInterface):
         Yields:
             str: LLM 응답 텍스트 스트림
         """
-        # 기본 구조만 구현 (subtask-2-1)
-        # 실제 mem0 통합은 subtask-2-2에서 구현
+        # 1. 사용자 메시지 추출
         user_message = self._to_text_prompt(input_data)
         logger.debug(f"User message: {user_message}")
 
-        # Placeholder: 실제 LLM 호출은 subtask-2-2에서 구현
-        yield "mem0 agent placeholder response"
+        if not user_message.strip():
+            logger.warning("빈 사용자 메시지 수신")
+            return
+
+        # 2. mem0에서 관련 메모리 검색
+        relevant_memories = []
+        if self._memory:
+            try:
+                search_results = self._memory.search(
+                    query=user_message,
+                    user_id=self._user_id,
+                )
+                relevant_memories = search_results if search_results else []
+                logger.debug(f"검색된 메모리 수: {len(relevant_memories)}")
+            except Exception as e:
+                logger.error(f"mem0 메모리 검색 실패: {e}")
+
+        # 3. 시스템 프롬프트 구성 (메모리 포함)
+        system_prompt = self._system
+        if relevant_memories:
+            memory_context = "\n\n=== 관련 기억 ===\n"
+            for idx, mem in enumerate(relevant_memories, 1):
+                # mem0 검색 결과는 딕셔너리 형태
+                memory_text = mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                memory_context += f"{idx}. {memory_text}\n"
+            system_prompt = f"{self._system}\n{memory_context}"
+            logger.debug(f"메모리 컨텍스트 추가됨: {len(relevant_memories)}개")
+
+        # 4. LLM API 스트리밍 호출
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+
+        assistant_response = []
+        try:
+            stream = await self._openai_client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                stream=True,
+            )
+
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    assistant_response.append(content)
+                    yield content
+
+        except Exception as e:
+            logger.error(f"LLM API 호출 실패: {e}")
+            error_message = f"오류가 발생했습니다: {str(e)}"
+            assistant_response.append(error_message)
+            yield error_message
+            return
+
+        # 5. 대화 내용을 mem0에 저장
+        full_response = "".join(assistant_response)
+        if self._memory and full_response.strip():
+            try:
+                # mem0에 메시지 형식으로 저장
+                messages_to_save = [
+                    {"role": "user", "content": user_message},
+                    {"role": "assistant", "content": full_response},
+                ]
+                self._memory.add(
+                    messages=messages_to_save,
+                    user_id=self._user_id,
+                )
+                logger.debug(f"대화 내용을 mem0에 저장 완료")
+            except Exception as e:
+                logger.error(f"mem0 메모리 저장 실패: {e}")
 
     async def chat(self, input_data: BatchInput) -> AsyncIterator[SentenceOutput]:
         """
