@@ -116,6 +116,39 @@ class Mem0Config(I18nMixin, BaseModel):
     }
 
 
+class Mem0AgentConfig(I18nMixin, BaseModel):
+    """Configuration for the Mem0 agent."""
+
+    base_url: str = Field(..., alias="base_url")
+    model: str = Field(..., alias="model")
+    faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
+    segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
+    mem0_config: Mem0Config = Field(..., alias="mem0_config")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "base_url": Description(
+            en="Base URL for the OpenAI-compatible LLM API endpoint",
+            zh="OpenAI 兼容的 LLM API 端点基础URL",
+        ),
+        "model": Description(
+            en="LLM model name to use for conversations",
+            zh="用于对话的语言模型名称",
+        ),
+        "faster_first_response": Description(
+            en="Whether to respond as soon as encountering a comma in the first sentence to reduce latency (default: True)",
+            zh="是否在第一句回应时遇上逗号就直接生成音频以减少首句延迟（默认：True）",
+        ),
+        "segment_method": Description(
+            en="Method for segmenting sentences: 'regex' or 'pysbd' (default: 'pysbd')",
+            zh="分割句子的方法：'regex' 或 'pysbd'（默认：'pysbd'）",
+        ),
+        "mem0_config": Description(
+            en="Mem0 configuration for vector store, LLM, and embedder",
+            zh="Mem0 向量存储、语言模型和嵌入模型的配置",
+        ),
+    }
+
+
 # =================================
 
 
@@ -178,7 +211,7 @@ class AgentSettings(I18nMixin, BaseModel):
     basic_memory_agent: Optional[BasicMemoryAgentConfig] = Field(
         None, alias="basic_memory_agent"
     )
-    mem0_agent: Optional[Mem0Config] = Field(None, alias="mem0_agent")
+    mem0_agent: Optional[Mem0AgentConfig] = Field(None, alias="mem0_agent")
     hume_ai_agent: Optional[HumeAIConfig] = Field(None, alias="hume_ai_agent")
     letta_agent: Optional[LettaConfig] = Field(None, alias="letta_agent")
 
