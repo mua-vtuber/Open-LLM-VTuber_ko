@@ -95,6 +95,10 @@ class WebSocketHandler:
             "audio-play-start": self._handle_audio_play_start,
             "request-init-config": self._handle_init_config_request,
             "heartbeat": self._handle_heartbeat,
+            # Memory Management Handlers
+            "get_memories": self._handle_get_memories,
+            "delete_memory": self._handle_delete_memory,
+            "delete_all_memories": self._handle_delete_all_memories,
         }
 
     async def handle_new_connection(
@@ -610,3 +614,173 @@ class WebSocketHandler:
             await websocket.send_json({"type": "heartbeat-ack"})
         except Exception as e:
             logger.error(f"Error sending heartbeat acknowledgment: {e}")
+
+    async def _handle_get_memories(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        사용자의 모든 메모리를 조회하여 반환.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 클라이언트로부터 받은 데이터 (사용하지 않음)
+
+        Returns:
+            WebSocket으로 memories_list 또는 error 메시지 전송
+        """
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                    }
+                )
+            )
+            return
+
+        if hasattr(context.agent_engine, "get_all_memories"):
+            try:
+                memories = context.agent_engine.get_all_memories()
+                await websocket.send_text(
+                    json.dumps({"type": "memories_list", "memories": memories})
+                )
+            except Exception as e:
+                logger.error(f"메모리 조회 실패: {e}")
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"메모리 조회 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+                )
+        else:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                    }
+                )
+            )
+
+    async def _handle_delete_memory(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        특정 메모리를 삭제.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: {"memory_id": "mem_xxx"} 형식의 데이터
+
+        Returns:
+            WebSocket으로 memory_deleted 또는 error 메시지 전송
+        """
+        memory_id = data.get("memory_id")
+
+        if not memory_id:
+            await websocket.send_text(
+                json.dumps({"type": "error", "message": "memory_id가 필요합니다"})
+            )
+            return
+
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                    }
+                )
+            )
+            return
+
+        if hasattr(context.agent_engine, "delete_memory"):
+            try:
+                success = context.agent_engine.delete_memory(memory_id)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "memory_deleted",
+                            "success": success,
+                            "memory_id": memory_id,
+                        }
+                    )
+                )
+            except Exception as e:
+                logger.error(f"메모리 삭제 실패: {e}")
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"메모리 삭제 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+                )
+        else:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                    }
+                )
+            )
+
+    async def _handle_delete_all_memories(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        사용자의 모든 메모리를 삭제.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 클라이언트로부터 받은 데이터 (사용하지 않음)
+
+        Returns:
+            WebSocket으로 all_memories_deleted 또는 error 메시지 전송
+        """
+        context = self.client_contexts.get(client_uid)
+        if not context:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "클라이언트 컨텍스트를 찾을 수 없습니다",
+                    }
+                )
+            )
+            return
+
+        if hasattr(context.agent_engine, "delete_all_memories"):
+            try:
+                success = context.agent_engine.delete_all_memories()
+                await websocket.send_text(
+                    json.dumps({"type": "all_memories_deleted", "success": success})
+                )
+            except Exception as e:
+                logger.error(f"모든 메모리 삭제 실패: {e}")
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": f"모든 메모리 삭제 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+                )
+        else:
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "현재 agent는 메모리 관리를 지원하지 않습니다",
+                    }
+                )
+            )
