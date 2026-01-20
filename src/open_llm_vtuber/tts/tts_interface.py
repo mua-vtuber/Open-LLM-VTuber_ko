@@ -4,8 +4,29 @@ import asyncio
 
 from loguru import logger
 
+# Default cache directory for TTS audio files
+DEFAULT_CACHE_DIR = "cache"
+
 
 class TTSInterface(metaclass=abc.ABCMeta):
+    """Abstract base class for TTS engines.
+
+    Provides common functionality for all TTS implementations including
+    cache file generation and cleanup methods.
+    """
+
+    def __init__(self, cache_dir: str = DEFAULT_CACHE_DIR):
+        """Initialize TTS with optional cache directory.
+
+        Args:
+            cache_dir: Directory for cached audio files (default: "cache")
+        """
+        self.new_audio_dir = cache_dir
+        self._ensure_cache_dir()
+
+    def _ensure_cache_dir(self) -> None:
+        """Ensure the cache directory exists."""
+        os.makedirs(self.new_audio_dir, exist_ok=True)
     async def async_generate_audio(self, text: str, file_name_no_ext=None) -> str:
         """
         Asynchronously generate speech audio file using TTS.
@@ -59,20 +80,18 @@ class TTSInterface(metaclass=abc.ABCMeta):
             logger.error(f"Failed to remove file {filepath}: {e}")
 
     def generate_cache_file_name(self, file_name_no_ext=None, file_extension="wav"):
-        """
-        Generate a cross-platform cache file name.
+        """Generate a cross-platform cache file name.
 
-        file_name_no_ext: str
-            name of the file without extension
-        file_extension: str
-            file extension
+        Args:
+            file_name_no_ext: Name of the file without extension (default: "temp")
+            file_extension: File extension (default: "wav")
 
         Returns:
-        str: the path to the generated cache file
+            str: The path to the generated cache file
         """
-        cache_dir = "cache"
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+        # Use instance cache dir if available, otherwise default
+        cache_dir = getattr(self, "new_audio_dir", DEFAULT_CACHE_DIR)
+        os.makedirs(cache_dir, exist_ok=True)
 
         if file_name_no_ext is None:
             file_name_no_ext = "temp"

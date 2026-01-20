@@ -64,10 +64,10 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                data = response.json()
+                search_result = response.json()
 
-                if data.get("items"):
-                    video_id = data["items"][0]["id"]["videoId"]
+                if search_result.get("items"):
+                    video_id = search_result["items"][0]["id"]["videoId"]
                     logger.info(f"[YouTube] Live stream found: {video_id}")
                     return video_id
                 else:
@@ -100,10 +100,10 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                data = response.json()
+                video_info = response.json()
 
-                if data.get("items") and "liveStreamingDetails" in data["items"][0]:
-                    chat_id = data["items"][0]["liveStreamingDetails"].get(
+                if video_info.get("items") and "liveStreamingDetails" in video_info["items"][0]:
+                    chat_id = video_info["items"][0]["liveStreamingDetails"].get(
                         "activeLiveChatId"
                     )
                     if chat_id:
@@ -149,13 +149,13 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                data = response.json()
+                chat_response = response.json()
 
                 # Update next page token
-                self.next_page_token = data.get("nextPageToken")
+                self.next_page_token = chat_response.get("nextPageToken")
 
                 messages = []
-                for item in data.get("items", []):
+                for item in chat_response.get("items", []):
                     snippet = item["snippet"]
                     author = item["authorDetails"]
 

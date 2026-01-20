@@ -41,10 +41,6 @@ class TTSEngine(TTSInterface):
 
         self.file_extension = "wav"
         self.new_audio_dir = "cache"
-
-        if not os.path.exists(self.new_audio_dir):
-            os.makedirs(self.new_audio_dir)
-
         self.tts = self.initialize_tts()
 
     def initialize_tts(self):

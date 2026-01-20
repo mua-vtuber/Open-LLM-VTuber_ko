@@ -61,6 +61,14 @@ from .agent import (
     Mem0LLMConfig,
     Mem0EmbedderConfig,
 )
+from .env_config import (
+    EnvConfig,
+    get_config,
+    reload_config,
+    get_env,
+    get_env_int,
+    get_env_bool,
+)
 
 # Import utility functions
 from .utils import (
@@ -133,4 +141,11 @@ __all__ = [
     "save_config",
     "scan_config_alts_directory",
     "scan_bg_directory",
+    # Environment configuration
+    "EnvConfig",
+    "get_config",
+    "reload_config",
+    "get_env",
+    "get_env_int",
+    "get_env_bool",
 ]

@@ -46,9 +46,9 @@ def comment_diff_fn(default_text: str, user_text: str):
 
     all_keys = set(default_comments.keys()) | set(user_comments.keys())
     for key in all_keys:
-        d = default_comments.get(key, "")
-        u = user_comments.get(key, "")
-        if d != u:
+        default_comment = default_comments.get(key, "")
+        user_comment = user_comments.get(key, "")
+        if default_comment != user_comment:
             diff_keys.append(key)
 
     return (len(diff_keys) == 0), diff_keys

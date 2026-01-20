@@ -47,10 +47,7 @@ class TTSEngine(TTSInterface):
             )
             self.file_extension = "mp3"
         self.new_audio_dir = "cache"
-        self.temp_audio_file = "temp_openai"  # Use a different temp name
-
-        if not os.path.exists(self.new_audio_dir):
-            os.makedirs(self.new_audio_dir)
+        self.temp_audio_file = "temp_openai"
 
         try:
             # Initialize OpenAI client

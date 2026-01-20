@@ -26,7 +26,9 @@
       "Bash(git stash push:*)",
       "Bash(git stash pop:*)",
       "Bash(git branch:*)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "Bash(git stash drop:*)",
+      "Bash(dir \"D:\\\\Taniar\\\\Documents\\\\Git\")"
     ]
   }
 }

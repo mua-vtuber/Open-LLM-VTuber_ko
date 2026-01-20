@@ -105,14 +105,14 @@ class UpgradeUtility:
     def compare_dicts(
         self,
         name: str,
-        get_a: Callable[[], Any],
-        get_b: Callable[[], Any],
+        get_first: Callable[[], Any],
+        get_second: Callable[[], Any],
         compare_fn: Callable[[Any, Any], Any],
     ) -> bool:
         try:
-            a = get_a()
-            b = get_b()
-            comparison_result = compare_fn(a, b)
+            first_value = get_first()
+            second_value = get_second()
+            comparison_result = compare_fn(first_value, second_value)
 
             if isinstance(comparison_result, tuple):
                 is_equal, differences = comparison_result

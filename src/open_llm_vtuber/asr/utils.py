@@ -1,7 +1,10 @@
 import os
 import requests
 import tarfile
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+
 from tqdm import tqdm
 from loguru import logger
 
@@ -159,6 +162,38 @@ def check_and_extract_local_file(url: str, output_dir: str) -> Path | None:
 
     logger.warning(f"Local file not found or not a tar.bz2 archive: {compressed_path}")
     return None
+
+
+@contextmanager
+def temporary_audio_file(audio_data: bytes, suffix: str = ".wav"):
+    """Create a temporary audio file and automatically clean it up.
+
+    This context manager creates a temporary file, writes the audio data to it,
+    and ensures the file is deleted when the context exits.
+
+    Args:
+        audio_data: Audio data bytes to write to the file
+        suffix: File extension (default: ".wav")
+
+    Yields:
+        str: Path to the temporary file
+
+    Example:
+        >>> with temporary_audio_file(audio_bytes) as temp_path:
+        ...     result = transcribe_from_file(temp_path)
+        >>> # File is automatically deleted after the context exits
+    """
+    temp_file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    try:
+        temp_file.write(audio_data)
+        temp_file.flush()
+        temp_file.close()
+        yield temp_file.name
+    finally:
+        try:
+            os.unlink(temp_file.name)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

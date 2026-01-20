@@ -14,31 +14,19 @@ class TTSEngine(TTSInterface):
     new_audio_dir = "cache"
 
     def __init__(self, api_key, region, voice, pitch=0, rate=1.0):
-        """
-        Initialize the Azure Text-to-Speech service
-        api_key: str
-            the Azure API key. Default is the value in api_keys.py
-        region: str
-            the Azure region. Default is the value in api_keys.py
-        voice: str
-            the voice to use. Default is the value in api_keys.py
-        pitch: int
-            the pitch adjustment. (percentage, from -100 to 100) Default is 0 (no adjustment)
-        rate: float
-            the speaking rate. Default is 1.0 (normal speed)
-        """
-        # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-        self.speech_config = speechsdk.SpeechConfig(subscription=api_key, region=region)
-        # The language of the voice that speaks.
-        self.speech_config.speech_synthesis_voice_name = voice
+        """Initialize the Azure Text-to-Speech service.
 
-        # Initialize pitch and rate
+        Args:
+            api_key: Azure API key
+            region: Azure region
+            voice: Voice to use
+            pitch: Pitch adjustment percentage (-100 to 100). Default: 0
+            rate: Speaking rate. Default: 1.0
+        """
+        self.speech_config = speechsdk.SpeechConfig(subscription=api_key, region=region)
+        self.speech_config.speech_synthesis_voice_name = voice
         self.pitch = pitch
         self.rate = rate
-
-        if not os.path.exists(self.new_audio_dir):
-            os.makedirs(self.new_audio_dir)
-
         self.speaker_audio_config = speechsdk.audio.AudioOutputConfig(
             use_default_speaker=True
         )

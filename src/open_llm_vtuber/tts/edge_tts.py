@@ -16,13 +16,9 @@ sys.path.append(current_dir)
 class TTSEngine(TTSInterface):
     def __init__(self, voice="en-US-AvaMultilingualNeural"):
         self.voice = voice
-
         self.temp_audio_file = "temp"
         self.file_extension = "mp3"
         self.new_audio_dir = "cache"
-
-        if not os.path.exists(self.new_audio_dir):
-            os.makedirs(self.new_audio_dir)
 
     def generate_audio(self, text, file_name_no_ext=None):
         """

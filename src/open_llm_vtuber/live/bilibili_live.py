@@ -218,20 +218,20 @@ class BiliBiliLivePlatform(LivePlatformInterface):
             while self._running and self.is_connected:
                 try:
                     message = await self._websocket.recv()
-                    data = json.loads(message)
+                    vtuber_response = json.loads(message)
 
                     # Log received message (truncate audio data for readability)
-                    if "audio" in data:
-                        log_data = data.copy()
+                    if "audio" in vtuber_response:
+                        log_data = vtuber_response.copy()
                         log_data["audio"] = (
-                            f"[Audio data, length: {len(data['audio'])}]"
+                            f"[Audio data, length: {len(vtuber_response['audio'])}]"
                         )
                         logger.debug(f"Received message from VTuber: {log_data}")
                     else:
-                        logger.debug(f"Received message from VTuber: {data}")
+                        logger.debug(f"Received message from VTuber: {vtuber_response}")
 
                     # Process the message
-                    await self.handle_incoming_messages(data)
+                    await self.handle_incoming_messages(vtuber_response)
 
                 except websockets.exceptions.ConnectionClosed:
                     logger.warning("WebSocket connection closed by server")
