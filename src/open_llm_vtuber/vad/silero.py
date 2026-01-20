@@ -8,6 +8,12 @@ from loguru import logger
 from pydantic import BaseModel
 from silero_vad import load_silero_vad
 
+from ..constants.audio import (
+    FLOAT32_TO_INT16_MULTIPLIER,
+    VAD_WINDOW_SIZE_8KHZ,
+    VAD_WINDOW_SIZE_16KHZ,
+    WAV_HEADER_SIZE_BYTES,
+)
 from .vad_interface import VADInterface
 
 
@@ -43,7 +49,9 @@ class VADEngine(VADInterface):
         )
         self.model = self.load_vad_model()
         self.state = StateMachine(self.config)
-        self.window_size_samples = 512 if self.config.target_sr == 16000 else 256
+        self.window_size_samples = (
+            VAD_WINDOW_SIZE_16KHZ if self.config.target_sr == 16000 else VAD_WINDOW_SIZE_8KHZ
+        )
         # 512 / 16000 = 0.032s
 
     def load_vad_model(self):
@@ -125,7 +133,7 @@ class StateMachine:
         return smoothed_prob, smoothed_db
 
     def process(self, prob, float_chunk_np: np.ndarray):
-        int_chunk_np = float_chunk_np * 32767
+        int_chunk_np = float_chunk_np * FLOAT32_TO_INT16_MULTIPLIER
         chunk_bytes = int_chunk_np.astype(np.int16).tobytes()
         db = self.calculate_db(int_chunk_np)
 
@@ -202,7 +210,7 @@ async def vad_main():
         async for chunk in tqdm(data_wrapper(websocket), desc="Audio chunk"):
             # print(len(chunk))
             for _bytes in vad.detect_speech(chunk):
-                print(_bytes[:44])
+                print(_bytes[:WAV_HEADER_SIZE_BYTES])
                 # await audio_queue.put(_bytes)
                 pass
 
