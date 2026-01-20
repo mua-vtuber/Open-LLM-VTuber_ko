@@ -50,7 +50,9 @@ class VADEngine(VADInterface):
         self.model = self.load_vad_model()
         self.state = StateMachine(self.config)
         self.window_size_samples = (
-            VAD_WINDOW_SIZE_16KHZ if self.config.target_sr == 16000 else VAD_WINDOW_SIZE_8KHZ
+            VAD_WINDOW_SIZE_16KHZ
+            if self.config.target_sr == 16000
+            else VAD_WINDOW_SIZE_8KHZ
         )
         # 512 / 16000 = 0.032s
 
