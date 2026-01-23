@@ -64,10 +64,10 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                search_result = response.json()
+                data = response.json()
 
-                if search_result.get("items"):
-                    video_id = search_result["items"][0]["id"]["videoId"]
+                if data.get("items"):
+                    video_id = data["items"][0]["id"]["videoId"]
                     logger.info(f"[YouTube] Live stream found: {video_id}")
                     return video_id
                 else:
@@ -100,10 +100,10 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                video_info = response.json()
+                data = response.json()
 
-                if video_info.get("items") and "liveStreamingDetails" in video_info["items"][0]:
-                    chat_id = video_info["items"][0]["liveStreamingDetails"].get(
+                if data.get("items") and "liveStreamingDetails" in data["items"][0]:
+                    chat_id = data["items"][0]["liveStreamingDetails"].get(
                         "activeLiveChatId"
                     )
                     if chat_id:
@@ -149,13 +149,13 @@ class YouTubeChatMonitor(ChatMonitorInterface):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, timeout=10.0)
                 response.raise_for_status()
-                chat_response = response.json()
+                data = response.json()
 
                 # Update next page token
-                self.next_page_token = chat_response.get("nextPageToken")
+                self.next_page_token = data.get("nextPageToken")
 
                 messages = []
-                for item in chat_response.get("items", []):
+                for item in data.get("items", []):
                     snippet = item["snippet"]
                     author = item["authorDetails"]
 
@@ -168,6 +168,21 @@ class YouTubeChatMonitor(ChatMonitorInterface):
                     ):
                         continue
 
+                    # 슈퍼챗 정보 확인
+                    badges = {}
+                    message_type = snippet.get("type", "textMessageEvent")
+
+                    if message_type == "superChatEvent":
+                        badges["super_chat"] = True
+                        # 슈퍼챗 금액 정보 (있으면 추가)
+                        if "superChatDetails" in snippet:
+                            badges["super_chat_amount"] = snippet["superChatDetails"].get("amountDisplayString", "")
+                    elif message_type == "superStickerEvent":
+                        badges["super_sticker"] = True
+                        # 슈퍼 스티커 금액 정보 (있으면 추가)
+                        if "superStickerDetails" in snippet:
+                            badges["super_sticker_amount"] = snippet["superStickerDetails"].get("amountDisplayString", "")
+
                     message = self.format_message(
                         platform="youtube",
                         author=author["displayName"],
@@ -177,6 +192,7 @@ class YouTubeChatMonitor(ChatMonitorInterface):
                         is_moderator=author.get("isChatModerator", False),
                         is_owner=author.get("isChatOwner", False),
                         is_member=author.get("isChatSponsor", False),
+                        badges=badges,
                     )
 
                     messages.append(message)

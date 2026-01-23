@@ -115,6 +115,16 @@ class ChzzkChatMonitor(ChatMonitorInterface):
         try:
             # Extract message information
             # Note: Adjust field names based on actual chzzkpy v2 API structure
+
+            # 멤버십 및 구독 정보 확인
+            is_member = getattr(message, "is_subscriber", False) or getattr(message, "is_member", False)
+
+            # 배지 정보 수집
+            badges = {}
+            if hasattr(message, "badges") and message.badges:
+                # chzzkpy에서 제공하는 배지 정보를 그대로 전달
+                badges = message.badges if isinstance(message.badges, dict) else {}
+
             chat_message = self.format_message(
                 platform="chzzk",
                 author=getattr(message, "nickname", "Unknown"),
@@ -122,6 +132,8 @@ class ChzzkChatMonitor(ChatMonitorInterface):
                 user_id=getattr(message, "user_id", ""),
                 is_moderator=getattr(message, "is_moderator", False),
                 is_owner=getattr(message, "is_streamer", False),
+                is_member=is_member,
+                badges=badges,
             )
 
             logger.info(f"[Chzzk] {chat_message['author']}: {chat_message['message']}")
@@ -154,11 +166,18 @@ class ChzzkChatMonitor(ChatMonitorInterface):
                 else f"💝 {amount}원 후원!"
             )
 
+            # 후원 메시지는 HIGH priority를 받을 수 있도록 badges에 표시
+            badges = {
+                "donation": True,
+                "donation_amount": f"{amount}원"
+            }
+
             chat_message = self.format_message(
                 platform="chzzk",
                 author=donor,
                 message=formatted_message,
                 user_id=getattr(donation, "user_id", ""),
+                badges=badges,
             )
 
             logger.info(f"[Chzzk] Donation from {donor}: {amount}원")

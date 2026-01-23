@@ -8,17 +8,19 @@ This package organizes API routes by functionality:
 - model_routes: Live2D models info
 - media_routes: ASR/TTS endpoints
 - websocket_routes: WebSocket connections
+- queue_routes: Queue status API
 """
 
 from fastapi import APIRouter
 
 from ..service_context import ServiceContext
-from .redirect_routes import init_redirect_routes
-from .language_routes import init_language_routes
-from .live_routes import init_live_routes
-from .model_routes import init_model_routes
-from .media_routes import init_media_routes
+from ..websocket_handler import WebSocketHandler
+from .queue_routes import init_queue_routes
 from .websocket_routes import init_client_ws_route, init_proxy_route
+
+
+# 공유 WebSocketHandler 인스턴스
+_ws_handler = None
 
 
 def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
@@ -33,20 +35,34 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
     Returns:
         APIRouter: Configured router with all endpoints.
     """
+    global _ws_handler
+
+    # WebSocketHandler 인스턴스가 없으면 생성
+    if _ws_handler is None:
+        _ws_handler = WebSocketHandler(default_context_cache)
+
     router = APIRouter()
 
-    # Include all sub-routers
-    router.include_router(init_redirect_routes())
-    router.include_router(init_language_routes())
-    router.include_router(init_live_routes(default_context_cache))
-    router.include_router(init_model_routes())
-    router.include_router(init_media_routes(default_context_cache))
+    # Include queue routes with shared ws_handler
+    router.include_router(init_queue_routes(_ws_handler))
 
     return router
 
 
+def get_ws_handler() -> WebSocketHandler:
+    """
+    Get the shared WebSocketHandler instance.
+
+    Returns:
+        WebSocketHandler: Shared handler instance.
+    """
+    return _ws_handler
+
+
 __all__ = [
     "init_webtool_routes",
+    "init_queue_routes",
     "init_client_ws_route",
     "init_proxy_route",
+    "get_ws_handler",
 ]

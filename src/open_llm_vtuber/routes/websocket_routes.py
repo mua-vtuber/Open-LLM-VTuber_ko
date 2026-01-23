@@ -11,6 +11,20 @@ from ..websocket_handler import WebSocketHandler
 from ..proxy_handler import ProxyHandler
 
 
+# 공유 WebSocketHandler 인스턴스
+_ws_handler = None
+
+
+def get_ws_handler() -> WebSocketHandler:
+    """
+    Get the shared WebSocketHandler instance.
+
+    Returns:
+        WebSocketHandler: Shared handler instance.
+    """
+    return _ws_handler
+
+
 def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
     """
     Create and return API routes for handling the `/client-ws` WebSocket connections.
@@ -21,8 +35,13 @@ def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
     Returns:
         APIRouter: Configured router with WebSocket endpoint.
     """
+    global _ws_handler
+    
     router = APIRouter()
-    ws_handler = WebSocketHandler(default_context_cache)
+    
+    # WebSocketHandler 인스턴스가 없으면 생성
+    if _ws_handler is None:
+        _ws_handler = WebSocketHandler(default_context_cache)
 
     @router.websocket("/client-ws")
     async def websocket_endpoint(websocket: WebSocket):
@@ -31,13 +50,13 @@ def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
         client_uid = str(uuid4())
 
         try:
-            await ws_handler.handle_new_connection(websocket, client_uid)
-            await ws_handler.handle_websocket_communication(websocket, client_uid)
+            await _ws_handler.handle_new_connection(websocket, client_uid)
+            await _ws_handler.handle_websocket_communication(websocket, client_uid)
         except WebSocketDisconnect:
-            await ws_handler.handle_disconnect(client_uid)
+            await _ws_handler.handle_disconnect(client_uid)
         except Exception as e:
             logger.error(f"Error in WebSocket connection: {e}")
-            await ws_handler.handle_disconnect(client_uid)
+            await _ws_handler.handle_disconnect(client_uid)
             raise
 
     return router

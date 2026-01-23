@@ -1,8 +1,7 @@
-from typing import Dict, List, Optional, Callable, TypedDict, Any
+from typing import Dict, List, Optional, Callable, TypedDict
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 import json
-from datetime import datetime
 from enum import Enum
 import numpy as np
 from loguru import logger
@@ -80,29 +79,9 @@ class WebSocketHandler:
         self._queue_config = QueueConfig()
         self._input_queue_manager = InputQueueManager(
             config=self._queue_config,
-            message_handler=self._process_queued_message,
-            alert_callback=self._handle_queue_alert
+            message_handler=self._process_queued_message
         )
         logger.info("WebSocketHandler에 입력 큐 시스템 통합 완료")
-
-        # 상태 브로드캐스트 태스크
-        self._status_broadcast_task: Optional[asyncio.Task] = None
-
-    async def _handle_queue_alert(
-        self,
-        alert_type: str,
-        message: str,
-        severity: str
-    ) -> None:
-        """
-        큐 알림을 처리합니다 (PriorityQueue에서 호출됨)
-
-        Args:
-            alert_type: 알림 타입
-            message: 알림 메시지
-            severity: 심각도
-        """
-        await self.send_queue_alert(alert_type, message, severity)
 
     def _init_message_handlers(self) -> Dict[str, Callable]:
         """Initialize message type to handler mapping"""
@@ -146,12 +125,10 @@ class WebSocketHandler:
             Exception: If initialization fails
         """
         try:
-            # 첫 연결 시 입력 큐 매니저 및 상태 브로드캐스트 시작
+            # 첫 연결 시 입력 큐 매니저 시작
             if not self._input_queue_manager.is_running():
                 await self._input_queue_manager.start()
                 logger.info("입력 큐 매니저 시작됨")
-                # 상태 브로드캐스트 시작
-                await self.start_status_broadcast(interval=1.0)
 
             session_service_context = await self._init_service_context(
                 websocket.send_text, client_uid
@@ -898,173 +875,3 @@ class WebSocketHandler:
             'avg_processing_time': status.get('avg_processing_time', 0.0),
             'processing_rate': status.get('processing_rate', 0.0)
         }
-
-    def get_priority_rules(self) -> Dict[str, any]:
-        """
-        입력 큐의 우선순위 규칙을 반환합니다.
-
-        Returns:
-            Dict[str, any]: 우선순위 규칙 정보
-                - priority_mode: 우선순위 모드
-                - wait_time: 대기 시간
-                - allow_interruption: 중단 허용 여부
-                - superchat_always_priority: 슈퍼챗 항상 우선
-                - voice_active_chat_delay: 음성 활성 시 채팅 지연
-                - chat_active_voice_delay: 채팅 활성 시 음성 지연
-        """
-        return self._queue_config.priority_rules.to_dict()
-
-    def get_priority_rules_instance(self):
-        """
-        PriorityRules 인스턴스를 반환합니다.
-
-        Returns:
-            PriorityRules: 우선순위 규칙 인스턴스
-        """
-        return self._queue_config.priority_rules
-
-    async def broadcast_priority_rules_update(self) -> None:
-        """
-        우선순위 규칙 변경을 모든 연결된 클라이언트에 브로드캐스트합니다.
-        """
-        message = {
-            "type": "priority-rules-updated",
-            "priority_rules": self._queue_config.priority_rules.to_dict()
-        }
-
-        disconnected_clients = []
-
-        for client_uid, websocket in self.client_connections.items():
-            try:
-                await websocket.send_json(message)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to send priority rules update to {client_uid}: {e}"
-                )
-                disconnected_clients.append(client_uid)
-
-        # 연결이 끊긴 클라이언트 정리는 별도 처리
-        # (이미 handle_disconnect에서 처리됨)
-
-    # ============================================================
-    # 큐 모니터링 및 실시간 브로드캐스트
-    # ============================================================
-
-    async def start_status_broadcast(self, interval: float = 1.0) -> None:
-        """
-        상태 브로드캐스트를 시작합니다.
-
-        Args:
-            interval: 브로드캐스트 간격 (초)
-        """
-        if self._status_broadcast_task and not self._status_broadcast_task.done():
-            logger.warning("상태 브로드캐스트가 이미 실행 중입니다")
-            return
-
-        self._status_broadcast_task = asyncio.create_task(
-            self._status_broadcast_loop(interval)
-        )
-        logger.info(f"상태 브로드캐스트 시작됨 (간격: {interval}초)")
-
-    async def stop_status_broadcast(self) -> None:
-        """상태 브로드캐스트를 중지합니다."""
-        if self._status_broadcast_task:
-            self._status_broadcast_task.cancel()
-            try:
-                await self._status_broadcast_task
-            except asyncio.CancelledError:
-                pass
-            self._status_broadcast_task = None
-            logger.info("상태 브로드캐스트 중지됨")
-
-    async def _status_broadcast_loop(self, interval: float) -> None:
-        """
-        주기적 상태 브로드캐스트 (변경 감지 최적화)
-
-        Args:
-            interval: 브로드캐스트 간격 (초)
-        """
-        last_status_hash: Optional[int] = None
-
-        while True:
-            try:
-                status = self.get_queue_status()
-
-                # 해시 기반 변경 감지
-                # dict를 튜플로 변환하여 해시 가능하게 만듦
-                status_tuple = tuple(sorted(status.items()))
-                current_hash = hash(status_tuple)
-
-                # 변경된 경우에만 브로드캐스트
-                if current_hash != last_status_hash:
-                    message = {
-                        "type": "queue-status-update",
-                        "status": status,
-                        "timestamp": datetime.now().isoformat()
-                    }
-                    await self._broadcast_to_all(message)
-                    last_status_hash = current_hash
-
-                await asyncio.sleep(interval)
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"상태 브로드캐스트 오류: {e}")
-                await asyncio.sleep(interval)
-
-    async def _broadcast_to_all(self, message: dict) -> None:
-        """
-        모든 연결된 클라이언트에 메시지를 전송합니다.
-
-        Args:
-            message: 전송할 메시지
-        """
-        if not self.client_connections:
-            return
-
-        disconnected = []
-
-        for client_uid, websocket in self.client_connections.items():
-            try:
-                await websocket.send_json(message)
-            except Exception:
-                disconnected.append(client_uid)
-
-        # 연결이 끊긴 클라이언트는 별도 처리됨
-        # (handle_disconnect에서 처리)
-
-    async def send_queue_alert(
-        self,
-        alert_type: str,
-        message: str,
-        severity: str = "warning"
-    ) -> None:
-        """
-        큐 알림을 모든 클라이언트에 전송합니다.
-
-        Args:
-            alert_type: 알림 타입 (overflow, slow_processing, error 등)
-            message: 알림 메시지
-            severity: 심각도 (info, warning, error)
-        """
-        alert = {
-            "type": "queue-alert",
-            "alert_type": alert_type,
-            "message": message,
-            "severity": severity,
-            "timestamp": datetime.now().isoformat()
-        }
-        await self._broadcast_to_all(alert)
-
-    def get_queue_metric_history(self, minutes: int = 5) -> List[dict]:
-        """
-        큐 메트릭 히스토리를 반환합니다.
-
-        Args:
-            minutes: 조회할 기간 (분)
-
-        Returns:
-            List[dict]: 메트릭 히스토리 리스트
-        """
-        return self._input_queue_manager.get_metric_history(minutes)
