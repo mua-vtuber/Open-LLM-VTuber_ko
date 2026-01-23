@@ -16,6 +16,7 @@ from fastapi import APIRouter
 from ..service_context import ServiceContext
 from ..websocket_handler import WebSocketHandler
 from .queue_routes import init_queue_routes
+from .live_config_routes import init_live_config_routes
 from .websocket_routes import init_client_ws_route, init_proxy_route
 
 
@@ -46,6 +47,9 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
     # Include queue routes with shared ws_handler
     router.include_router(init_queue_routes(_ws_handler))
 
+    # Include live config routes
+    router.include_router(init_live_config_routes(default_context_cache))
+
     return router
 
 
@@ -62,6 +66,7 @@ def get_ws_handler() -> WebSocketHandler:
 __all__ = [
     "init_webtool_routes",
     "init_queue_routes",
+    "init_live_config_routes",
     "init_client_ws_route",
     "init_proxy_route",
     "get_ws_handler",

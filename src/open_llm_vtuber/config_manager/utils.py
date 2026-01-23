@@ -124,6 +124,46 @@ def save_config(config: BaseModel, config_path: Union[str, Path]):
         raise yaml.YAMLError(f"Error writing YAML file: {e}")
 
 
+def save_partial_yaml(
+    section_name: str,
+    section_data: Dict[str, Any],
+    config_path: str = "conf.yaml"
+):
+    """
+    conf.yaml의 특정 섹션만 업데이트합니다.
+    전체 파일을 읽은 뒤 해당 섹션만 변경하고 다시 저장합니다.
+
+    Args:
+        section_name: 업데이트할 섹션 이름 (예: "live_config")
+        section_data: 새로운 섹션 데이터
+        config_path: YAML 설정 파일 경로
+
+    Raises:
+        FileNotFoundError: 설정 파일이 없을 때
+        yaml.YAMLError: YAML 파싱/쓰기 오류
+    """
+    # 전체 설정 읽기
+    config_data = read_yaml(config_path)
+
+    # 섹션 업데이트
+    config_data[section_name] = section_data
+
+    # 파일에 저장
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                config_data,
+                f,
+                allow_unicode=True,
+                default_flow_style=False,
+                sort_keys=False
+            )
+        logger.debug(f"설정 섹션 '{section_name}'이 {config_path}에 저장되었습니다")
+    except yaml.YAMLError as e:
+        logger.error(f"YAML 파일 쓰기 오류: {e}")
+        raise yaml.YAMLError(f"Error writing YAML file: {e}")
+
+
 def scan_config_alts_directory(config_alts_dir: str) -> list[dict]:
     """
     Scan the config_alts directory and return a list of config information.
