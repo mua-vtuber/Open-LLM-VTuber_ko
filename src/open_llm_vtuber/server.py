@@ -14,7 +14,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
-from .routes import init_client_ws_route, init_webtool_routes, init_proxy_route
+from .routes import init_client_ws_route, init_webtool_routes, init_proxy_route, init_model_routes
 from .service_context import ServiceContext
 from .config_manager.utils import Config
 
@@ -97,6 +97,11 @@ class WebSocketServer:
             init_webtool_routes(default_context_cache=self.default_context_cache),
         )
 
+        # Include model routes (for Live2D model info and external folder management)
+        self.app.include_router(
+            init_model_routes(app=self.app),
+        )
+
         # Initialize and include proxy routes if proxy is enabled
         system_config = config.system_config
         if hasattr(system_config, "enable_proxy") and system_config.enable_proxy:
@@ -141,7 +146,12 @@ class WebSocketServer:
             name="web_tool",
         )
 
+        # Note: External model mounts (/external-models/*) are added dynamically
+        # via the model_routes API. They must be added BEFORE the frontend catch-all.
+        # The init_model_routes sets _app_instance which allows dynamic mounting.
+
         # Mount main frontend last (as catch-all)
+        # IMPORTANT: This must be the LAST mount to avoid catching other routes
         self.app.mount(
             "/",
             CORSStaticFiles(directory="frontend", html=True),

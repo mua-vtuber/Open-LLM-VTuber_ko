@@ -79,3 +79,9 @@ mcp_servers.json
 
 # Auto Claude data directory
 .auto-claude/
+
+# Claude Code settings
+.claude/
+
+# Visitor profiles (personal data)
+visitor_profiles/

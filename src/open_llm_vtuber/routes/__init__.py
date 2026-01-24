@@ -18,6 +18,7 @@ from ..websocket_handler import WebSocketHandler
 from .queue_routes import init_queue_routes
 from .live_config_routes import init_live_config_routes
 from .websocket_routes import init_client_ws_route, init_proxy_route
+from .model_routes import init_model_routes
 
 
 # 공유 WebSocketHandler 인스턴스
@@ -69,5 +70,6 @@ __all__ = [
     "init_live_config_routes",
     "init_client_ws_route",
     "init_proxy_route",
+    "init_model_routes",
     "get_ws_handler",
 ]

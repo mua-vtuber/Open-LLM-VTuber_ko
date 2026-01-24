@@ -8,6 +8,14 @@ import numpy as np
 from loguru import logger
 
 from .service_context import ServiceContext
+
+# Memory System
+from .memory import (
+    ProfileManager,
+    ProfileCache,
+    JsonProfileStore,
+    VisitorProfile,
+)
 from .chat_group import (
     ChatGroupManager,
     handle_group_operation,
@@ -23,6 +31,8 @@ from .chat_history_manager import (
     get_history_list,
 )
 from .config_manager.utils import scan_config_alts_directory, scan_bg_directory
+from .config_manager import validate_config
+from .context.service_context import deep_merge
 from .conversations.conversation_handler import (
     handle_conversation_trigger,
     handle_group_interrupt,
@@ -88,6 +98,18 @@ class WebSocketHandler:
         # 상태 브로드캐스트 태스크
         self._status_broadcast_task: Optional[asyncio.Task] = None
 
+        # 방문자 프로필 관리자 초기화
+        self._profile_store = JsonProfileStore("visitor_profiles")
+        self._profile_cache = ProfileCache(maxsize=1000, ttl_seconds=300)
+        self._profile_manager = ProfileManager(
+            store=self._profile_store,
+            cache=self._profile_cache,
+            auto_create=True,
+        )
+        # 클라이언트별 프로필 정보 (client_uid -> VisitorProfile)
+        self._client_profiles: Dict[str, VisitorProfile] = {}
+        logger.info("WebSocketHandler에 방문자 프로필 관리 시스템 통합 완료")
+
     async def _handle_queue_alert(
         self,
         alert_type: str,
@@ -122,14 +144,20 @@ class WebSocketHandler:
             "ai-speak-signal": self._handle_conversation_trigger,
             "fetch-configs": self._handle_fetch_configs,
             "switch-config": self._handle_config_switch,
+            "update-config": self._handle_update_config,
             "fetch-backgrounds": self._handle_fetch_backgrounds,
             "audio-play-start": self._handle_audio_play_start,
             "request-init-config": self._handle_init_config_request,
             "heartbeat": self._handle_heartbeat,
-            # Memory Management Handlers
+            # Memory Management Handlers (Mem0)
             "get_memories": self._handle_get_memories,
             "delete_memory": self._handle_delete_memory,
             "delete_all_memories": self._handle_delete_all_memories,
+            # Visitor Profile Handlers
+            "get-visitor-profile": self._handle_get_visitor_profile,
+            "update-visitor-profile": self._handle_update_visitor_profile,
+            "list-visitor-profiles": self._handle_list_visitor_profiles,
+            "delete-visitor-profile": self._handle_delete_visitor_profile,
         }
 
     async def handle_new_connection(
@@ -163,6 +191,18 @@ class WebSocketHandler:
 
             await self._send_initial_messages(
                 websocket, client_uid, session_service_context
+            )
+
+            # 방문자 프로필 기록 (기본 플랫폼: direct)
+            profile = await self._profile_manager.record_visit(
+                identifier=client_uid,
+                platform="direct",
+            )
+            self._client_profiles[client_uid] = profile
+            is_new_visitor = profile.visit_count == 1
+            logger.info(
+                f"Visitor profile recorded: {client_uid} "
+                f"(visit #{profile.visit_count}, new={is_new_visitor})"
             )
 
             logger.info(f"Connection established for client {client_uid}")
@@ -391,6 +431,7 @@ class WebSocketHandler:
         self.client_connections.pop(client_uid, None)
         self.client_contexts.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
+        self._client_profiles.pop(client_uid, None)  # 프로필 캐시 정리
         if client_uid in self.current_conversation_tasks:
             task = self.current_conversation_tasks[client_uid]
             if task and not task.done():
@@ -636,6 +677,66 @@ class WebSocketHandler:
         if config_file_name:
             context = self.client_contexts[client_uid]
             await context.handle_config_switch(websocket, config_file_name)
+
+    async def _handle_update_config(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ):
+        """
+        Handle partial configuration update from frontend.
+
+        Receives partial config updates, deep merges with current config,
+        validates, and reloads engines.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client unique identifier
+            data: Message data containing 'config' key with partial updates
+        """
+        config_updates = data.get("config")
+
+        if not config_updates:
+            await websocket.send_text(
+                json.dumps({
+                    "type": "config-update-error",
+                    "error": "No config provided"
+                })
+            )
+            return
+
+        try:
+            context = self.client_contexts[client_uid]
+
+            # Deep merge with current character config
+            current_config = context.character_config.model_dump()
+            merged_config = deep_merge(current_config, config_updates)
+
+            # Validate merged config with Pydantic
+            new_config = {
+                "system_config": context.system_config.model_dump(),
+                "character_config": merged_config,
+            }
+            validated = validate_config(new_config)
+
+            # Reload engines with new config
+            await context.load_from_config(validated)
+
+            logger.info(f"Config updated for client {client_uid}")
+
+            await websocket.send_text(
+                json.dumps({
+                    "type": "config-updated",
+                    "message": "Settings applied successfully"
+                })
+            )
+
+        except Exception as e:
+            logger.error(f"Error updating config for client {client_uid}: {e}")
+            await websocket.send_text(
+                json.dumps({
+                    "type": "config-update-error",
+                    "error": str(e)
+                })
+            )
 
     async def _handle_fetch_backgrounds(
         self, websocket: WebSocket, client_uid: str, data: WSMessage
@@ -1068,3 +1169,263 @@ class WebSocketHandler:
             List[dict]: 메트릭 히스토리 리스트
         """
         return self._input_queue_manager.get_metric_history(minutes)
+
+    # ============================================================
+    # 방문자 프로필 핸들러
+    # ============================================================
+
+    async def _handle_get_visitor_profile(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        클라이언트의 방문자 프로필을 조회합니다.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 요청 데이터 (선택적으로 identifier, platform 포함 가능)
+        """
+        try:
+            # 요청에 identifier/platform이 있으면 해당 프로필 조회
+            # 없으면 현재 클라이언트의 프로필 조회
+            identifier = data.get("identifier", client_uid)
+            platform = data.get("platform", "direct")
+
+            profile = await self._profile_manager.load_profile(identifier, platform)
+
+            if profile:
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "visitor-profile",
+                        "profile": profile.to_dict(),
+                        "summary": profile.get_summary_text(),
+                    })
+                )
+            else:
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "visitor-profile",
+                        "profile": None,
+                        "message": f"프로필을 찾을 수 없습니다: {platform}:{identifier}",
+                    })
+                )
+        except Exception as e:
+            logger.error(f"방문자 프로필 조회 실패: {e}")
+            await websocket.send_text(
+                json.dumps({
+                    "type": "error",
+                    "message": f"방문자 프로필 조회 중 오류가 발생했습니다: {str(e)}",
+                })
+            )
+
+    async def _handle_update_visitor_profile(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        방문자 프로필을 업데이트합니다.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 업데이트 데이터
+                - identifier: 사용자 식별자 (기본: client_uid)
+                - platform: 플랫폼 (기본: "direct")
+                - action: 업데이트 타입 (add_fact, add_preference, update_affinity)
+                - value: 업데이트 값
+        """
+        try:
+            identifier = data.get("identifier", client_uid)
+            platform = data.get("platform", "direct")
+            action = data.get("action")
+            value = data.get("value")
+
+            if not action:
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "error",
+                        "message": "action 필드가 필요합니다",
+                    })
+                )
+                return
+
+            result = None
+            if action == "add_fact":
+                if not value:
+                    await websocket.send_text(
+                        json.dumps({
+                            "type": "error",
+                            "message": "add_fact에는 value가 필요합니다",
+                        })
+                    )
+                    return
+                result = await self._profile_manager.add_known_fact(
+                    identifier, platform, value
+                )
+
+            elif action == "add_preference":
+                category = data.get("category", "likes")  # likes or dislikes
+                if not value:
+                    await websocket.send_text(
+                        json.dumps({
+                            "type": "error",
+                            "message": "add_preference에는 value가 필요합니다",
+                        })
+                    )
+                    return
+                result = await self._profile_manager.add_preference(
+                    identifier, platform, category, value
+                )
+
+            elif action == "update_affinity":
+                delta = data.get("delta", 0)
+                result = await self._profile_manager.update_affinity(
+                    identifier, platform, delta
+                )
+
+            elif action == "record_message":
+                count = data.get("count", 1)
+                await self._profile_manager.record_message(
+                    identifier, platform, count
+                )
+                result = True
+
+            else:
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "error",
+                        "message": f"알 수 없는 action: {action}",
+                    })
+                )
+                return
+
+            # 업데이트된 프로필 반환
+            profile = await self._profile_manager.load_profile(identifier, platform)
+            await websocket.send_text(
+                json.dumps({
+                    "type": "visitor-profile-updated",
+                    "action": action,
+                    "success": result is not None and result is not False,
+                    "profile": profile.to_dict() if profile else None,
+                })
+            )
+
+        except Exception as e:
+            logger.error(f"방문자 프로필 업데이트 실패: {e}")
+            await websocket.send_text(
+                json.dumps({
+                    "type": "error",
+                    "message": f"방문자 프로필 업데이트 중 오류가 발생했습니다: {str(e)}",
+                })
+            )
+
+    async def _handle_list_visitor_profiles(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        시청자 프로필 목록을 조회합니다.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 요청 데이터
+                - platform: 플랫폼 필터 (선택적, null이면 전체)
+        """
+        try:
+            platform = data.get("platform")  # None이면 전체
+
+            # 프로필 목록 조회
+            profile_list = await self._profile_manager.list_profiles(platform)
+
+            # 각 프로필의 상세 정보 로드
+            profiles = []
+            for identifier, plat in profile_list:
+                profile = await self._profile_manager.load_profile(identifier, plat)
+                if profile:
+                    profiles.append(profile.to_dict())
+
+            await websocket.send_text(
+                json.dumps({
+                    "type": "visitor-profiles-list",
+                    "profiles": profiles,
+                    "count": len(profiles),
+                    "platform_filter": platform,
+                })
+            )
+
+            logger.info(
+                f"시청자 프로필 목록 조회: {len(profiles)}개 "
+                f"(platform={platform or 'all'})"
+            )
+
+        except Exception as e:
+            logger.error(f"시청자 프로필 목록 조회 실패: {e}")
+            await websocket.send_text(
+                json.dumps({
+                    "type": "error",
+                    "message": f"시청자 프로필 목록 조회 중 오류가 발생했습니다: {str(e)}",
+                })
+            )
+
+    async def _handle_delete_visitor_profile(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """
+        시청자 프로필을 삭제합니다.
+
+        Args:
+            websocket: WebSocket connection
+            client_uid: Client identifier
+            data: 삭제 요청 데이터
+                - identifier: 사용자 식별자
+                - platform: 플랫폼
+        """
+        try:
+            identifier = data.get("identifier")
+            platform = data.get("platform")
+
+            if not identifier or not platform:
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "error",
+                        "message": "identifier와 platform 필드가 필요합니다",
+                    })
+                )
+                return
+
+            # 프로필 삭제
+            success = await self._profile_manager.delete_profile(identifier, platform)
+
+            await websocket.send_text(
+                json.dumps({
+                    "type": "visitor-profile-deleted",
+                    "success": success,
+                    "identifier": identifier,
+                    "platform": platform,
+                })
+            )
+
+            if success:
+                logger.info(f"시청자 프로필 삭제됨: {platform}:{identifier}")
+            else:
+                logger.warning(f"시청자 프로필 삭제 실패 (존재하지 않음): {platform}:{identifier}")
+
+        except Exception as e:
+            logger.error(f"시청자 프로필 삭제 실패: {e}")
+            await websocket.send_text(
+                json.dumps({
+                    "type": "error",
+                    "message": f"시청자 프로필 삭제 중 오류가 발생했습니다: {str(e)}",
+                })
+            )
+
+    def get_profile_manager(self) -> ProfileManager:
+        """ProfileManager 인스턴스 반환 (외부 접근용)"""
+        return self._profile_manager
+
+    def get_client_profile(self, client_uid: str) -> Optional[VisitorProfile]:
+        """현재 연결된 클라이언트의 프로필 반환"""
+        return self._client_profiles.get(client_uid)
+
+    def get_profile_cache_stats(self) -> Dict[str, Any]:
+        """프로필 캐시 통계 반환"""
+        return self._profile_manager.get_cache_stats()
