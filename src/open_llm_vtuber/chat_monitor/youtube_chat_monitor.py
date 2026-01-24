@@ -176,12 +176,16 @@ class YouTubeChatMonitor(ChatMonitorInterface):
                         badges["super_chat"] = True
                         # 슈퍼챗 금액 정보 (있으면 추가)
                         if "superChatDetails" in snippet:
-                            badges["super_chat_amount"] = snippet["superChatDetails"].get("amountDisplayString", "")
+                            badges["super_chat_amount"] = snippet[
+                                "superChatDetails"
+                            ].get("amountDisplayString", "")
                     elif message_type == "superStickerEvent":
                         badges["super_sticker"] = True
                         # 슈퍼 스티커 금액 정보 (있으면 추가)
                         if "superStickerDetails" in snippet:
-                            badges["super_sticker_amount"] = snippet["superStickerDetails"].get("amountDisplayString", "")
+                            badges["super_sticker_amount"] = snippet[
+                                "superStickerDetails"
+                            ].get("amountDisplayString", "")
 
                     message = self.format_message(
                         platform="youtube",

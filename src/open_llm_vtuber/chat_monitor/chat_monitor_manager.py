@@ -7,9 +7,12 @@ from typing import Optional, Callable, Dict
 from loguru import logger
 
 from ..config_manager import ChatMonitorConfig, YouTubeChatConfig, ChzzkChatConfig
+from ..config_manager.live import DiscordConfig
+from ..visitor_profiles import ProfileManager
 from .chat_monitor_interface import ChatMonitorInterface, ChatMessage
 from .youtube_chat_monitor import YouTubeChatMonitor
 from .chzzk_chat_monitor import ChzzkChatMonitor
+from .discord_chat_monitor import DiscordChatMonitor, DISCORD_AVAILABLE
 
 
 class ChatMonitorManager:
@@ -21,7 +24,11 @@ class ChatMonitorManager:
     """
 
     def __init__(
-        self, config: ChatMonitorConfig, message_callback: Callable[[ChatMessage], None]
+        self,
+        config: ChatMonitorConfig,
+        message_callback: Callable[[ChatMessage], None],
+        enable_profiles: bool = True,
+        profile_manager: Optional[ProfileManager] = None,
     ):
         """
         Initialize the chat monitor manager.
@@ -29,12 +36,21 @@ class ChatMonitorManager:
         Args:
             config: Chat monitoring configuration
             message_callback: Function to call when a new message is received from any platform
+            enable_profiles: Enable visitor profile tracking
+            profile_manager: Optional ProfileManager instance (created if not provided)
         """
         self.config = config
         self.message_callback = message_callback
         self.monitors: Dict[str, ChatMonitorInterface] = {}
         self.is_running = False
         self._monitor_tasks: Dict[str, asyncio.Task] = {}
+
+        # Profile management
+        self.enable_profiles = enable_profiles
+        if enable_profiles:
+            self.profile_manager = profile_manager or ProfileManager()
+        else:
+            self.profile_manager = None
 
     def _create_youtube_monitor(
         self, youtube_config: YouTubeChatConfig
@@ -126,6 +142,74 @@ class ChatMonitorManager:
             logger.error(f"[ChatMonitor] Failed to create Chzzk monitor: {e}")
             return None
 
+    def _create_discord_monitor(
+        self, discord_config: DiscordConfig
+    ) -> Optional[DiscordChatMonitor]:
+        """
+        Create a Discord chat monitor instance.
+
+        Args:
+            discord_config: Discord configuration
+
+        Returns:
+            Optional[DiscordChatMonitor]: Monitor instance or None if configuration is invalid
+        """
+        if not discord_config.enabled:
+            logger.debug("[ChatMonitor] Discord monitoring is disabled")
+            return None
+
+        if not DISCORD_AVAILABLE:
+            logger.warning(
+                "[ChatMonitor] discord.py not installed, skipping Discord monitor. "
+                "Install with: pip install discord.py"
+            )
+            return None
+
+        if not discord_config.bot_token:
+            logger.warning(
+                "[ChatMonitor] Discord bot token not configured, skipping Discord monitor"
+            )
+            return None
+
+        if not discord_config.text_channel_ids:
+            logger.warning(
+                "[ChatMonitor] No Discord text channels configured, skipping Discord monitor"
+            )
+            return None
+
+        try:
+            monitor = DiscordChatMonitor(
+                bot_token=discord_config.bot_token,
+                guild_id=discord_config.guild_id,
+                text_channel_ids=discord_config.text_channel_ids,
+                message_callback=self.message_callback,
+                respond_to_mentions=discord_config.respond_to_mentions,
+                respond_to_all=discord_config.respond_to_all,
+                command_prefix=discord_config.command_prefix,
+                max_retries=self.config.max_retries,
+                retry_interval=self.config.retry_interval,
+                # Community management
+                community_management=discord_config.community_management,
+                welcome_channel_id=discord_config.welcome_channel_id,
+                welcome_message=discord_config.welcome_message,
+                moderation_enabled=discord_config.moderation_enabled,
+                blocked_words=discord_config.blocked_words,
+                ai_welcome=discord_config.ai_welcome,
+                faq_channel_id=discord_config.faq_channel_id,
+                faq_entries=discord_config.faq_entries,
+                # Profile management
+                profile_manager=self.profile_manager,
+                enable_profiles=self.enable_profiles,
+            )
+            logger.info("[ChatMonitor] Discord monitor created")
+            return monitor
+        except RuntimeError as e:
+            logger.error(f"[ChatMonitor] {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[ChatMonitor] Failed to create Discord monitor: {e}")
+            return None
+
     async def initialize(self) -> bool:
         """
         Initialize all configured chat monitors.
@@ -150,6 +234,11 @@ class ChatMonitorManager:
         chzzk_monitor = self._create_chzzk_monitor(self.config.chzzk)
         if chzzk_monitor:
             self.monitors["chzzk"] = chzzk_monitor
+
+        # Create Discord monitor
+        discord_monitor = self._create_discord_monitor(self.config.discord)
+        if discord_monitor:
+            self.monitors["discord"] = discord_monitor
 
         if not self.monitors:
             logger.warning("[ChatMonitor] No monitors were initialized")

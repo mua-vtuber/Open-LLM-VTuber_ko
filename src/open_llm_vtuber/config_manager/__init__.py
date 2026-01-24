@@ -11,10 +11,10 @@ from .system import SystemConfig
 from .character import CharacterConfig
 from .live import (
     LiveConfig,
-    BiliBiliLiveConfig,
     ChatMonitorConfig,
     YouTubeChatConfig,
     ChzzkChatConfig,
+    DiscordConfig,
 )
 from .stateless_llm import (
     OpenAICompatibleConfig,
@@ -85,10 +85,10 @@ __all__ = [
     "SystemConfig",
     "CharacterConfig",
     "LiveConfig",
-    "BiliBiliLiveConfig",
     "ChatMonitorConfig",
     "YouTubeChatConfig",
     "ChzzkChatConfig",
+    "DiscordConfig",
     # LLM related classes
     "OpenAICompatibleConfig",
     "ClaudeConfig",

@@ -522,12 +522,6 @@ character_config:
 
 # Live Streaming Integration
 live_config:
-  bilibili_live:
-    # List of BiliBili live room IDs to monitor
-    room_ids: [1991478060]
-    # SESSDATA cookie value (optional, for authenticated requests)
-    sessdata: ""
-
   # Live Chat Monitoring Configuration
   chat_monitor:
     # Enable chat monitoring system
@@ -559,3 +553,36 @@ live_config:
       # OAuth2 tokens (automatically set after authorization via /chzzk/auth)
       access_token: ''
       refresh_token: ''
+
+    # Discord chat monitoring
+    # Install discord.py first: pip install discord.py
+    discord:
+      enabled: false
+      # Discord bot token from Developer Portal (https://discord.com/developers/applications)
+      bot_token: ''
+      # Discord server (guild) ID
+      guild_id: 0
+      # List of text channel IDs to monitor
+      text_channel_ids: []
+      # Respond when the bot is mentioned (@bot)
+      respond_to_mentions: true
+      # Respond to all messages in monitored channels
+      respond_to_all: false
+      # Command prefix for bot commands
+      command_prefix: '!'
+      # Voice channel features (Phase 4 - not yet implemented)
+      voice_enabled: false
+      voice_channel_id: 0
+      # Community management features
+      community_management: false
+      welcome_channel_id: 0
+      welcome_message: 'Welcome {member}!'
+      # Moderation features
+      moderation_enabled: false
+      blocked_words: []
+      # AI-powered welcome messages
+      ai_welcome: false
+      # FAQ auto-response (0 = respond in all channels)
+      faq_channel_id: 0
+      # FAQ keyword-response pairs (e.g., "schedule": "Check our schedule at...")
+      faq_entries: {}

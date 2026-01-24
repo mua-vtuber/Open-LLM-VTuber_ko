@@ -117,7 +117,9 @@ class ChzzkChatMonitor(ChatMonitorInterface):
             # Note: Adjust field names based on actual chzzkpy v2 API structure
 
             # 멤버십 및 구독 정보 확인
-            is_member = getattr(message, "is_subscriber", False) or getattr(message, "is_member", False)
+            is_member = getattr(message, "is_subscriber", False) or getattr(
+                message, "is_member", False
+            )
 
             # 배지 정보 수집
             badges = {}
@@ -167,10 +169,7 @@ class ChzzkChatMonitor(ChatMonitorInterface):
             )
 
             # 후원 메시지는 HIGH priority를 받을 수 있도록 badges에 표시
-            badges = {
-                "donation": True,
-                "donation_amount": f"{amount}원"
-            }
+            badges = {"donation": True, "donation_amount": f"{amount}원"}
 
             chat_message = self.format_message(
                 platform="chzzk",

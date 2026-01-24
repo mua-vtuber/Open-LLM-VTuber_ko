@@ -1,6 +1,6 @@
-"""Live config API routes for editing YouTube, Chzzk, BiliBili settings."""
+"""Live config API routes for editing YouTube, Chzzk settings."""
 
-from typing import Optional, List
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
@@ -30,13 +30,6 @@ class ChzzkConfigUpdate(BaseModel):
     # access_token, refresh_token 제외 - OAuth로만 설정됨
 
 
-class BiliBiliConfigUpdate(BaseModel):
-    """BiliBili 설정 업데이트용 Pydantic 모델"""
-
-    room_ids: Optional[List[int]] = None
-    sessdata: Optional[str] = None
-
-
 class ChatMonitorConfigUpdate(BaseModel):
     """Chat Monitor 전체 업데이트 모델"""
 
@@ -50,7 +43,6 @@ class ChatMonitorConfigUpdate(BaseModel):
 class LiveConfigUpdate(BaseModel):
     """Live Config 전체 업데이트 모델"""
 
-    bilibili_live: Optional[BiliBiliConfigUpdate] = None
     chat_monitor: Optional[ChatMonitorConfigUpdate] = None
 
 

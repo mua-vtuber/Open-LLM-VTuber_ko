@@ -518,12 +518,6 @@ character_config:
 
 # Live platform integration
 live_config:
-  bilibili_live:
-    # List of Bilibili live room IDs to monitor (the number in the live room URL)
-    room_ids: [1991478060]
-    # SESSDATA cookie value (optional, for authenticated requests, allows viewing danmaku sender usernames)
-    sessdata: ""
-
   # 直播聊天监控配置
   chat_monitor:
     # 启用聊天监控系统
@@ -555,3 +549,36 @@ live_config:
       # OAuth2令牌（通过/chzzk/auth授权后自动设置）
       access_token: ''
       refresh_token: ''
+
+    # Discord聊天监控
+    # 需先安装discord.py: pip install discord.py
+    discord:
+      enabled: false
+      # Discord机器人令牌（来自开发者门户 https://discord.com/developers/applications）
+      bot_token: ''
+      # Discord服务器ID
+      guild_id: 0
+      # 要监控的文字频道ID列表
+      text_channel_ids: []
+      # 当机器人被提及时回复（@bot）
+      respond_to_mentions: true
+      # 回复监控频道中的所有消息
+      respond_to_all: false
+      # 机器人命令前缀
+      command_prefix: '!'
+      # 语音频道功能（第4阶段 - 尚未实现）
+      voice_enabled: false
+      voice_channel_id: 0
+      # 社区管理功能
+      community_management: false
+      welcome_channel_id: 0
+      welcome_message: '欢迎 {member}！'
+      # 内容审核功能
+      moderation_enabled: false
+      blocked_words: []
+      # AI生成个性化欢迎消息
+      ai_welcome: false
+      # FAQ自动回复频道 (0 = 所有频道)
+      faq_channel_id: 0
+      # FAQ关键词-回复对 (例如: "时间表": "请查看...")
+      faq_entries: {}
