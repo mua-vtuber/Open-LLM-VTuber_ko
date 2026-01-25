@@ -1,14 +1,43 @@
 """
 Route modules for the Open-LLM-VTuber web server.
 
-This package organizes API routes by functionality:
-- redirect_routes: Web tool redirects
-- language_routes: I18n language API
-- live_routes: Live streaming (Chzzk OAuth)
-- model_routes: Live2D models info
-- media_routes: ASR/TTS endpoints
-- websocket_routes: WebSocket connections
-- queue_routes: Queue status API
+API 라우트 모듈 패키지.
+기능별로 분리된 FastAPI 라우터를 제공합니다.
+
+## 라우트 모듈
+
+- **model_routes**: Live2D 모델 관리
+    - `/live2d-models/info`: 모델 목록 조회
+    - `/live2d-models/add-folder`: 외부 모델 폴더 추가
+    - `/live2d-models/remove-folder`: 외부 모델 폴더 제거
+
+- **queue_routes**: 메시지 대기열 상태
+    - `/api/queue/status`: 큐 상태 조회
+    - `/api/queue/history`: 메트릭 히스토리
+    - `/api/queue/priority-rules`: 우선순위 규칙 관리
+
+- **live_config_routes**: 라이브 설정 관리
+    - `/api/live-config`: 라이브 스트리밍 설정
+
+- **live_routes**: 라이브 스트리밍 연동
+    - `/chzzk/auth`: Chzzk OAuth 인증
+    - `/chzzk/callback`: OAuth 콜백
+
+- **language_routes**: 다국어 지원
+    - `/api/languages`: 사용 가능한 언어 목록
+
+- **media_routes**: 오디오/미디어 처리
+    - `/asr`: 음성 인식
+    - `/tts-ws`: TTS WebSocket
+
+- **websocket_routes**: WebSocket 연결
+    - `/client-ws`: 클라이언트 WebSocket
+    - `/proxy-ws`: 프록시 WebSocket
+
+## OpenAPI 태그
+
+모든 라우트는 OpenAPI 문서화를 위해 태그가 지정되어 있습니다.
+Swagger UI (`/docs`) 및 ReDoc (`/redoc`)에서 확인할 수 있습니다.
 """
 
 from fastapi import APIRouter

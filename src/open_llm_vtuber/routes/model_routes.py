@@ -1,4 +1,8 @@
-"""Live2D model information routes."""
+"""Live2D model information routes.
+
+Live2D 모델 관리를 위한 API 라우트.
+내부 및 외부 모델 폴더 스캔, 모델 정보 조회, 동적 모델 폴더 추가/제거를 제공합니다.
+"""
 
 import logging
 import os
@@ -7,6 +11,15 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse
+
+from ..schemas.api import (
+    ModelListResponse,
+    ExternalFoldersResponse,
+    AddFolderRequest,
+    AddFolderResponse,
+    RemoveFolderResponse,
+    ErrorResponse,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -309,11 +322,30 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
 
     router = APIRouter()
 
-    @router.get("/external-models/{folder_name}/{file_path:path}")
+    @router.get(
+        "/external-models/{folder_name}/{file_path:path}",
+        tags=["models"],
+        summary="외부 모델 파일 제공",
+        description="등록된 외부 모델 폴더에서 파일을 제공합니다. 보안을 위해 경로 탐색 공격을 방지합니다.",
+        responses={
+            200: {"description": "파일 반환 성공"},
+            403: {"description": "접근 금지 (경로 탐색 시도)", "model": ErrorResponse},
+            404: {"description": "파일 또는 폴더 미발견", "model": ErrorResponse},
+        },
+    )
     async def serve_external_model_file(folder_name: str, file_path: str):
         """
         외부 모델 폴더의 파일을 서빙.
-        동적 마운트 대신 이 라우트를 통해 파일 제공.
+
+        동적 마운트 대신 이 라우트를 통해 파일을 제공합니다.
+        보안을 위해 폴더 외부 접근(경로 탐색 공격)을 차단합니다.
+
+        Args:
+            folder_name: 등록된 외부 폴더의 마운트 이름
+            file_path: 요청 파일의 상대 경로
+
+        Returns:
+            FileResponse: 요청된 파일
         """
         from starlette.responses import FileResponse
 
@@ -370,9 +402,29 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         )
         return response
 
-    @router.get("/live2d-models/info")
+    @router.get(
+        "/live2d-models/info",
+        tags=["models"],
+        summary="Live2D 모델 목록 조회",
+        description="내부 및 외부에 등록된 모든 Live2D 모델 정보를 반환합니다.",
+        response_model=ModelListResponse,
+        responses={
+            200: {
+                "description": "모델 목록 반환 성공",
+                "model": ModelListResponse,
+            },
+        },
+    )
     async def get_live2d_folder_info():
-        """Get information about available Live2D models (internal + external)."""
+        """
+        사용 가능한 모든 Live2D 모델 정보를 조회합니다.
+
+        내부 모델 폴더(live2d-models/)와 등록된 외부 모델 폴더를 스캔하여
+        모든 모델의 이름, 아바타 이미지, 모델 파일 경로를 반환합니다.
+
+        Returns:
+            JSONResponse: 모델 목록 및 개수
+        """
         all_characters = []
 
         # 1. 내부 모델 스캔 (live2d-models/)
@@ -397,25 +449,60 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
             }
         )
 
-    @router.get("/live2d-models/external-folders")
+    @router.get(
+        "/live2d-models/external-folders",
+        tags=["models"],
+        summary="외부 모델 폴더 목록 조회",
+        description="현재 등록된 모든 외부 Live2D 모델 폴더 목록을 반환합니다.",
+        response_model=ExternalFoldersResponse,
+        responses={
+            200: {
+                "description": "외부 폴더 목록 반환 성공",
+                "model": ExternalFoldersResponse,
+            },
+        },
+    )
     async def get_external_folders():
-        """등록된 외부 모델 폴더 목록 반환"""
+        """
+        등록된 외부 모델 폴더 목록을 반환합니다.
+
+        각 폴더의 실제 경로와 서버 내 마운트 경로를 함께 반환합니다.
+
+        Returns:
+            JSONResponse: 등록된 외부 폴더 목록
+        """
         folders = [
             {"path": path, "mount_path": mount}
             for path, mount in _external_model_folders.items()
         ]
         return JSONResponse({"folders": folders})
 
-    @router.post("/live2d-models/add-folder")
+    @router.post(
+        "/live2d-models/add-folder",
+        tags=["models"],
+        summary="외부 모델 폴더 추가",
+        description=(
+            "외부 Live2D 모델 폴더를 등록합니다. "
+            "등록된 폴더의 모델은 `/live2d-models/info` API에 포함됩니다."
+        ),
+        response_model=AddFolderResponse,
+        responses={
+            200: {"description": "폴더 등록 성공", "model": AddFolderResponse},
+            400: {"description": "잘못된 요청 (경로 누락, 폴더 미존재)", "model": ErrorResponse},
+        },
+    )
     async def add_external_model_folder(request: Request):
         """
-        외부 모델 폴더 등록 및 동적 마운트.
+        외부 모델 폴더를 등록하고 동적 마운트합니다.
 
-        Request body:
-            {"path": "D:/MyModels"}
+        지정된 폴더 경로를 검증하고, 유효한 경우 서버에 등록하여
+        해당 폴더의 Live2D 모델을 사용할 수 있게 합니다.
+
+        Args:
+            request: {"path": "폴더 경로"} 형식의 JSON 요청
 
         Returns:
-            {"success": true, "path": "...", "mount_path": "..."}
+            JSONResponse: 등록 성공 여부와 마운트 경로
         """
         from ..server import CORSStaticFiles
 
@@ -478,16 +565,36 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
             "message": "이미 등록된 폴더입니다 (재마운트)" if already_registered else None
         })
 
-    @router.delete("/live2d-models/remove-folder")
+    @router.delete(
+        "/live2d-models/remove-folder",
+        tags=["models"],
+        summary="외부 모델 폴더 제거",
+        description=(
+            "등록된 외부 Live2D 모델 폴더를 제거합니다. "
+            "실제 마운트 해제는 서버 재시작 시 적용됩니다."
+        ),
+        response_model=RemoveFolderResponse,
+        responses={
+            200: {"description": "폴더 제거 성공", "model": RemoveFolderResponse},
+            400: {"description": "잘못된 요청 (경로 누락)", "model": ErrorResponse},
+            404: {"description": "등록되지 않은 폴더", "model": ErrorResponse},
+        },
+    )
     async def remove_external_folder(request: Request):
         """
-        외부 모델 폴더 등록 해제.
+        외부 모델 폴더 등록을 해제합니다.
 
-        Request body:
-            {"path": "D:/MyModels"}
+        등록 목록에서 폴더를 제거합니다. FastAPI 특성상 이미 마운트된 라우트의
+        동적 해제가 어려우므로, 실제 언마운트는 서버 재시작 시 적용됩니다.
 
-        Note: 이미 마운트된 라우트는 FastAPI에서 동적 해제가 어려우므로
-              목록에서만 제거됩니다. 실제 언마운트는 서버 재시작 시 적용됩니다.
+        Args:
+            request: {"path": "폴더 경로"} 형식의 JSON 요청
+
+        Returns:
+            JSONResponse: 제거 성공 여부
+
+        Note:
+            완전한 마운트 해제를 위해서는 서버 재시작이 필요합니다.
         """
         try:
             data = await request.json()

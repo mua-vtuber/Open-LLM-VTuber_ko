@@ -6,17 +6,18 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Update and install dependencies
 RUN apt-get -o Acquire::AllowInsecureRepositories=true update && \
-    apt-get install -y libxcb-xfixes0 libxcb-shape0 || true && \
+    apt-get install -y libxcb-xfixes0 libxcb-shape0 curl || true && \
     apt-get install -y --no-install-recommends ffmpeg || true && \
     apt --fix-broken install -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install common dependencies
-COPY requirements.txt /tmp/
+# Copy project files for installation
+COPY pyproject.toml README.md /tmp/
+COPY src /tmp/src
 
 # Install pip
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3 - && \
-    pip install --root-user-action=ignore --no-cache-dir -r /tmp/requirements.txt && \
+    pip install --root-user-action=ignore --no-cache-dir -e /tmp && \
     pip install --root-user-action=ignore --no-cache-dir funasr modelscope huggingface_hub pywhispercpp torch torchaudio edge-tts azure-cognitiveservices-speech py3-tts
 
 # MeloTTS installation
@@ -52,4 +53,4 @@ WORKDIR /app
 # Expose port 12393 (the new default port)
 EXPOSE 12393
 
-CMD ["python3", "server.py"]
+CMD ["python3", "run_server.py"]

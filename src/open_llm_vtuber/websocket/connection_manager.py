@@ -1,6 +1,5 @@
-"""Connection lifecycle management for WebSocket connections."""
-
-from typing import Dict, Callable, Optional
+"""WebSocket connection lifecycle management."""
+from typing import Dict, Optional, Set, Callable
 from fastapi import WebSocket
 import asyncio
 import json
@@ -12,8 +11,111 @@ from ..chat_group import ChatGroupManager
 from ..message_handler import message_handler
 
 
+class WebSocketConnectionManager:
+    """WebSocket 연결 추적 및 세션 관리"""
+
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+        self._connection_groups: Dict[str, Set[str]] = {}  # group_id -> client_ids
+
+    async def connect(self, client_id: str, websocket: WebSocket) -> bool:
+        """새 클라이언트 연결 수락 및 등록"""
+        try:
+            await websocket.accept()
+            self.active_connections[client_id] = websocket
+            logger.info(f"Client {client_id} connected. Total connections: {len(self.active_connections)}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to accept connection for {client_id}: {e}")
+            return False
+
+    async def disconnect(self, client_id: str) -> None:
+        """클라이언트 연결 해제"""
+        websocket = self.active_connections.pop(client_id, None)
+        if websocket:
+            try:
+                await websocket.close()
+            except Exception:
+                pass  # 이미 닫힌 연결
+            logger.info(f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
+
+    def get_connection(self, client_id: str) -> Optional[WebSocket]:
+        """클라이언트의 WebSocket 연결 조회"""
+        return self.active_connections.get(client_id)
+
+    def is_connected(self, client_id: str) -> bool:
+        """클라이언트 연결 상태 확인"""
+        return client_id in self.active_connections
+
+    async def send_json(self, client_id: str, data: dict) -> bool:
+        """특정 클라이언트에게 JSON 메시지 전송"""
+        websocket = self.active_connections.get(client_id)
+        if not websocket:
+            return False
+        try:
+            await websocket.send_json(data)
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to send message to {client_id}: {e}")
+            return False
+
+    async def broadcast(self, data: dict, exclude: Optional[Set[str]] = None) -> int:
+        """모든 클라이언트에게 메시지 브로드캐스트"""
+        exclude = exclude or set()
+        sent_count = 0
+
+        for client_id, websocket in list(self.active_connections.items()):
+            if client_id in exclude:
+                continue
+            try:
+                await websocket.send_json(data)
+                sent_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to broadcast to {client_id}: {e}")
+
+        return sent_count
+
+    async def broadcast_to_group(self, group_id: str, data: dict, exclude: Optional[Set[str]] = None) -> int:
+        """특정 그룹의 클라이언트들에게 메시지 전송"""
+        exclude = exclude or set()
+        client_ids = self._connection_groups.get(group_id, set())
+        sent_count = 0
+
+        for client_id in client_ids:
+            if client_id in exclude:
+                continue
+            if await self.send_json(client_id, data):
+                sent_count += 1
+
+        return sent_count
+
+    def add_to_group(self, client_id: str, group_id: str) -> None:
+        """클라이언트를 그룹에 추가"""
+        if group_id not in self._connection_groups:
+            self._connection_groups[group_id] = set()
+        self._connection_groups[group_id].add(client_id)
+
+    def remove_from_group(self, client_id: str, group_id: str) -> None:
+        """클라이언트를 그룹에서 제거"""
+        if group_id in self._connection_groups:
+            self._connection_groups[group_id].discard(client_id)
+
+    def get_connection_count(self) -> int:
+        """현재 연결된 클라이언트 수"""
+        return len(self.active_connections)
+
+    def get_all_client_ids(self) -> list[str]:
+        """모든 연결된 클라이언트 ID 목록"""
+        return list(self.active_connections.keys())
+
+
 class ConnectionManager:
-    """Manages WebSocket connection lifecycle."""
+    """
+    Manages WebSocket connection lifecycle with ServiceContext.
+
+    This is the legacy class for backward compatibility with handler.py.
+    For new code, consider using WebSocketConnectionManager for simpler use cases.
+    """
 
     def __init__(
         self,

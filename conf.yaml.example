@@ -1,0 +1,363 @@
+# ============================================================================
+# Open-LLM-VTuber 설정 파일 예시 (Configuration Example)
+# ============================================================================
+# 이 파일을 복사하여 conf.yaml로 저장한 후 설정을 수정하세요.
+# Copy this file to conf.yaml and modify the settings.
+#
+# 자세한 설정 가이드: https://github.com/t41372/Open-LLM-VTuber
+# Detailed configuration guide: https://github.com/t41372/Open-LLM-VTuber
+# ============================================================================
+
+
+# ============================================================================
+# 시스템 설정 (System Configuration)
+# ============================================================================
+system_config:
+  # 설정 파일 버전 - 변경하지 마세요 (Config version - do not modify)
+  conf_version: 'v1.2.1'
+
+  # 서버 호스트 주소
+  # 'localhost': 로컬에서만 접근 가능
+  # '0.0.0.0': 네트워크의 다른 기기에서도 접근 가능
+  host: 'localhost'
+
+  # 서버 포트 번호 (1024-65535 범위)
+  port: 12393
+
+  # 캐릭터 설정 파일이 저장된 디렉토리
+  config_alts_dir: 'characters'
+
+  # 프록시 모드 활성화 (외부 클라이언트 연결용)
+  enable_proxy: false
+
+  # 도구 프롬프트 설정
+  tool_prompts:
+    live2d_expression_prompt: 'live2d_expression_prompt'
+    group_conversation_prompt: 'group_conversation_prompt'
+    mcp_prompt: 'mcp_prompt'
+    proactive_speak_prompt: 'proactive_speak_prompt'
+    # think_tag_prompt: 'think_tag_prompt'  # 내면의 생각 표시 활성화
+    # live_prompt: 'live_prompt'  # 라이브 스트리밍 모드
+
+
+# ============================================================================
+# 캐릭터 설정 (Character Configuration)
+# ============================================================================
+character_config:
+  # 설정 이름 (표시용)
+  conf_name: 'my_character'
+
+  # 고유 식별자 (중복되지 않게 설정)
+  conf_uid: 'my_character_001'
+
+  # Live2D 모델 이름 (live2d-models/ 폴더 내 폴더명)
+  live2d_model_name: 'mao_pro'
+
+  # 캐릭터 이름 (대화에서 표시될 이름)
+  character_name: 'AI Assistant'
+
+  # 아바타 이미지 파일명 (avatars/ 폴더에 저장)
+  # 빈 문자열로 두면 캐릭터 이름 첫 글자 사용
+  avatar: ''
+
+  # 사용자 이름 (대화에서 표시될 이름)
+  human_name: 'Human'
+
+  # --------------------------------------------------------------------------
+  # 페르소나 프롬프트 (Persona Prompt)
+  # --------------------------------------------------------------------------
+  # AI의 성격, 말투, 배경 등을 정의합니다.
+  # Define AI's personality, speaking style, background, etc.
+  persona_prompt: |
+    당신은 친절하고 도움이 되는 AI 어시스턴트입니다.
+    자연스럽고 친근한 대화를 나누세요.
+
+  # --------------------------------------------------------------------------
+  # AI 에이전트 설정 (Agent Configuration)
+  # --------------------------------------------------------------------------
+  agent_config:
+    # 사용할 에이전트 선택
+    # 옵션: basic_memory_agent, letta_agent, hume_ai_agent, mem0_agent
+    conversation_agent_choice: 'basic_memory_agent'
+
+    agent_settings:
+      # Basic Memory Agent 설정
+      basic_memory_agent:
+        # LLM 제공자 선택 (llm_configs에서 정의된 이름)
+        # 옵션: ollama_llm, openai_llm, claude_llm, gemini_llm, deepseek_llm, etc.
+        llm_provider: 'ollama_llm'
+
+        # 빠른 첫 응답 (첫 문장에서 쉼표 발견 시 즉시 말하기 시작)
+        faster_first_response: true
+
+        # 문장 분할 방법: 'regex' 또는 'pysbd'
+        segment_method: 'pysbd'
+
+        # MCP Plus 도구 사용 활성화
+        use_mcpp: true
+        mcp_enabled_servers: ["time", "ddg-search"]
+
+      # Hume AI Agent 설정 (감정 인식 AI)
+      hume_ai_agent:
+        api_key: 'YOUR_HUME_API_KEY'  # Hume AI API 키
+        host: 'api.hume.ai'
+        config_id: ''  # 선택사항
+        idle_timeout: 15
+
+      # Mem0 Agent 설정 (장기 기억 AI)
+      mem0_agent:
+        base_url: 'http://localhost:11434/v1'
+        model: 'qwen2.5:latest'
+        faster_first_response: true
+        segment_method: 'pysbd'
+        mem0_config:
+          vector_store:
+            provider: 'qdrant'
+            config:
+              host: 'localhost'
+              port: 6333
+          llm:
+            provider: 'openai'
+            config:
+              model: 'gpt-4o-mini'
+              temperature: 0.2
+          embedder:
+            provider: 'openai'
+            config:
+              model: 'text-embedding-3-small'
+
+    # --------------------------------------------------------------------------
+    # LLM 설정 (LLM Configurations)
+    # --------------------------------------------------------------------------
+    llm_configs:
+      # Ollama 설정 (로컬 LLM 추천)
+      ollama_llm:
+        base_url: 'http://localhost:11434/v1'
+        model: 'qwen2.5:latest'
+        temperature: 1.0
+        keep_alive: -1  # -1: 영구 유지, 양수: 비활성 후 유지 시간(초)
+        unload_at_exit: true
+
+      # OpenAI 설정
+      openai_llm:
+        llm_api_key: 'YOUR_OPENAI_API_KEY'  # OpenAI API 키 입력
+        model: 'gpt-4o'
+        temperature: 1.0
+
+      # Claude 설정
+      claude_llm:
+        base_url: 'https://api.anthropic.com'
+        llm_api_key: 'YOUR_CLAUDE_API_KEY'  # Anthropic API 키 입력
+        model: 'claude-3-haiku-20240307'
+
+      # Gemini 설정
+      gemini_llm:
+        llm_api_key: 'YOUR_GEMINI_API_KEY'  # Google AI API 키 입력
+        model: 'gemini-2.0-flash-exp'
+        temperature: 1.0
+
+      # DeepSeek 설정
+      deepseek_llm:
+        llm_api_key: 'YOUR_DEEPSEEK_API_KEY'  # DeepSeek API 키 입력
+        model: 'deepseek-chat'
+        temperature: 0.7
+
+      # Groq 설정 (빠른 추론)
+      groq_llm:
+        llm_api_key: 'YOUR_GROQ_API_KEY'  # Groq API 키 입력
+        model: 'llama-3.3-70b-versatile'
+        temperature: 1.0
+
+      # OpenAI 호환 엔드포인트 (LM Studio 등)
+      openai_compatible_llm:
+        base_url: 'http://localhost:11434/v1'
+        llm_api_key: 'not-needed'  # 로컬 서버는 키 불필요
+        model: 'qwen2.5:latest'
+        temperature: 1.0
+        interrupt_method: 'user'
+
+  # --------------------------------------------------------------------------
+  # 음성 인식 설정 (ASR Configuration)
+  # --------------------------------------------------------------------------
+  asr_config:
+    # ASR 모델 선택
+    # 옵션: sherpa_onnx_asr (추천), faster_whisper, whisper_cpp, whisper,
+    #       azure_asr, fun_asr, groq_whisper_asr
+    asr_model: 'sherpa_onnx_asr'
+
+    # Sherpa ONNX ASR (오프라인, 빠름, 추천)
+    sherpa_onnx_asr:
+      model_type: 'sense_voice'
+      sense_voice: './models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/model.int8.onnx'
+      tokens: './models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tokens.txt'
+      num_threads: 4
+      use_itn: true
+      provider: 'cpu'  # 'cpu' 또는 'cuda'
+
+    # Faster Whisper
+    faster_whisper:
+      model_path: 'large-v3-turbo'
+      download_root: 'models/whisper'
+      language: 'en'  # 자동 감지: '' (빈 문자열)
+      device: 'auto'
+      compute_type: 'int8'
+
+    # Azure ASR (클라우드)
+    azure_asr:
+      api_key: 'YOUR_AZURE_SPEECH_KEY'
+      region: 'eastus'
+      languages: ['en-US', 'zh-CN', 'ko-KR']
+
+    # Groq Whisper (클라우드, 빠름)
+    groq_whisper_asr:
+      api_key: 'YOUR_GROQ_API_KEY'
+      model: 'whisper-large-v3-turbo'
+      lang: ''  # 자동 감지
+
+  # --------------------------------------------------------------------------
+  # 음성 합성 설정 (TTS Configuration)
+  # --------------------------------------------------------------------------
+  tts_config:
+    # TTS 모델 선택
+    # 옵션: edge_tts (추천), azure_tts, piper_tts, sherpa_onnx_tts,
+    #       melo_tts, cosyvoice_tts, gpt_sovits_tts, x_tts, fish_api_tts,
+    #       minimax_tts, elevenlabs_tts, openai_tts
+    tts_model: 'edge_tts'
+
+    # Edge TTS (무료, 고품질, 추천)
+    edge_tts:
+      # 음성 목록: `edge-tts --list-voices` 명령으로 확인
+      voice: 'en-US-AvaMultilingualNeural'
+      # 한국어: 'ko-KR-SunHiNeural', 'ko-KR-InJoonNeural'
+      # 일본어: 'ja-JP-NanamiNeural'
+      # 중국어: 'zh-CN-XiaoxiaoNeural'
+
+    # Azure TTS (클라우드)
+    azure_tts:
+      api_key: 'YOUR_AZURE_SPEECH_KEY'
+      region: 'eastus'
+      voice: 'en-US-AshleyNeural'
+      pitch: '26'
+      rate: '1'
+
+    # Piper TTS (오프라인, 빠름)
+    piper_tts:
+      model_path: 'models/piper/en_US-amy-medium.onnx'
+      speaker_id: 0
+      length_scale: 1.0
+      noise_scale: 0.667
+      noise_w: 0.8
+      use_cuda: false
+
+    # OpenAI TTS / Kokoro
+    openai_tts:
+      model: 'kokoro'
+      voice: 'af_sky+af_bella'
+      api_key: 'not-needed'
+      base_url: 'http://localhost:8880/v1'
+      file_extension: 'mp3'
+
+    # ElevenLabs TTS
+    elevenlabs_tts:
+      api_key: 'YOUR_ELEVENLABS_API_KEY'
+      voice_id: 'YOUR_VOICE_ID'
+      model_id: 'eleven_multilingual_v2'
+      output_format: 'mp3_44100_128'
+      stability: 0.5
+      similarity_boost: 0.5
+
+  # --------------------------------------------------------------------------
+  # 음성 활동 감지 설정 (VAD Configuration)
+  # --------------------------------------------------------------------------
+  vad_config:
+    # VAD 모델 (null로 설정 시 비활성화)
+    vad_model: null
+
+    silero_vad:
+      orig_sr: 16000
+      target_sr: 16000
+      prob_threshold: 0.4
+      db_threshold: 60
+      required_hits: 3
+      required_misses: 24
+      smoothing_window: 5
+
+  # --------------------------------------------------------------------------
+  # TTS 전처리 설정 (TTS Preprocessor Configuration)
+  # --------------------------------------------------------------------------
+  tts_preprocessor_config:
+    remove_special_char: true   # 이모지 등 특수문자 제거
+    ignore_brackets: true       # [대괄호] 내용 무시
+    ignore_parentheses: true    # (소괄호) 내용 무시
+    ignore_asterisks: true      # *별표* 내용 무시
+    ignore_angle_brackets: true # <꺾쇠괄호> 내용 무시
+
+    translator_config:
+      translate_audio: false
+      translate_provider: 'deeplx'
+
+      deeplx:
+        deeplx_target_lang: 'JA'
+        deeplx_api_endpoint: 'http://localhost:1188/v2/translate'
+
+
+# ============================================================================
+# 라이브 스트리밍 설정 (Live Streaming Configuration)
+# ============================================================================
+live_config:
+  chat_monitor:
+    # 채팅 모니터링 전체 활성화
+    enabled: false
+    max_retries: 10
+    retry_interval: 60
+
+    # YouTube Live 채팅 모니터링
+    youtube:
+      enabled: false
+      api_key: 'YOUR_YOUTUBE_API_KEY'  # Google Cloud Console에서 발급
+      channel_id: 'YOUR_CHANNEL_ID'    # YouTube 채널 ID
+
+    # Chzzk (치지직) 채팅 모니터링
+    chzzk:
+      enabled: false
+      channel_id: 'YOUR_CHZZK_CHANNEL_ID'  # Chzzk 채널 ID
+      client_id: 'YOUR_CHZZK_CLIENT_ID'    # Chzzk 개발자 센터에서 발급
+      client_secret: 'YOUR_CHZZK_CLIENT_SECRET'
+      redirect_uri: 'http://localhost:12393/chzzk/callback'
+      access_token: ''   # OAuth 인증 후 자동 설정
+      refresh_token: ''  # OAuth 인증 후 자동 설정
+
+    # Discord 봇 연동
+    discord:
+      enabled: false
+      bot_token: 'YOUR_DISCORD_BOT_TOKEN'
+      guild_id: 0
+      text_channel_ids: []
+      respond_to_mentions: true
+      respond_to_all: false
+      command_prefix: '!'
+
+
+# ============================================================================
+# 추가 참고사항 (Additional Notes)
+# ============================================================================
+#
+# 1. API 키 보안
+#    - 이 파일에 API 키를 직접 입력하지 마세요.
+#    - 환경 변수를 사용하세요: ${YOUR_ENV_VAR_NAME}
+#    - 예: llm_api_key: '${OPENAI_API_KEY}'
+#
+# 2. Live2D 모델
+#    - live2d-models/ 폴더에 모델을 추가하세요.
+#    - 모델 폴더 이름과 live2d_model_name을 일치시키세요.
+#
+# 3. 문제 해결
+#    - 서버 시작 실패 시 로그를 확인하세요.
+#    - --verbose 옵션으로 상세 로그를 확인할 수 있습니다.
+#    - 설정 오류 시 어떤 필드에 문제가 있는지 표시됩니다.
+#
+# 4. 업그레이드
+#    - `uv run upgrade.py` 명령으로 업그레이드하세요.
+#    - 새 버전에서 설정 형식이 변경될 수 있습니다.
+#
+# ============================================================================

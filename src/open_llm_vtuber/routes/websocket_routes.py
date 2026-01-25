@@ -1,4 +1,8 @@
-"""WebSocket connection routes."""
+"""WebSocket connection routes.
+
+WebSocket 연결 관리를 위한 API 라우트.
+클라이언트 WebSocket 연결 및 프록시 연결을 처리합니다.
+"""
 
 from uuid import uuid4
 
@@ -43,9 +47,27 @@ def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
     if _ws_handler is None:
         _ws_handler = WebSocketHandler(default_context_cache)
 
-    @router.websocket("/client-ws")
+    @router.websocket(
+        "/client-ws",
+        name="client_websocket",
+    )
     async def websocket_endpoint(websocket: WebSocket):
-        """WebSocket endpoint for client connections."""
+        """
+        클라이언트 WebSocket 연결 엔드포인트.
+
+        AI VTuber와의 실시간 양방향 통신을 제공합니다.
+        음성 데이터 전송, 텍스트 메시지, Live2D 제어 등을 처리합니다.
+
+        ## 지원 메시지 타입
+        - `audio-data`: 음성 데이터 전송
+        - `text-input`: 텍스트 입력
+        - `interrupt`: 현재 응답 중단
+        - `config-update`: 설정 업데이트
+        - `emotion-control`: 표정 제어
+
+        Tags:
+            websocket: WebSocket 연결
+        """
         await websocket.accept()
         client_uid = str(uuid4())
 
@@ -75,9 +97,24 @@ def init_proxy_route(server_url: str) -> APIRouter:
     router = APIRouter()
     proxy_handler = ProxyHandler(server_url)
 
-    @router.websocket("/proxy-ws")
+    @router.websocket(
+        "/proxy-ws",
+        name="proxy_websocket",
+    )
     async def proxy_endpoint(websocket: WebSocket):
-        """WebSocket endpoint for proxy connections."""
+        """
+        프록시 WebSocket 연결 엔드포인트.
+
+        외부 클라이언트를 위한 프록시 WebSocket 연결을 제공합니다.
+        실제 서버로의 메시지 중계 역할을 수행합니다.
+
+        Note:
+            프록시 모드가 활성화된 경우에만 사용 가능합니다.
+            (`system_config.enable_proxy: true`)
+
+        Tags:
+            websocket: WebSocket 연결
+        """
         try:
             await proxy_handler.handle_client_connection(websocket)
         except Exception as e:

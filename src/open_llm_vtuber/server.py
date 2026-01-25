@@ -71,8 +71,65 @@ class WebSocketServer:
         - Use `clean_cache()` to clear and recreate the local cache directory.
     """
 
+    # OpenAPI 태그 메타데이터 정의
+    OPENAPI_TAGS = [
+        {
+            "name": "models",
+            "description": "Live2D 모델 관리 - 모델 목록 조회, 외부 모델 폴더 추가/삭제"
+        },
+        {
+            "name": "queue",
+            "description": "메시지 대기열 상태 - 큐 상태 조회, 우선순위 규칙 관리"
+        },
+        {
+            "name": "config",
+            "description": "설정 관리 - 라이브 스트리밍 설정 조회 및 수정"
+        },
+        {
+            "name": "media",
+            "description": "오디오/미디어 처리 - ASR (음성 인식), TTS (음성 합성)"
+        },
+        {
+            "name": "live",
+            "description": "라이브 스트리밍 연동 - Chzzk OAuth, YouTube 연동"
+        },
+        {
+            "name": "languages",
+            "description": "다국어 지원 - 사용 가능한 언어 목록 조회"
+        },
+        {
+            "name": "websocket",
+            "description": "WebSocket 연결 - 클라이언트 실시간 통신"
+        },
+    ]
+
     def __init__(self, config: Config, default_context_cache: ServiceContext = None):
-        self.app = FastAPI(title="Open-LLM-VTuber Server")  # Added title for clarity
+        self.app = FastAPI(
+            title="Open-LLM-VTuber API",
+            description=(
+                "AI VTuber 백엔드 서버 API\n\n"
+                "## 주요 기능\n"
+                "- **음성 대화**: 실시간 음성 인식(ASR) 및 음성 합성(TTS)\n"
+                "- **Live2D 아바타**: 캐릭터 모델 관리 및 표정 제어\n"
+                "- **실시간 스트리밍**: WebSocket 기반 실시간 통신\n"
+                "- **라이브 채팅 연동**: YouTube, Chzzk 등 플랫폼 채팅 모니터링\n\n"
+                "## API 문서\n"
+                "- Swagger UI: `/docs`\n"
+                "- ReDoc: `/redoc`"
+            ),
+            version="1.2.1",
+            docs_url="/docs",
+            redoc_url="/redoc",
+            openapi_tags=self.OPENAPI_TAGS,
+            contact={
+                "name": "Open-LLM-VTuber",
+                "url": "https://github.com/t41372/Open-LLM-VTuber",
+            },
+            license_info={
+                "name": "MIT License",
+                "url": "https://opensource.org/licenses/MIT",
+            },
+        )
         self.config = config
         self.default_context_cache = (
             default_context_cache or ServiceContext()

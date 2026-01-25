@@ -47,6 +47,45 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# 개발 도구
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=4.0.0",
+    "pre-commit>=4.1.0",
+    "ruff>=0.8.6",
+]
+
+# 클라우드 API만 사용 (로컬 모델 없음)
+cloud-only = [
+    "fastapi>=0.115.8",
+    "uvicorn>=0.33.0",
+    "openai>=1.57.4",
+    "anthropic>=0.40.0",
+    "edge-tts>=7.0.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+    "loguru>=0.7.0",
+]
+
+# GPU 가속 (CUDA)
+gpu = [
+    "torch>=2.2.2",
+    "onnxruntime-gpu>=1.20.1",
+]
+
+# 로컬 모델 전체
+local = [
+    "torch>=2.2.2",
+    "onnxruntime>=1.20.1",
+    "sherpa-onnx>=1.10.39",
+    "faster-whisper>=1.0.3",
+]
+
+# 전체 (기존 동작 유지)
+all = [
+    "open-llm-vtuber[dev,local]",
+]
 
 [tool.pixi.project]
 channels = ["conda-forge"]
@@ -65,3 +104,10 @@ target-version = "py310"
 [tool.ruff.lint]
 # Ignore E402 (module level import not at top of file) for the run_bilibili_live.py script
 per-file-ignores = { "scripts/run_bilibili_live.py" = ["E402"] }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"

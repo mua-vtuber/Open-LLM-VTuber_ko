@@ -1,4 +1,8 @@
-"""Live streaming related routes (Chzzk OAuth, etc.)."""
+"""Live streaming related routes (Chzzk OAuth, etc.).
+
+라이브 스트리밍 연동을 위한 API 라우트.
+Chzzk OAuth 인증 등 플랫폼별 연동 기능을 제공합니다.
+"""
 
 from fastapi import APIRouter
 from starlette.responses import RedirectResponse, HTMLResponse
@@ -20,12 +24,26 @@ def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
     """
     router = APIRouter()
 
-    @router.get("/chzzk/auth")
+    @router.get(
+        "/chzzk/auth",
+        tags=["live"],
+        summary="Chzzk OAuth 인증 시작",
+        description="Chzzk OAuth 인증 플로우를 시작합니다. Chzzk 인증 페이지로 리다이렉트됩니다.",
+        responses={
+            307: {"description": "Chzzk 인증 페이지로 리다이렉트"},
+            400: {"description": "OAuth 자격 증명 미설정"},
+            500: {"description": "OAuth 초기화 오류"},
+        },
+    )
     async def chzzk_auth_init():
         """
-        Initiate Chzzk OAuth authorization flow.
+        Chzzk OAuth 인증 플로우를 시작합니다.
 
-        Returns a redirect to Chzzk's authorization page where the user can grant permissions.
+        사용자를 Chzzk의 인증 페이지로 리다이렉트하여 권한을 부여받습니다.
+        conf.yaml에 client_id와 client_secret이 설정되어 있어야 합니다.
+
+        Returns:
+            RedirectResponse: Chzzk 인증 페이지로 리다이렉트
         """
         try:
             chzzk_config = default_context_cache.config.live_config.chat_monitor.chzzk
@@ -55,17 +73,30 @@ def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
                 status_code=500,
             )
 
-    @router.get("/chzzk/callback")
+    @router.get(
+        "/chzzk/callback",
+        tags=["live"],
+        summary="Chzzk OAuth 콜백",
+        description="Chzzk OAuth 인증 완료 후 호출되는 콜백 엔드포인트입니다.",
+        responses={
+            200: {"description": "인증 성공"},
+            400: {"description": "OAuth 자격 증명 미설정"},
+            500: {"description": "토큰 교환 오류"},
+        },
+    )
     async def chzzk_auth_callback(code: str, state: str = None):
         """
-        Handle Chzzk OAuth callback.
+        Chzzk OAuth 콜백을 처리합니다.
+
+        Chzzk에서 받은 인증 코드를 액세스 토큰으로 교환하고
+        cache/chzzk_tokens.json에 저장합니다.
 
         Args:
-            code: Authorization code from Chzzk
-            state: Optional state parameter for CSRF protection
+            code: Chzzk에서 받은 인증 코드
+            state: CSRF 보호를 위한 상태 파라미터 (선택)
 
         Returns:
-            Success or error message
+            HTMLResponse: 성공 또는 오류 메시지
         """
         try:
             chzzk_config = default_context_cache.config.live_config.chat_monitor.chzzk

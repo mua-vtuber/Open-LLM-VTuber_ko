@@ -52,25 +52,102 @@ def read_yaml(config_path: str) -> Dict[str, Any]:
         raise e
 
 
-def validate_config(config_data: dict) -> Config:
+def _format_validation_error(error: ValidationError) -> str:
     """
-    Validate configuration data against the Config model.
+    ValidationError를 사용자 친화적인 오류 메시지로 포맷합니다.
 
     Args:
-        config_data: Configuration data to validate.
+        error: Pydantic ValidationError
 
     Returns:
-        Validated Config object.
+        포맷된 오류 메시지 문자열
+    """
+    error_messages = []
+
+    for err in error.errors():
+        # 오류 발생 위치 추출 (예: character_config -> agent_config -> llm_provider)
+        location = " -> ".join(str(loc) for loc in err["loc"])
+        error_type = err["type"]
+        msg = err["msg"]
+        input_value = err.get("input", "N/A")
+
+        # 사용자 친화적 오류 메시지 생성
+        if error_type == "missing":
+            error_messages.append(
+                f"  - '{location}': 필수 필드가 누락되었습니다. "
+                f"conf.yaml에 이 필드를 추가해주세요."
+            )
+        elif error_type == "string_type":
+            error_messages.append(
+                f"  - '{location}': 문자열 타입이 필요합니다. "
+                f"현재 값: {input_value}"
+            )
+        elif error_type == "int_type":
+            error_messages.append(
+                f"  - '{location}': 정수 타입이 필요합니다. "
+                f"현재 값: {input_value}"
+            )
+        elif error_type == "bool_type":
+            error_messages.append(
+                f"  - '{location}': 불리언 타입이 필요합니다 (true/false). "
+                f"현재 값: {input_value}"
+            )
+        elif error_type == "value_error":
+            error_messages.append(
+                f"  - '{location}': {msg}"
+            )
+        elif "greater_than" in error_type or "less_than" in error_type:
+            error_messages.append(
+                f"  - '{location}': 값이 범위를 벗어났습니다. {msg}"
+            )
+        else:
+            error_messages.append(
+                f"  - '{location}': {msg} (타입: {error_type})"
+            )
+
+    return "\n".join(error_messages)
+
+
+def validate_config(config_data: dict) -> Config:
+    """
+    설정 데이터를 Config 모델에 대해 검증합니다.
+
+    Args:
+        config_data: 검증할 설정 데이터 딕셔너리
+
+    Returns:
+        검증된 Config 객체
 
     Raises:
-        ValidationError: If the configuration fails validation.
+        ValidationError: 설정 검증 실패 시
+
+    Note:
+        검증 실패 시 사용자 친화적인 오류 메시지를 로그에 출력합니다.
+        오류 메시지에는 문제 위치, 예상 타입, 현재 값 등이 포함됩니다.
     """
     try:
         return Config(**config_data)
     except ValidationError as e:
-        logger.critical(f"Error validating configuration: {e}")
-        logger.error("Configuration data:")
-        logger.error(config_data)
+        # 사용자 친화적 오류 메시지 생성
+        formatted_errors = _format_validation_error(e)
+
+        logger.critical(
+            "\n"
+            "=" * 60 + "\n"
+            "설정 파일 검증 실패 (Configuration Validation Error)\n"
+            "=" * 60 + "\n"
+            f"\n발견된 오류:\n{formatted_errors}\n"
+            "\n해결 방법:\n"
+            "  1. conf.yaml 파일을 열어 위 오류를 수정하세요.\n"
+            "  2. config_templates/conf.default.yaml을 참고하세요.\n"
+            "  3. 필수 필드가 모두 있는지 확인하세요.\n"
+            "=" * 60
+        )
+
+        # 원본 오류도 디버그용으로 출력
+        logger.debug(f"Original validation error: {e}")
+        logger.debug(f"Configuration data keys: {list(config_data.keys())}")
+
         raise e
 
 

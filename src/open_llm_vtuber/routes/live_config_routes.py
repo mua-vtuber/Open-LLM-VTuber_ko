@@ -1,4 +1,8 @@
-"""Live config API routes for editing YouTube, Chzzk settings."""
+"""Live config API routes for editing YouTube, Chzzk settings.
+
+라이브 스트리밍 설정 관리를 위한 API 라우트.
+YouTube, Chzzk 등 플랫폼별 설정 조회 및 수정 기능을 제공합니다.
+"""
 
 from typing import Optional
 from fastapi import APIRouter, HTTPException
@@ -9,6 +13,7 @@ from loguru import logger
 from ..service_context import ServiceContext
 from ..config_manager.utils import read_yaml, save_partial_yaml
 from ..config_manager.live import LiveConfig
+from ..schemas.api import LiveConfigResponse, LiveConfigUpdateResponse, ErrorResponse
 
 
 class YouTubeConfigUpdate(BaseModel):
@@ -80,13 +85,25 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
     """
     router = APIRouter()
 
-    @router.get("/api/live-config")
+    @router.get(
+        "/api/live-config",
+        tags=["config"],
+        summary="라이브 설정 조회",
+        description="현재 라이브 스트리밍 통합 설정(YouTube, Chzzk 등)을 조회합니다.",
+        response_model=LiveConfigResponse,
+        responses={
+            200: {"description": "설정 조회 성공", "model": LiveConfigResponse},
+            500: {"description": "서버 오류", "model": ErrorResponse},
+        },
+    )
     async def get_live_config():
         """
         현재 라이브 설정을 조회합니다.
 
+        채팅 모니터 설정, 플랫폼별(YouTube, Chzzk) 설정을 반환합니다.
+
         Returns:
-            JSON response with live config
+            JSONResponse: 현재 라이브 설정
         """
         try:
             live_config = default_context_cache.config.live_config
@@ -95,18 +112,33 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
             logger.error(f"Live config 조회 중 오류 발생: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
 
-    @router.put("/api/live-config")
+    @router.put(
+        "/api/live-config",
+        tags=["config"],
+        summary="라이브 설정 업데이트",
+        description=(
+            "라이브 스트리밍 설정을 업데이트합니다. "
+            "변경 사항은 conf.yaml에 저장되며, 메모리 내 설정도 함께 업데이트됩니다."
+        ),
+        response_model=LiveConfigUpdateResponse,
+        responses={
+            200: {"description": "설정 업데이트 성공", "model": LiveConfigUpdateResponse},
+            400: {"description": "잘못된 요청 (업데이트할 필드 없음)"},
+            500: {"description": "서버 오류", "model": ErrorResponse},
+        },
+    )
     async def update_live_config(update: LiveConfigUpdate):
         """
         라이브 설정을 업데이트하고 conf.yaml에 저장합니다.
 
+        부분 업데이트를 지원하며, 지정된 필드만 업데이트됩니다.
+        변경 사항은 설정 파일과 메모리에 동시에 반영됩니다.
+
         Args:
-            update: 업데이트할 라이브 설정
+            update: 업데이트할 라이브 설정 (부분 업데이트 가능)
 
         Returns:
-            JSON response with:
-                - success: 성공 여부
-                - live_config: 업데이트된 설정
+            JSONResponse: 업데이트 성공 여부와 새 설정
 
         Raises:
             HTTPException: 업데이트 실패 시

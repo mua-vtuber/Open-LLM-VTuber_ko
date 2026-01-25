@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  backend:
+    build: .
+    ports:
+      - "12393:12393"
+    volumes:
+      - ./conf.yaml:/app/conf.yaml:ro
+      - ./logs:/app/logs
+    environment:
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+    restart: unless-stopped
+
+  # Optional: Local LLM server
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    profiles:
+      - local-llm
+
+volumes:
+  ollama_data:
