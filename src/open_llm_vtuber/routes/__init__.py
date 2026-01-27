@@ -43,7 +43,7 @@ Swagger UI (`/docs`) 및 ReDoc (`/redoc`)에서 확인할 수 있습니다.
 from fastapi import APIRouter
 
 from ..service_context import ServiceContext
-from ..websocket_handler import WebSocketHandler
+from ..websocket.handler import WebSocketHandler
 from .queue_routes import init_queue_routes
 from .live_config_routes import init_live_config_routes
 from .websocket_routes import init_client_ws_route, init_proxy_route

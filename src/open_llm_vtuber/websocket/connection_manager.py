@@ -12,14 +12,14 @@ from ..message_handler import message_handler
 
 
 class WebSocketConnectionManager:
-    """WebSocket 연결 추적 및 세션 관리"""
+    """WebSocket 연결 수명 주기 관리자"""
 
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
         self._connection_groups: Dict[str, Set[str]] = {}  # group_id -> client_ids
 
     async def connect(self, client_id: str, websocket: WebSocket) -> bool:
-        """새 클라이언트 연결 수락 및 등록"""
+        """새 클라이언트 연결 승인"""
         try:
             await websocket.accept()
             self.active_connections[client_id] = websocket
@@ -40,11 +40,11 @@ class WebSocketConnectionManager:
             logger.info(f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
 
     def get_connection(self, client_id: str) -> Optional[WebSocket]:
-        """클라이언트의 WebSocket 연결 조회"""
+        """클라이언트 연결 객체 조회"""
         return self.active_connections.get(client_id)
 
     def is_connected(self, client_id: str) -> bool:
-        """클라이언트 연결 상태 확인"""
+        """클라이언트 연결 여부 확인"""
         return client_id in self.active_connections
 
     async def send_json(self, client_id: str, data: dict) -> bool:
@@ -76,7 +76,7 @@ class WebSocketConnectionManager:
         return sent_count
 
     async def broadcast_to_group(self, group_id: str, data: dict, exclude: Optional[Set[str]] = None) -> int:
-        """특정 그룹의 클라이언트들에게 메시지 전송"""
+        """특정 그룹 멤버들에게 메시지 전송"""
         exclude = exclude or set()
         client_ids = self._connection_groups.get(group_id, set())
         sent_count = 0
@@ -101,20 +101,14 @@ class WebSocketConnectionManager:
             self._connection_groups[group_id].discard(client_id)
 
     def get_connection_count(self) -> int:
-        """현재 연결된 클라이언트 수"""
+        """현재 연결된 클라이언트 수 반환"""
         return len(self.active_connections)
-
-    def get_all_client_ids(self) -> list[str]:
-        """모든 연결된 클라이언트 ID 목록"""
-        return list(self.active_connections.keys())
 
 
 class ConnectionManager:
     """
-    Manages WebSocket connection lifecycle with ServiceContext.
-
-    This is the legacy class for backward compatibility with handler.py.
-    For new code, consider using WebSocketConnectionManager for simpler use cases.
+    Legacy Connection Manager for compatibility with WebSocketHandler.
+    Integrates ServiceContext management.
     """
 
     def __init__(
@@ -139,17 +133,7 @@ class ConnectionManager:
         client_uid: str,
         send_group_update: Callable,
     ) -> None:
-        """
-        Handle new WebSocket connection setup.
-
-        Args:
-            websocket: The WebSocket connection
-            client_uid: Unique identifier for the client
-            send_group_update: Callback to send group updates
-
-        Raises:
-            Exception: If initialization fails
-        """
+        """Handle new WebSocket connection setup."""
         try:
             session_service_context = await self._init_service_context(
                 websocket.send_text, client_uid
@@ -166,82 +150,9 @@ class ConnectionManager:
             logger.info(f"Connection established for client {client_uid}")
 
         except Exception as e:
-            logger.error(
-                f"Failed to initialize connection for client {client_uid}: {e}"
-            )
-            await self.cleanup_failed_connection(client_uid)
+            logger.error(f"Failed to initialize connection for client {client_uid}: {e}")
+            await self._cleanup_failed_connection(client_uid)
             raise
-
-    async def _init_service_context(
-        self, send_text: Callable, client_uid: str
-    ) -> ServiceContext:
-        """Initialize service context for a new session by cloning the default context."""
-        session_service_context = ServiceContext()
-        await session_service_context.load_cache(
-            config=self.default_context_cache.config.model_copy(deep=True),
-            system_config=self.default_context_cache.system_config.model_copy(
-                deep=True
-            ),
-            character_config=self.default_context_cache.character_config.model_copy(
-                deep=True
-            ),
-            live2d_model=self.default_context_cache.live2d_model,
-            asr_engine=self.default_context_cache.asr_engine,
-            tts_engine=self.default_context_cache.tts_engine,
-            vad_engine=self.default_context_cache.vad_engine,
-            agent_engine=self.default_context_cache.agent_engine,
-            translate_engine=self.default_context_cache.translate_engine,
-            mcp_server_registery=self.default_context_cache.mcp_server_registery,
-            tool_adapter=self.default_context_cache.tool_adapter,
-            send_text=send_text,
-            client_uid=client_uid,
-        )
-        return session_service_context
-
-    async def _store_client_data(
-        self,
-        websocket: WebSocket,
-        client_uid: str,
-        session_service_context: ServiceContext,
-        send_group_update: Callable,
-    ) -> None:
-        """Store client data and initialize group status."""
-        self.client_connections[client_uid] = websocket
-        self.client_contexts[client_uid] = session_service_context
-        self.received_data_buffers[client_uid] = np.array([])
-
-        self.chat_group_manager.client_group_map[client_uid] = ""
-        await send_group_update(websocket, client_uid)
-
-    async def _send_initial_messages(
-        self,
-        websocket: WebSocket,
-        client_uid: str,
-        session_service_context: ServiceContext,
-        send_group_update: Callable,
-    ) -> None:
-        """Send initial connection messages to the client."""
-        await websocket.send_text(
-            json.dumps({"type": "full-text", "text": "Connection established"})
-        )
-
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "set-model-and-conf",
-                    "model_info": session_service_context.live2d_model.model_info,
-                    "conf_name": session_service_context.character_config.conf_name,
-                    "conf_uid": session_service_context.character_config.conf_uid,
-                    "client_uid": client_uid,
-                }
-            )
-        )
-
-        # Send initial group status
-        await send_group_update(websocket, client_uid)
-
-        # Start microphone
-        await websocket.send_text(json.dumps({"type": "control", "text": "start-mic"}))
 
     async def handle_disconnect(
         self,
@@ -270,25 +181,24 @@ class ConnectionManager:
             send_group_update=send_group_update,
         )
 
-        # Call context close to clean up resources (e.g., MCPClient)
-        context = self.client_contexts.get(client_uid)
-        if context:
-            await context.close()
-
         # Clean up other client data
         self.client_connections.pop(client_uid, None)
-        self.client_contexts.pop(client_uid, None)
+        context = self.client_contexts.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
+        
         if client_uid in self.current_conversation_tasks:
             task = self.current_conversation_tasks[client_uid]
             if task and not task.done():
                 task.cancel()
             self.current_conversation_tasks.pop(client_uid, None)
 
+        if context:
+            await context.close()
+
         logger.info(f"Client {client_uid} disconnected")
         message_handler.cleanup_client(client_uid)
 
-    async def cleanup_failed_connection(self, client_uid: str) -> None:
+    async def _cleanup_failed_connection(self, client_uid: str) -> None:
         """Clean up failed connection data."""
         self.client_connections.pop(client_uid, None)
         self.client_contexts.pop(client_uid, None)
@@ -302,3 +212,70 @@ class ConnectionManager:
             self.current_conversation_tasks.pop(client_uid, None)
 
         message_handler.cleanup_client(client_uid)
+
+    async def _init_service_context(
+        self, send_text: Callable, client_uid: str
+    ) -> ServiceContext:
+        """Initialize service context for a new session by cloning the default context."""
+        session_service_context = ServiceContext()
+        await session_service_context.load_cache(
+            config=self.default_context_cache.config.model_copy(deep=True),
+            system_config=self.default_context_cache.system_config.model_copy(deep=True),
+            character_config=self.default_context_cache.character_config.model_copy(deep=True),
+            live2d_model=self.default_context_cache.live2d_model,
+            asr_engine=self.default_context_cache.asr_engine,
+            tts_engine=self.default_context_cache.tts_engine,
+            vad_engine=self.default_context_cache.vad_engine,
+            agent_engine=self.default_context_cache.agent_engine,
+            translate_engine=self.default_context_cache.translate_engine,
+            mcp_server_registery=self.default_context_cache.mcp_server_registery,
+            tool_adapter=self.default_context_cache.tool_adapter,
+            send_text=send_text,
+            client_uid=client_uid,
+        )
+        return session_service_context
+
+    async def _store_client_data(
+        self,
+        websocket: WebSocket,
+        client_uid: str,
+        session_service_context: ServiceContext,
+        send_group_update: Callable,
+    ):
+        """Store client data and initialize group status."""
+        self.client_connections[client_uid] = websocket
+        self.client_contexts[client_uid] = session_service_context
+        self.received_data_buffers[client_uid] = np.array([])
+
+        self.chat_group_manager.client_group_map[client_uid] = ""
+        await send_group_update(websocket, client_uid)
+
+    async def _send_initial_messages(
+        self,
+        websocket: WebSocket,
+        client_uid: str,
+        session_service_context: ServiceContext,
+        send_group_update: Callable,
+    ):
+        """Send initial connection messages to the client."""
+        await websocket.send_text(
+            json.dumps({"type": "full-text", "text": "Connection established"})
+        )
+
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "set-model-and-conf",
+                    "model_info": session_service_context.live2d_model.model_info,
+                    "conf_name": session_service_context.character_config.conf_name,
+                    "conf_uid": session_service_context.character_config.conf_uid,
+                    "client_uid": client_uid,
+                }
+            )
+        )
+
+        # Send initial group status
+        await send_group_update(websocket, client_uid)
+
+        # Start microphone
+        await websocket.send_text(json.dumps({"type": "control", "text": "start-mic"}))

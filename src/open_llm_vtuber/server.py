@@ -71,31 +71,31 @@ class WebSocketServer:
         - Use `clean_cache()` to clear and recreate the local cache directory.
     """
 
-    # OpenAPI 태그 메타데이터 정의
+    # OpenAPI 태그 메타데이터
     OPENAPI_TAGS = [
         {
             "name": "models",
-            "description": "Live2D 모델 관리 - 모델 목록 조회, 외부 모델 폴더 추가/삭제"
+            "description": "Live2D 모델 관리 - 모델 목록, 외부 모델 경로 추가/삭제"
         },
         {
             "name": "queue",
-            "description": "메시지 대기열 상태 - 큐 상태 조회, 우선순위 규칙 관리"
+            "description": "메시지 대기열 큐 - 큐 조회, 데이터 초기화, 우선순위 규칙 관리"
         },
         {
             "name": "config",
-            "description": "설정 관리 - 라이브 스트리밍 설정 조회 및 수정"
+            "description": "설정 관리 - 라이브/리반 설정 조회 및 변경"
         },
         {
             "name": "media",
-            "description": "오디오/미디어 처리 - ASR (음성 인식), TTS (음성 합성)"
+            "description": "음성/미디어 처리 - ASR (음성 인식), TTS (음성 합성)"
         },
         {
             "name": "live",
-            "description": "라이브 스트리밍 연동 - Chzzk OAuth, YouTube 연동"
+            "description": "라이브스트리밍 연동 - Chzzk OAuth, YouTube 연동"
         },
         {
             "name": "languages",
-            "description": "다국어 지원 - 사용 가능한 언어 목록 조회"
+            "description": "다국어 지원 가능 언어 목록"
         },
         {
             "name": "websocket",
@@ -109,10 +109,10 @@ class WebSocketServer:
             description=(
                 "AI VTuber 백엔드 서버 API\n\n"
                 "## 주요 기능\n"
-                "- **음성 대화**: 실시간 음성 인식(ASR) 및 음성 합성(TTS)\n"
-                "- **Live2D 아바타**: 캐릭터 모델 관리 및 표정 제어\n"
+                "- **음성 인식/합성**: 실시간 음성 인식(ASR) 및 음성 합성(TTS)\n"
+                "- **Live2D 제어**: 캐릭터 모델 관리 및 모션 제어\n"
                 "- **실시간 스트리밍**: WebSocket 기반 실시간 통신\n"
-                "- **라이브 채팅 연동**: YouTube, Chzzk 등 플랫폼 채팅 모니터링\n\n"
+                "- **플랫폼 연동**: YouTube, Chzzk 등 방송 플랫폼 연동\n\n"
                 "## API 문서\n"
                 "- Swagger UI: `/docs`\n"
                 "- ReDoc: `/redoc`"

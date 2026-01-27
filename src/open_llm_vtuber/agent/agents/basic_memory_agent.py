@@ -9,20 +9,14 @@ from typing import (
     Optional,
 )
 from loguru import logger
-from .agent_interface import AgentInterface
+from ..base_agent import BaseAgent
 from ..output_types import SentenceOutput, DisplayText
 from ..stateless_llm.stateless_llm_interface import StatelessLLMInterface
 from ..stateless_llm.claude_llm import AsyncLLM as ClaudeAsyncLLM
 from ..stateless_llm.openai_compatible_llm import AsyncLLM as OpenAICompatibleAsyncLLM
 from ...chat_history_manager import get_history
-from ..transformers import (
-    sentence_divider,
-    actions_extractor,
-    tts_filter,
-    display_processor,
-)
 from ...config_manager import TTSPreprocessorConfig
-from ..input_types import BatchInput, TextSource
+from ..input_types import BatchInput
 from prompts import prompt_loader
 from ...mcpp.tool_manager import ToolManager
 from ...mcpp.json_detector import StreamJSONDetector
@@ -30,10 +24,8 @@ from ...mcpp.types import ToolCallObject
 from ...mcpp.tool_executor import ToolExecutor
 
 
-class BasicMemoryAgent(AgentInterface):
+class BasicMemoryAgent(BaseAgent):
     """Agent with basic chat memory and tool calling support."""
-
-    _system: str = "You are a helpful assistant."
 
     def __init__(
         self,
@@ -51,16 +43,16 @@ class BasicMemoryAgent(AgentInterface):
         mcp_prompt_string: str = "",
     ):
         """Initialize agent with LLM and configuration."""
-        super().__init__()
+        super().__init__(
+            live2d_model=live2d_model,
+            tts_preprocessor_config=tts_preprocessor_config,
+            faster_first_response=faster_first_response,
+            segment_method=segment_method,
+        )
         self._memory = []
-        self._live2d_model = live2d_model
-        self._tts_preprocessor_config = tts_preprocessor_config
-        self._faster_first_response = faster_first_response
-        self._segment_method = segment_method
         self._use_mcpp = use_mcpp
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
-        self._interrupt_handled = False
         self.prompt_mode_flag = False
 
         self._tool_manager = tool_manager
@@ -117,13 +109,10 @@ class BasicMemoryAgent(AgentInterface):
         self.chat = self._chat_function_factory()
 
     def set_system(self, system: str):
-        """Set the system prompt."""
-        logger.debug(f"Memory Agent: Setting system prompt: '''{system}'''")
-
+        """Set the system prompt with interrupt handling."""
         if self.interrupt_method == "user":
-            system = f"{system}\n\nIf you received `[interrupted by user]` signal, you were interrupted."
-
-        self._system = system
+            system = f"{system}\n\nIf you received `[interrupted by user]` signal, you were interrupted." 
+        super().set_system(system)
 
     def _add_message(
         self,
@@ -173,7 +162,7 @@ class BasicMemoryAgent(AgentInterface):
 
         self._memory.append(message_data)
 
-    def set_memory_from_history(self, conf_uid: str, history_uid: str) -> None:
+    def set_memory_from_history(self, conf_uid: str, history_uid: str) -> None: 
         """Load memory from chat history."""
         messages = get_history(conf_uid, history_uid)
 
@@ -192,7 +181,7 @@ class BasicMemoryAgent(AgentInterface):
                 logger.warning(f"Skipping invalid message from history: {msg}")
         logger.info(f"Loaded {len(self._memory)} messages from history.")
 
-    def handle_interrupt(self, heard_response: str) -> None:
+    def handle_interrupt(self, heard_response: str) -> None: 
         """Handle user interruption."""
         if self._interrupt_handled:
             return
@@ -200,10 +189,7 @@ class BasicMemoryAgent(AgentInterface):
         self._interrupt_handled = True
 
         if self._memory and self._memory[-1]["role"] == "assistant":
-            if not self._memory[-1]["content"].endswith("..."):
-                self._memory[-1]["content"] = heard_response + "..."
-            else:
-                self._memory[-1]["content"] = heard_response + "..."
+            self._memory[-1]["content"] = heard_response + "..."
         else:
             if heard_response:
                 self._memory.append(
@@ -221,23 +207,6 @@ class BasicMemoryAgent(AgentInterface):
             }
         )
         logger.info(f"Handled interrupt with role '{interrupt_role}'.")
-
-    def _to_text_prompt(self, input_data: BatchInput) -> str:
-        """Format input data to text prompt."""
-        message_parts = []
-
-        for text_data in input_data.texts:
-            if text_data.source == TextSource.INPUT:
-                message_parts.append(text_data.content)
-            elif text_data.source == TextSource.CLIPBOARD:
-                message_parts.append(
-                    f"[User shared content from clipboard: {text_data.content}]"
-                )
-
-        if input_data.images:
-            message_parts.append("\n[User has also provided images]")
-
-        return "\n".join(message_parts).strip()
 
     def _to_messages(self, input_data: BatchInput) -> List[Dict[str, Any]]:
         """Prepare messages for LLM API call."""
@@ -331,9 +300,6 @@ class BasicMemoryAgent(AgentInterface):
                             "input": tool_call_data["input"],
                         }
                     )
-                # elif event["type"] == "message_delta":
-                #     if event["data"]["delta"].get("stop_reason"):
-                #         stop_reason = event["data"]["delta"].get("stop_reason")
                 elif event["type"] == "message_stop":
                     break
                 elif event["type"] == "error":
@@ -392,8 +358,6 @@ class BasicMemoryAgent(AgentInterface):
 
                 if tool_results_for_llm:
                     messages.append({"role": "user", "content": tool_results_for_llm})
-
-                # stop_reason = None
                 continue
             else:
                 if current_turn_text:
@@ -548,7 +512,7 @@ class BasicMemoryAgent(AgentInterface):
                 if not self._tool_executor:
                     logger.error(
                         "OpenAI Tool interaction requested but ToolExecutor/MCPClient is not available."
-                    )
+                    )  
                     yield "[Error: ToolExecutor/MCPClient not configured for OpenAI mode]"
                     continue
 
@@ -583,14 +547,6 @@ class BasicMemoryAgent(AgentInterface):
     ) -> Callable[[BatchInput], AsyncIterator[Union[SentenceOutput, Dict[str, Any]]]]:
         """Create the chat pipeline function."""
 
-        @tts_filter(self._tts_preprocessor_config)
-        @display_processor()
-        @actions_extractor(self._live2d_model)
-        @sentence_divider(
-            faster_first_response=self._faster_first_response,
-            segment_method=self._segment_method,
-            valid_tags=["think"],
-        )
         async def chat_with_memory(
             input_data: BatchInput,
         ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
@@ -604,7 +560,6 @@ class BasicMemoryAgent(AgentInterface):
             llm_supports_native_tools = False
 
             if self._use_mcpp and self._tool_manager:
-                tools = None
                 if isinstance(self._llm, ClaudeAsyncLLM):
                     tool_mode = "Claude"
                     tools = self._formatted_tools_claude
@@ -615,7 +570,7 @@ class BasicMemoryAgent(AgentInterface):
                     llm_supports_native_tools = True
                 else:
                     logger.warning(
-                        f"LLM type {type(self._llm)} not explicitly handled for tool mode determination."
+                        f"LLM type {type(self._llm)} not explicitly handled for tool mode determination." 
                     )
 
                 if llm_supports_native_tools and not tools:
@@ -659,7 +614,7 @@ class BasicMemoryAgent(AgentInterface):
                 if complete_response:
                     self._add_message(complete_response, "assistant")
 
-        return chat_with_memory
+        return self._apply_transformers(chat_with_memory)
 
     async def chat(
         self,
@@ -670,13 +625,9 @@ class BasicMemoryAgent(AgentInterface):
         async for output in chat_func_decorated(input_data):
             yield output
 
-    def reset_interrupt(self) -> None:
-        """Reset interrupt flag."""
-        self._interrupt_handled = False
-
     def start_group_conversation(
         self, human_name: str, ai_participants: List[str]
-    ) -> None:
+    ) -> None: 
         """Start a group conversation."""
         if not self._tool_prompts:
             logger.warning("Tool prompts dictionary is not set.")

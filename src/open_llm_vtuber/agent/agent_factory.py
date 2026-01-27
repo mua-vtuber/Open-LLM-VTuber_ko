@@ -22,7 +22,7 @@ class AgentFactory:
         live2d_model=None,
         tts_preprocessor_config=None,
         **kwargs,
-    ) -> Type[AgentInterface]:
+    ) -> AgentInterface:
         """Create an agent based on the configuration.
 
         Args:
@@ -86,26 +86,36 @@ class AgentFactory:
             )
 
         elif conversation_agent_choice == "mem0_agent":
-            from .agents.mem0_llm import LLM as Mem0LLM
+            from .agents.mem0_llm import Mem0Agent
 
             mem0_settings = agent_settings.get("mem0_agent", {})
             if not mem0_settings:
                 raise ValueError("Mem0 agent settings not found")
 
-            # Validate required settings
-            required_fields = ["base_url", "model", "mem0_config"]
-            for field in required_fields:
-                if field not in mem0_settings:
-                    raise ValueError(
-                        f"Missing required field '{field}' in mem0_agent settings"
-                    )
+            llm_provider: str = mem0_settings.get("llm_provider")
+            if not llm_provider:
+                raise ValueError("LLM provider not specified for mem0 agent")
 
-            return Mem0LLM(
+            llm_config: dict = llm_configs.get(llm_provider)
+            if not llm_config:
+                raise ValueError(
+                    f"Configuration not found for LLM provider: {llm_provider}"
+                )
+
+            # Create the stateless LLM
+            llm = StatelessLLMFactory.create_llm(
+                llm_provider=llm_provider, system_prompt=system_prompt, **llm_config
+            )
+
+            return Mem0Agent(
+                llm=llm,
                 user_id=kwargs.get("user_id", "default"),
                 system=system_prompt,
                 live2d_model=live2d_model,
+                mem0_config=mem0_settings.get("mem0_config"),
                 tts_preprocessor_config=tts_preprocessor_config,
-                **mem0_settings,
+                faster_first_response=mem0_settings.get("faster_first_response", True),
+                segment_method=mem0_settings.get("segment_method", "pysbd"),
             )
 
         elif conversation_agent_choice == "hume_ai_agent":

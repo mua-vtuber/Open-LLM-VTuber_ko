@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-from ..websocket_handler import WebSocketHandler
+from ..websocket.handler import WebSocketHandler
 from ..schemas.api import (
     QueueStatus,
     QueueHistoryResponse,

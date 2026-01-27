@@ -5,9 +5,10 @@ This is the main entry point for WebSocket handling, composing
 specialized handlers for different responsibilities.
 """
 
-from typing import Dict, Optional
-from fastapi import WebSocket
+from typing import Dict, Optional, Any
+from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
+import json
 import numpy as np
 from loguru import logger
 
@@ -18,6 +19,7 @@ from ..conversations.conversation_handler import (
     handle_group_interrupt,
     handle_individual_interrupt,
 )
+from ..message_handler import message_handler
 
 from .connection_manager import ConnectionManager
 from .message_router import MessageRouter
@@ -26,6 +28,8 @@ from .history_handler import HistoryHandler
 from .audio_handler import AudioHandler
 from .config_handler import ConfigHandler
 from .memory_handler import MemoryHandler
+from ..input_queue import InputQueueManager
+from ..queue_config import QueueConfig
 
 
 class WebSocketHandler:
@@ -40,6 +44,7 @@ class WebSocketHandler:
     - AudioHandler: Audio processing
     - ConfigHandler: Configuration
     - MemoryHandler: Memory management
+    - InputQueueManager: Message queuing
     """
 
     def __init__(self, default_context_cache: ServiceContext):
@@ -55,6 +60,14 @@ class WebSocketHandler:
         # Initialize specialized handlers
         self._init_handlers()
         self._register_message_handlers()
+
+        # Initialize Queue Manager
+        self._queue_config = QueueConfig()
+        self._input_queue_manager = InputQueueManager(
+            config=self._queue_config,
+            message_handler=self._process_queued_message
+        )
+        logger.info("WebSocketHandler initialized with InputQueueManager")
 
     def _init_handlers(self) -> None:
         """Initialize all specialized handlers."""
@@ -138,6 +151,11 @@ class WebSocketHandler:
         self, websocket: WebSocket, client_uid: str
     ) -> None:
         """Handle new WebSocket connection setup."""
+        # Start queue manager if not running
+        if not self._input_queue_manager.is_running():
+            await self._input_queue_manager.start()
+            logger.info("InputQueueManager started")
+
         await self.connection_manager.handle_new_connection(
             websocket=websocket,
             client_uid=client_uid,
@@ -147,11 +165,50 @@ class WebSocketHandler:
     async def handle_websocket_communication(
         self, websocket: WebSocket, client_uid: str
     ) -> None:
-        """Handle ongoing WebSocket communication."""
-        await self.message_router.handle_websocket_communication(
-            websocket=websocket,
-            client_uid=client_uid,
-        )
+        """Handle ongoing WebSocket communication with queue support."""
+        try:
+            while True:
+                try:
+                    data = await websocket.receive_json()
+                    
+                    # Log message reception (optional, using existing handler)
+                    message_handler.handle_message(client_uid, data)
+
+                    # Add client_uid to message for processing
+                    data['client_uid'] = client_uid
+
+                    # Enqueue message
+                    success = await self._input_queue_manager.enqueue(data)
+
+                    if not success:
+                        logger.warning(
+                            f"Failed to enqueue message (client: {client_uid}, "
+                            f"type: {data.get('type', 'unknown')})"
+                        )
+                    else:
+                        logger.debug(
+                            f"Message enqueued (client: {client_uid}, "
+                            f"type: {data.get('type', 'unknown')})"
+                        )
+
+                except WebSocketDisconnect:
+                    raise
+                except json.JSONDecodeError:
+                    logger.error("Invalid JSON received")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error processing message: {e}")
+                    await websocket.send_text(
+                        json.dumps({"type": "error", "message": str(e)})
+                    )
+                    continue
+
+        except WebSocketDisconnect:
+            logger.info(f"Client {client_uid} disconnected (WebSocket)")
+            raise
+        except Exception as e:
+            logger.error(f"Fatal error in WebSocket communication: {e}")
+            raise
 
     async def handle_disconnect(self, client_uid: str) -> None:
         """Handle client disconnection."""
@@ -162,6 +219,67 @@ class WebSocketHandler:
             broadcast_to_group=self.broadcast_to_group,
             send_group_update=self.send_group_update,
         )
+
+    # ==========================================================================
+    # Private - Queue Processing
+    # ==========================================================================
+
+    async def _process_queued_message(self, message: Dict) -> None:
+        """
+        Process a message popped from the queue.
+
+        Args:
+            message: The message dictionary containing 'client_uid' and message data.
+        """
+        client_uid = message.get('client_uid')
+        if not client_uid:
+            logger.error("Message missing client_uid")
+            return
+
+        # Find websocket connection
+        websocket = self.client_connections.get(client_uid)
+        if not websocket:
+            logger.warning(
+                f"Connection not found for client {client_uid}. "
+                f"Message type: {message.get('type', 'unknown')}"
+            )
+            return
+
+        # Route the message
+        try:
+            await self.message_router.route_message(
+                websocket=websocket,
+                client_uid=client_uid,
+                data=message,
+                message_handlers=self.message_router.handlers # Using registered handlers
+            )
+        except Exception as e:
+            logger.error(
+                f"Error processing queued message (client: {client_uid}, "
+                f"type: {message.get('type', 'unknown')}): {e}",
+                exc_info=True
+            )
+
+    def get_queue_status(self) -> Dict[str, Any]:
+        """
+        Get current status of the input queue.
+
+        Returns:
+            Dict[str, Any]: Queue status metrics.
+        """
+        status = self._input_queue_manager.get_status()
+
+        return {
+            'pending': status.get('queue_size', 0),
+            'processing': 1 if status.get('current_message') else 0,
+            'max_size': status.get('queue_max_size', 0),
+            'total_received': status.get('total_received', 0),
+            'total_processed': status.get('total_processed', 0),
+            'total_dropped': status.get('total_dropped', 0),
+            'running': status.get('running', False),
+            'avg_processing_time': status.get('avg_processing_time', 0.0),
+            'processing_rate': status.get('processing_rate', 0.0)
+        }
 
     # ==========================================================================
     # Public API - Group Operations

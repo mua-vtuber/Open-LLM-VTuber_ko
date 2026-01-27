@@ -11,7 +11,7 @@ from starlette.websockets import WebSocketDisconnect
 from loguru import logger
 
 from ..service_context import ServiceContext
-from ..websocket_handler import WebSocketHandler
+from ..websocket.handler import WebSocketHandler
 from ..proxy_handler import ProxyHandler
 
 

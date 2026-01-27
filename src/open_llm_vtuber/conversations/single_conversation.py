@@ -55,9 +55,20 @@ async def process_single_conversation(
         logger.info(f"New Conversation Chain {session_emoji} started!")
 
         # Process user input
-        input_text = await process_user_input(
-            user_input, context.asr_engine, websocket_send
-        )
+        try:
+            input_text = await process_user_input(
+                user_input, context.asr_engine, websocket_send
+            )
+        except Exception as e:
+            logger.error(f"Error processing user input: {e}")
+            await websocket_send(
+                json.dumps({
+                    "type": "error",
+                    "code": "INPUT_PROCESSING_ERROR",
+                    "message": f"Failed to process input: {str(e)}"
+                })
+            )
+            raise
 
         # Create batch input
         batch_input = create_batch_input(
@@ -97,78 +108,68 @@ async def process_single_conversation(
                     # Handle tool status event: send WebSocket message
                     output_item["name"] = context.character_config.character_name
                     logger.debug(f"Sending tool status update: {output_item}")
-
                     await websocket_send(json.dumps(output_item))
+                    continue
 
-                elif isinstance(output_item, (SentenceOutput, AudioOutput)):
-                    # Handle SentenceOutput or AudioOutput
-                    response_part = await process_agent_output(
-                        output=output_item,
-                        character_config=context.character_config,
-                        live2d_model=context.live2d_model,
-                        tts_engine=context.tts_engine,
-                        websocket_send=websocket_send,  # Pass websocket_send for audio/tts messages
-                        tts_manager=tts_manager,
-                        translate_engine=context.translate_engine,
-                    )
-                    # Ensure response_part is treated as a string before concatenation
-                    response_part_str = (
-                        str(response_part) if response_part is not None else ""
-                    )
-                    full_response += response_part_str  # Accumulate text response
-                else:
-                    logger.warning(
-                        f"Received unexpected item type from agent chat stream: {type(output_item)}"
-                    )
-                    logger.debug(f"Unexpected item content: {output_item}")
-
-        except Exception as e:
-            logger.exception(
-                f"Error processing agent response stream: {e}"
-            )  # Log with stack trace
-            await websocket_send(
-                json.dumps(
-                    {
-                        "type": "error",
-                        "message": f"Error processing agent response: {str(e)}",
-                    }
+                full_response = await process_agent_output(
+                    output_item=output_item,
+                    tts_manager=tts_manager,
+                    websocket_send=websocket_send,
+                    full_response=full_response,
+                    context=context,
                 )
+
+        except asyncio.TimeoutError:
+            logger.error("Agent response timed out")
+            await websocket_send(
+                json.dumps({
+                    "type": "error",
+                    "code": "TIMEOUT",
+                    "message": "AI response timed out"
+                })
             )
-            # full_response will contain partial response before error
-        # --- End processing agent response ---
+            raise
+        except Exception as e:
+            logger.exception(f"Error processing agent response stream: {e}")
+            await websocket_send(
+                json.dumps({
+                    "type": "error",
+                    "code": "GENERATION_ERROR",
+                    "message": f"Error generating response: {str(e)}"
+                })
+            )
+            # Don't re-raise immediately to allow cleanup, but log critical error
+            raise
 
-        # Wait for any pending TTS tasks
-        if tts_manager.task_list:
-            await asyncio.gather(*tts_manager.task_list)
-            await websocket_send(json.dumps({"type": "backend-synth-complete"}))
+        # Wait for all TTS tasks to complete
+        await tts_manager.wait_for_all_tasks()
 
+        # Finalize conversation
         await finalize_conversation_turn(
-            tts_manager=tts_manager,
+            full_response=full_response,
+            context=context,
+            skip_history=skip_history,
             websocket_send=websocket_send,
-            client_uid=client_uid,
         )
-
-        if context.history_uid and full_response:  # Check full_response before storing
-            store_message(
-                conf_uid=context.character_config.conf_uid,
-                history_uid=context.history_uid,
-                role="ai",
-                content=full_response,
-                name=context.character_config.character_name,
-                avatar=context.character_config.avatar,
-            )
-            logger.info(f"AI response: {full_response}")
+        logger.info(f"AI response: {full_response}")
 
         return full_response  # Return accumulated full_response
 
     except asyncio.CancelledError:
-        logger.info(f"🤡👍 Conversation {session_emoji} cancelled because interrupted.")
+        logger.info(f"🛑 Conversation {session_emoji} cancelled because interrupted.")
+        await websocket_send(json.dumps({"type": "control", "text": "conversation-cancelled"}))
         raise
     except Exception as e:
-        logger.error(f"Error in conversation chain: {e}")
-        await websocket_send(
-            json.dumps({"type": "error", "message": f"Conversation error: {str(e)}"})
-        )
+        logger.error(f"Unexpected error in conversation chain: {e}")
+        # Only send if not already sent by inner blocks
+        try:
+            await websocket_send(
+                json.dumps({"type": "error", "code": "INTERNAL_ERROR", "message": f"Internal error: {str(e)}"})
+            )
+        except Exception:
+            pass # Connection might be closed
         raise
     finally:
-        cleanup_conversation(tts_manager, session_emoji)
+        # Cleanup
+        await cleanup_conversation(tts_manager)
+        logger.info(f"Conversation {session_emoji} finished/cleaned up.")
