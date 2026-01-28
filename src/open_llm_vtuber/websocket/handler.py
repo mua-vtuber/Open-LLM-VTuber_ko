@@ -139,6 +139,9 @@ class WebSocketHandler:
             "get_memories": self.memory_handler.handle_get_memories,
             "delete_memory": self.memory_handler.handle_delete_memory,
             "delete_all_memories": self.memory_handler.handle_delete_all_memories,
+            # Priority rules operations
+            "fetch-priority-rules": self._handle_fetch_priority_rules,
+            "update-priority-rules": self._handle_update_priority_rules,
             # Utility
             "heartbeat": self._handle_heartbeat,
         })
@@ -376,3 +379,99 @@ class WebSocketHandler:
             await websocket.send_json({"type": "heartbeat-ack"})
         except Exception as e:
             logger.error(f"Error sending heartbeat acknowledgment: {e}")
+
+    async def _handle_fetch_priority_rules(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Handle request to fetch priority rules."""
+        try:
+            await websocket.send_json({
+                "type": "priority-rules-data",
+                "priority_rules": self._queue_config.priority_rules.to_dict()
+            })
+        except Exception as e:
+            logger.error(f"Error sending priority rules: {e}")
+            await websocket.send_json({
+                "type": "priority-rules-error",
+                "error": str(e)
+            })
+
+    async def _handle_update_priority_rules(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Handle request to update priority rules."""
+        try:
+            priority_rules_data = data.get("priority_rules", {})
+
+            # Update the priority rules
+            success = self._queue_config.priority_rules.update_from_dict(priority_rules_data)
+
+            if success:
+                logger.info(f"Priority rules updated by client {client_uid}")
+                # Broadcast the update to all clients
+                await self.broadcast_priority_rules_update()
+            else:
+                await websocket.send_json({
+                    "type": "priority-rules-update-error",
+                    "error": "Invalid priority rules data"
+                })
+
+        except Exception as e:
+            logger.error(f"Error updating priority rules: {e}")
+            await websocket.send_json({
+                "type": "priority-rules-update-error",
+                "error": str(e)
+            })
+
+    # ==========================================================================
+    # Public API - Priority Rules
+    # ==========================================================================
+
+    def get_priority_rules(self) -> Dict[str, Any]:
+        """
+        Return priority rules as dictionary.
+
+        Returns:
+            Dict[str, Any]: Priority rules configuration.
+        """
+        return self._queue_config.priority_rules.to_dict()
+
+    def get_priority_rules_instance(self):
+        """
+        Return PriorityRules instance for direct modification.
+
+        Returns:
+            PriorityRules: The priority rules instance.
+        """
+        return self._queue_config.priority_rules
+
+    async def broadcast_priority_rules_update(self) -> None:
+        """
+        Broadcast priority rules update to all connected clients.
+
+        Sends the current priority rules configuration to all connected
+        WebSocket clients for synchronization.
+        """
+        message = {
+            "type": "priority-rules-updated",
+            "priority_rules": self._queue_config.priority_rules.to_dict()
+        }
+        for client_uid, websocket in self.client_connections.items():
+            try:
+                await websocket.send_json(message)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to send priority rules update to {client_uid}: {e}"
+                )
+
+    def get_queue_metric_history(self, minutes: int = 5) -> list:
+        """
+        Get queue metric history for the specified period.
+
+        Args:
+            minutes: Number of minutes of history to retrieve.
+
+        Returns:
+            List[Dict[str, Any]]: Queue metric history.
+        """
+        return self._input_queue_manager.get_metric_history(minutes)
