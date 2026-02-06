@@ -92,7 +92,9 @@ def init_media_routes(default_context_cache: ServiceContext) -> APIRouter:
         except ValueError as e:
             logger.error(f"Audio format error: {e}")
             return Response(
-                content=json.dumps({"error": str(e)}),
+                content=json.dumps(
+                    {"error": "Invalid audio format. Please ensure the file is 16-bit PCM WAV format."}
+                ),
                 status_code=400,
                 media_type="application/json",
             )

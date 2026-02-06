@@ -522,12 +522,19 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
                 status_code=400
             )
 
-        # 경로 정규화
-        folder_path = os.path.normpath(folder_path)
+        # 경로 정규화 및 절대 경로 변환
+        folder_path = os.path.realpath(os.path.normpath(folder_path))
+
+        # 경로 탐색 공격 방지: ".." 포함 여부 확인
+        if ".." in os.path.normpath(data.get("path", "")):
+            return JSONResponse(
+                {"success": False, "error": "잘못된 경로입니다"},
+                status_code=400
+            )
 
         if not os.path.isdir(folder_path):
             return JSONResponse(
-                {"success": False, "error": f"폴더가 존재하지 않습니다: {folder_path}"},
+                {"success": False, "error": "폴더가 존재하지 않습니다"},
                 status_code=400
             )
 
