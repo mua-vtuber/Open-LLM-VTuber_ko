@@ -77,11 +77,14 @@ mcp_servers.json
 
 .vscode/
 
-# Auto Claude data directory
+# AI tool artifacts
 .auto-claude/
-
-# Claude Code settings
+.auto-claude-*
 .claude/
+.claude_settings.json
+CLAUDE.md
+.cursor/
+.moai/
 
 # Visitor profiles (personal data)
 visitor_profiles/
