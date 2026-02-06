@@ -9,14 +9,14 @@
         "kXOffset": 1150,
         "idleMotionGroupName": "Idle",
         "emotionMap": {
-            "neutral": 0,
-            "anger": 2,
-            "disgust": 2,
-            "fear": 1,
-            "joy": 3,
-            "smirk": 3,
-            "sadness": 1,
-            "surprise": 3
+            "neutral": "exp_01",
+            "anger": "exp_03",
+            "disgust": "exp_03",
+            "fear": "exp_02",
+            "joy": "exp_04",
+            "smirk": "exp_04",
+            "sadness": "exp_02",
+            "surprise": "exp_04"
         },
         "tapMotions": {
             "HitAreaHead": {

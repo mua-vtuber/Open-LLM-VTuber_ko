@@ -143,15 +143,15 @@ class Live2dModel:
 
         return matched_model
 
-    def extract_emotion(self, str_to_check: str) -> list:
+    def extract_emotion(self, str_to_check: str) -> list[str]:
         """
-        Check the input string for any emotion keywords and return a list of values (the expression index) of the emotions found in the string.
+        Check the input string for any emotion keywords and return a list of emotion keywords found in the string.
 
         Parameters:
             str_to_check (str): The string to check for emotions.
 
         Returns:
-            list: A list of values of the emotions found in the string. An empty list is returned if no emotions are found.
+            list[str]: A list of emotion keywords found in the string. An empty list is returned if no emotions are found.
         """
 
         expression_list = []
@@ -165,7 +165,7 @@ class Live2dModel:
             for key in self.emo_map.keys():
                 emo_tag = f"[{key}]"
                 if str_to_check[i : i + len(emo_tag)] == emo_tag:
-                    expression_list.append(self.emo_map[key])
+                    expression_list.append(key)
                     i += len(emo_tag) - 1
                     break
             i += 1
