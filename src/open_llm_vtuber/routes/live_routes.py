@@ -4,12 +4,30 @@
 Chzzk OAuth 인증 등 플랫폼별 연동 기능을 제공합니다.
 """
 
+import html
+import secrets
+import time
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
 from fastapi import APIRouter
 from starlette.responses import RedirectResponse, HTMLResponse
 from loguru import logger
 
 from ..service_context import ServiceContext
 from ..chat_monitor.chzzk_oauth_manager import ChzzkOAuthManager
+
+# CSRF state tokens for OAuth flow: maps state -> creation timestamp
+_oauth_states: dict[str, float] = {}
+
+_OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def _cleanup_expired_oauth_states() -> None:
+    """Remove OAuth state tokens older than the TTL."""
+    now = time.time()
+    expired = [s for s, ts in _oauth_states.items() if now - ts > _OAUTH_STATE_TTL]
+    for s in expired:
+        del _oauth_states[s]
 
 
 def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
@@ -62,14 +80,27 @@ def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
             )
 
             auth_url = oauth_manager.generate_auth_url()
+
+            # Generate CSRF state token and append to auth URL
+            state = secrets.token_urlsafe(32)
+            _oauth_states[state] = time.time()
+            _cleanup_expired_oauth_states()
+
+            parsed = urlparse(auth_url)
+            qs = parse_qs(parsed.query)
+            qs["state"] = [state]
+            new_query = urlencode(qs, doseq=True)
+            auth_url = urlunparse(parsed._replace(query=new_query))
+
             logger.info(f"[Chzzk] Redirecting to authorization URL: {auth_url}")
 
             return RedirectResponse(url=auth_url)
 
         except Exception as e:
             logger.error(f"[Chzzk] Error initiating OAuth: {e}")
+            escaped_error = html.escape(str(e))
             return HTMLResponse(
-                content=f"<h1>Error</h1><p>Failed to initiate OAuth: {str(e)}</p>",
+                content=f"<h1>Error</h1><p>Failed to initiate OAuth: {escaped_error}</p>",
                 status_code=500,
             )
 
@@ -93,11 +124,37 @@ def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
 
         Args:
             code: Chzzk에서 받은 인증 코드
-            state: CSRF 보호를 위한 상태 파라미터 (선택)
+            state: CSRF 보호를 위한 상태 파라미터
 
         Returns:
             HTMLResponse: 성공 또는 오류 메시지
         """
+        # Validate CSRF state token
+        _cleanup_expired_oauth_states()
+
+        if not state or state not in _oauth_states:
+            logger.warning(
+                "[Chzzk] OAuth callback with missing or invalid state parameter"
+            )
+            return HTMLResponse(
+                content=_get_chzzk_error_html(
+                    "Invalid or missing OAuth state parameter. "
+                    "Please restart the authentication flow."
+                ),
+                status_code=400,
+            )
+
+        created_at = _oauth_states.pop(state)
+        if time.time() - created_at > _OAUTH_STATE_TTL:
+            logger.warning("[Chzzk] OAuth callback with expired state parameter")
+            return HTMLResponse(
+                content=_get_chzzk_error_html(
+                    "OAuth state has expired. "
+                    "Please restart the authentication flow."
+                ),
+                status_code=400,
+            )
+
         try:
             chzzk_config = default_context_cache.config.live_config.chat_monitor.chzzk
 
@@ -198,6 +255,7 @@ def _get_chzzk_success_html() -> str:
 
 def _get_chzzk_error_html(error: str) -> str:
     """Return HTML for Chzzk OAuth error."""
+    error = html.escape(error)
     return f"""
     <html>
     <head>

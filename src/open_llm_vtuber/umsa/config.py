@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import os
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class StorageConfig(BaseModel):
@@ -11,6 +13,18 @@ class StorageConfig(BaseModel):
     lance_db_path: str = "./memory/lance_db"
     sqlite_db_path: str = "./memory/umsa.db"
 
+    @model_validator(mode="after")
+    def _validate_paths(self) -> "StorageConfig":
+        normalized = os.path.normpath(self.sqlite_db_path)
+        parts = normalized.replace("\\", "/").split("/")
+        if ".." in parts:
+            raise ValueError(
+                f"sqlite_db_path must not contain '..' components: "
+                f"{self.sqlite_db_path!r}"
+            )
+        self.sqlite_db_path = normalized
+        return self
+
 
 class EmbeddingConfig(BaseModel):
     """Embedding model configuration."""
@@ -18,6 +32,7 @@ class EmbeddingConfig(BaseModel):
     provider: str = "local"  # "local" or "api"
     model: str = "nomic-ai/nomic-embed-text-v2-moe"
     dimension: int = 768
+    trust_remote_code: bool = False
 
 
 class BudgetAllocation(BaseModel):
@@ -57,6 +72,7 @@ class ConsolidationConfig(BaseModel):
     episode_compress_threshold: int = 200
     pruning_threshold: float = 0.1
     decay_half_life_days: float = 30.0  # 30 days for general facts
+    max_merge_candidates: int = 500
 
 
 class RetrievalConfig(BaseModel):

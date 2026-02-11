@@ -1,6 +1,14 @@
 from pydantic import Field
-from typing import Dict, ClassVar, List
+from typing import Any, Dict, ClassVar, List
 from .i18n import I18nMixin, Description
+
+_SENSITIVE_FIELDS = frozenset({
+    "client_secret",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "bot_token",
+})
 
 
 class YouTubeChatConfig(I18nMixin):
@@ -27,6 +35,14 @@ class YouTubeChatConfig(I18nMixin):
             ko="모니터링할 YouTube 채널 ID",
         ),
     }
+
+    def safe_dump(self) -> Dict[str, Any]:
+        """Return model data with sensitive fields masked."""
+        data = self.model_dump()
+        for key in _SENSITIVE_FIELDS:
+            if key in data and data[key]:
+                data[key] = "***"
+        return data
 
 
 class ChzzkChatConfig(I18nMixin):
@@ -79,6 +95,14 @@ class ChzzkChatConfig(I18nMixin):
             ko="OAuth2 리프레시 토큰 (인증 후 자동 설정)",
         ),
     }
+
+    def safe_dump(self) -> Dict[str, Any]:
+        """Return model data with sensitive fields masked."""
+        data = self.model_dump()
+        for key in _SENSITIVE_FIELDS:
+            if key in data and data[key]:
+                data[key] = "***"
+        return data
 
 
 class DiscordConfig(I18nMixin):
@@ -204,6 +228,14 @@ class DiscordConfig(I18nMixin):
         ),
     }
 
+    def safe_dump(self) -> Dict[str, Any]:
+        """Return model data with sensitive fields masked."""
+        data = self.model_dump()
+        for key in _SENSITIVE_FIELDS:
+            if key in data and data[key]:
+                data[key] = "***"
+        return data
+
 
 class ChatMonitorConfig(I18nMixin):
     """Configuration for live chat monitoring across platforms."""
@@ -246,6 +278,14 @@ class ChatMonitorConfig(I18nMixin):
         ),
     }
 
+    def safe_dump(self) -> Dict[str, Any]:
+        """Return model data with sensitive sub-model fields masked."""
+        data = self.model_dump()
+        data["youtube"] = self.youtube.safe_dump()
+        data["chzzk"] = self.chzzk.safe_dump()
+        data["discord"] = self.discord.safe_dump()
+        return data
+
 
 class LiveConfig(I18nMixin):
     """Configuration for live streaming platforms integration."""
@@ -259,3 +299,9 @@ class LiveConfig(I18nMixin):
             ko="라이브 채팅 모니터링 설정",
         ),
     }
+
+    def safe_dump(self) -> Dict[str, Any]:
+        """Return model data with sensitive sub-model fields masked."""
+        data = self.model_dump()
+        data["chat_monitor"] = self.chat_monitor.safe_dump()
+        return data

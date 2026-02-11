@@ -57,7 +57,8 @@ class EmbeddingService:
 
         logger.info(f"Loading embedding model: {self._config.model}")
         self._model = SentenceTransformer(
-            self._config.model, trust_remote_code=True,
+            self._config.model,
+            trust_remote_code=self._config.trust_remote_code,
         )
         # Update dimension from actual model
         self._dimension = self._model.get_sentence_embedding_dimension()

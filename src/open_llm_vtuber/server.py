@@ -53,6 +53,24 @@ class AvatarStaticFiles(CORSStaticFiles):
         return response
 
 
+class CacheStaticFiles(CORSStaticFiles):
+    """
+    Cache files handler with security restrictions and CORS headers.
+    Only allows audio and image file extensions to be served.
+    """
+
+    ALLOWED_EXTENSIONS = (
+        ".wav", ".mp3", ".ogg", ".flac", ".aac",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    )
+
+    async def get_response(self, path: str, scope):
+        if not any(path.lower().endswith(ext) for ext in self.ALLOWED_EXTENSIONS):
+            return Response("Forbidden file type", status_code=403)
+        response = await super().get_response(path, scope)
+        return response
+
+
 class WebSocketServer:
     """
     API server for Open-LLM-VTuber. This contains the websocket endpoint for the client, hosts the web tool, and serves static files.
@@ -137,9 +155,10 @@ class WebSocketServer:
         # It will be populated during the initialize method call
 
         # Add global CORS middleware
+        system_config = config.system_config
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
+            allow_origins=system_config.cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -160,7 +179,6 @@ class WebSocketServer:
         )
 
         # Initialize and include proxy routes if proxy is enabled
-        system_config = config.system_config
         if hasattr(system_config, "enable_proxy") and system_config.enable_proxy:
             # Construct the server URL for the proxy
             host = system_config.host
@@ -175,7 +193,7 @@ class WebSocketServer:
             os.makedirs("cache")
         self.app.mount(
             "/cache",
-            CORSStaticFiles(directory="cache"),
+            CacheStaticFiles(directory="cache"),
             name="cache",
         )
 

@@ -91,6 +91,15 @@ class MemoryEvolver:
         if len(node_embeddings) < 2:
             return 0
 
+        # Cap candidates to avoid O(n^2) blow-up on large memory stores
+        max_candidates = self._config.max_merge_candidates
+        if len(node_embeddings) > max_candidates:
+            node_embeddings.sort(
+                key=lambda pair: pair[0].get("last_accessed_at") or "",
+                reverse=True,
+            )
+            node_embeddings = node_embeddings[:max_candidates]
+
         merged_ids: set[str] = set()
         merge_count = 0
 

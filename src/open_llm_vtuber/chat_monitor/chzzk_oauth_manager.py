@@ -8,6 +8,7 @@ from typing import Optional, Dict
 from loguru import logger
 from pathlib import Path
 import json
+import os
 
 
 class ChzzkOAuthManager:
@@ -160,6 +161,10 @@ class ChzzkOAuthManager:
         try:
             with open(self.token_file, "w") as f:
                 json.dump(tokens, f, indent=2)
+            try:
+                os.chmod(self.token_file, 0o600)
+            except OSError:
+                pass  # Windows doesn't support Unix permissions
             logger.debug(f"[ChzzkOAuth] Tokens saved to {self.token_file}")
         except Exception as e:
             logger.error(f"[ChzzkOAuth] Error saving tokens: {e}")

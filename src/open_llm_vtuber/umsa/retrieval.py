@@ -358,6 +358,6 @@ class HybridRetriever:
         words = query.split()
         if not words:
             return ""
-        # Quote each word and join with OR
-        safe_words = [f'"{w}"' for w in words if w.strip()]
+        # Quote each word and join with OR; escape internal double quotes
+        safe_words = [f'"{w.replace(chr(34), chr(34)+chr(34))}"' for w in words if w.strip()]
         return " OR ".join(safe_words)

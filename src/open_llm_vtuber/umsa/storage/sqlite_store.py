@@ -9,6 +9,7 @@ Phase 2+: Full knowledge graph, session tracking, and consolidation support.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from loguru import logger
@@ -813,9 +814,7 @@ class SQLiteStore:
         if not self._db:
             raise RuntimeError("Database not initialized. Call initialize() first.")
 
-        now_iso = __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        ).isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
 
         await self._db.execute(
             """

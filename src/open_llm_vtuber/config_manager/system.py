@@ -1,7 +1,7 @@
 # config_manager/system.py
 from pydantic import Field, model_validator
 from typing import Dict, ClassVar
-from .i18n import I18nMixin, Description
+from .i18n import I18nMixin
 
 
 class SystemConfig(I18nMixin):
@@ -13,6 +13,7 @@ class SystemConfig(I18nMixin):
     config_alts_dir: str = Field(..., alias="config_alts_dir")
     tool_prompts: Dict[str, str] = Field(..., alias="tool_prompts")
     enable_proxy: bool = Field(False, alias="enable_proxy")
+    cors_origins: list[str] = Field(default=["*"], alias="cors_origins")
 
     # Specify namespace for this config class
     I18N_NAMESPACE: ClassVar[str] = "system"
@@ -26,6 +27,7 @@ class SystemConfig(I18nMixin):
         "config_alts_dir": "config_alts_dir",
         "tool_prompts": "tool_prompts",
         "enable_proxy": "enable_proxy",
+        "cors_origins": "cors_origins",
     }
 
     @model_validator(mode="after")

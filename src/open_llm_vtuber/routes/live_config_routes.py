@@ -107,10 +107,12 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
         """
         try:
             live_config = default_context_cache.config.live_config
-            return JSONResponse(live_config.model_dump(), status_code=200)
+            return JSONResponse(live_config.safe_dump(), status_code=200)
         except Exception as e:
             logger.error(f"Live config 조회 중 오류 발생: {e}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return JSONResponse(
+                {"error": "An internal error occurred"}, status_code=500
+            )
 
     @router.put(
         "/api/live-config",
@@ -173,7 +175,7 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
             return JSONResponse(
                 {
                     "success": True,
-                    "live_config": new_live_config.model_dump()
+                    "live_config": new_live_config.safe_dump()
                 },
                 status_code=200
             )
@@ -182,6 +184,8 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
             raise
         except Exception as e:
             logger.error(f"Live config 업데이트 중 오류 발생: {e}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return JSONResponse(
+                {"error": "Operation failed"}, status_code=500
+            )
 
     return router

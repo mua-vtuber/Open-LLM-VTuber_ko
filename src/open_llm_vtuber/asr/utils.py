@@ -9,6 +9,30 @@ from tqdm import tqdm
 from loguru import logger
 
 
+def _safe_extractall(tar: tarfile.TarFile, dest_dir: str) -> None:
+    """Extract tar archive with Zip Slip protection.
+
+    Validates that all archive members extract within the intended destination
+    directory, preventing path traversal attacks via crafted member names.
+
+    Args:
+        tar: An opened tarfile.TarFile object.
+        dest_dir: The destination directory for extraction.
+
+    Raises:
+        ValueError: If any member would extract outside dest_dir.
+    """
+    norm_dest = os.path.normpath(dest_dir)
+    for member in tar.getmembers():
+        target = os.path.normpath(os.path.join(dest_dir, member.name))
+        if not target.startswith(norm_dest + os.sep) and target != norm_dest:
+            raise ValueError(
+                f"Tar member {member.name!r} resolves outside destination: "
+                f"{target!r} is not under {norm_dest!r}"
+            )
+    tar.extractall(dest_dir)
+
+
 def get_github_asset_url(owner, repo, release_tag, filename_without_ext):
     """
     Fetch the URL of a GitHub release asset by its filename (without extension).
@@ -108,7 +132,7 @@ def download_and_extract(url: str, output_dir: str) -> Path:
     if file_name.endswith(".tar.bz2"):
         logger.info(f"Extracting {file_name}...")
         with tarfile.open(file_path, "r:bz2") as tar:
-            tar.extractall(path=output_dir)
+            _safe_extractall(tar, output_dir)
         logger.info("Extraction completed.")
 
         # Delete the compressed file
@@ -152,7 +176,7 @@ def check_and_extract_local_file(url: str, output_dir: str) -> Path | None:
         try:
             logger.info("⏳ Extracting archive file...")
             with tarfile.open(compressed_path, "r:bz2") as tar:
-                tar.extractall(path=output_dir)
+                _safe_extractall(tar, output_dir)
             logger.success(f"Extracted archive to the path: {extracted_dir}")
             os.remove(compressed_path)  # Remove the compressed file
             return extracted_dir

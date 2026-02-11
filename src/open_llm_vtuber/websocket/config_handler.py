@@ -1,6 +1,6 @@
 """Configuration operations handler for WebSocket communication."""
 
-from typing import Dict, Any
+from typing import Dict
 from fastapi import WebSocket
 import json
 from loguru import logger
@@ -98,7 +98,9 @@ class ConfigHandler:
         except Exception as e:
             logger.error(f"Error fetching TTS config: {e}")
             await websocket.send_text(
-                json.dumps({"type": "tts-config-error", "error": str(e)})
+                json.dumps(
+                    {"type": "tts-config-error", "error": "An internal error occurred"}
+                )
             )
 
     async def handle_fetch_live_config(
@@ -109,7 +111,7 @@ class ConfigHandler:
 
         try:
             live_config = context.config.live_config
-            config_dict = live_config.model_dump()
+            config_dict = live_config.safe_dump()
 
             await websocket.send_text(
                 json.dumps({"type": "live-config", "config": config_dict})
@@ -117,5 +119,7 @@ class ConfigHandler:
         except Exception as e:
             logger.error(f"Error fetching live config: {e}")
             await websocket.send_text(
-                json.dumps({"type": "live-config-error", "error": str(e)})
+                json.dumps(
+                    {"type": "live-config-error", "error": "An internal error occurred"}
+                )
             )

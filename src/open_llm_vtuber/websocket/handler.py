@@ -210,7 +210,7 @@ class WebSocketHandler:
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
                     await websocket.send_text(
-                        json.dumps({"type": "error", "message": str(e)})
+                        json.dumps({"type": "error", "message": "An internal error occurred"})
                     )
                     continue
 
@@ -401,7 +401,7 @@ class WebSocketHandler:
             logger.error(f"Error sending priority rules: {e}")
             await websocket.send_json({
                 "type": "priority-rules-error",
-                "error": str(e)
+                "error": "An internal error occurred"
             })
 
     async def _handle_update_priority_rules(
@@ -428,7 +428,7 @@ class WebSocketHandler:
             logger.error(f"Error updating priority rules: {e}")
             await websocket.send_json({
                 "type": "priority-rules-update-error",
-                "error": str(e)
+                "error": "Operation failed"
             })
 
     # ==========================================================================
@@ -537,7 +537,7 @@ class WebSocketHandler:
             await websocket.send_json({
                 "type": "obs-status",
                 "connected": False,
-                "message": str(e),
+                "message": "Failed to connect to OBS",
             })
 
     async def _handle_obs_disconnect(

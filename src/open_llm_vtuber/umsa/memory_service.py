@@ -120,8 +120,12 @@ class MemoryService:
         self._evolver: MemoryEvolver | None = None
         self._active_sessions: dict[str, dict] = {}
 
+        logger.debug(
+            f"MemoryService full config: {self.config.model_dump()}"
+        )
         logger.info(
-            f"MemoryService initialized with config: {self.config.model_dump()}"
+            f"MemoryService initialized: enabled={self.config.enabled}, "
+            f"sqlite_db_path={self.config.storage.sqlite_db_path!r}"
         )
 
     def set_llm(self, llm) -> None:
