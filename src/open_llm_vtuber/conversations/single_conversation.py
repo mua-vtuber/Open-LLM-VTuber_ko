@@ -50,6 +50,16 @@ async def process_single_conversation(
     full_response = ""  # Initialize full_response here
 
     try:
+        # Start memory session if agent supports it
+        _memory_session_id = None
+        if hasattr(context.agent_engine, "start_session"):
+            try:
+                _memory_session_id = await context.agent_engine.start_session(
+                    platform="direct",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to start memory session: {e}")
+
         # Send initial signals
         await send_conversation_start_signals(websocket_send)
         logger.info(f"New Conversation Chain {session_emoji} started!")
@@ -170,6 +180,13 @@ async def process_single_conversation(
             pass # Connection might be closed
         raise
     finally:
+        # End memory session if one was started
+        if _memory_session_id and hasattr(context.agent_engine, "end_session"):
+            try:
+                await context.agent_engine.end_session()
+            except Exception as e:
+                logger.warning(f"Failed to end memory session: {e}")
+
         # Cleanup
         await cleanup_conversation(tts_manager)
         logger.info(f"Conversation {session_emoji} finished/cleaned up.")

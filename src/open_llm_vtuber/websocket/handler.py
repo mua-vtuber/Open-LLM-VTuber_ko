@@ -20,6 +20,7 @@ from ..conversations.conversation_handler import (
     handle_individual_interrupt,
 )
 from ..message_handler import message_handler
+from ..obs import OBSService, SceneLayout
 
 from .connection_manager import ConnectionManager
 from .message_router import MessageRouter
@@ -56,6 +57,9 @@ class WebSocketHandler:
         self.current_conversation_tasks: Dict[str, Optional[asyncio.Task]] = {}
         self.default_context_cache = default_context_cache
         self.received_data_buffers: Dict[str, np.ndarray] = {}
+
+        # Initialize OBS Service
+        self._obs_service: Optional[OBSService] = None
 
         # Initialize specialized handlers
         self._init_handlers()
@@ -142,6 +146,10 @@ class WebSocketHandler:
             # Priority rules operations
             "fetch-priority-rules": self._handle_fetch_priority_rules,
             "update-priority-rules": self._handle_update_priority_rules,
+            # OBS operations
+            "obs-connect": self._handle_obs_connect,
+            "obs-disconnect": self._handle_obs_disconnect,
+            "obs-get-layout": self._handle_obs_get_layout,
             # Utility
             "heartbeat": self._handle_heartbeat,
         })
@@ -475,3 +483,128 @@ class WebSocketHandler:
             List[Dict[str, Any]]: Queue metric history.
         """
         return self._input_queue_manager.get_metric_history(minutes)
+
+    # ==========================================================================
+    # Private - OBS Integration Handlers
+    # ==========================================================================
+
+    async def _handle_obs_connect(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Connect to OBS WebSocket server."""
+        try:
+            config = data.get("config", {})
+            host = config.get("host", "localhost")
+            port = config.get("port", 4455)
+            password = config.get("password", "")
+            poll_interval = config.get("layout_poll_interval", 2)
+
+            if self._obs_service:
+                self._obs_service.disconnect()
+
+            self._obs_service = OBSService(
+                host=host, port=port, password=password
+            )
+            connected = await asyncio.to_thread(self._obs_service.connect)
+
+            if connected:
+                # Start layout polling - broadcast to all connected clients
+                await self._obs_service.start_layout_polling(
+                    callback=self._broadcast_obs_layout,
+                    interval=poll_interval,
+                )
+
+                await websocket.send_json({
+                    "type": "obs-status",
+                    "connected": True,
+                    "message": "Connected to OBS",
+                })
+
+                # Send initial layout
+                layout = await asyncio.to_thread(
+                    self._obs_service.get_layout
+                )
+                if layout:
+                    await self._broadcast_obs_layout(layout)
+            else:
+                await websocket.send_json({
+                    "type": "obs-status",
+                    "connected": False,
+                    "message": "Failed to connect to OBS",
+                })
+        except Exception as e:
+            logger.error(f"OBS connect error: {e}")
+            await websocket.send_json({
+                "type": "obs-status",
+                "connected": False,
+                "message": str(e),
+            })
+
+    async def _handle_obs_disconnect(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Disconnect from OBS WebSocket server."""
+        if self._obs_service:
+            self._obs_service.stop_layout_polling()
+            self._obs_service.disconnect()
+            self._obs_service = None
+
+        await websocket.send_json({
+            "type": "obs-status",
+            "connected": False,
+            "message": "Disconnected from OBS",
+        })
+
+    async def _handle_obs_get_layout(
+        self, websocket: WebSocket, client_uid: str, data: dict
+    ) -> None:
+        """Get current OBS layout on demand."""
+        if not self._obs_service or not self._obs_service.is_connected:
+            await websocket.send_json({
+                "type": "obs-status",
+                "connected": False,
+                "message": "OBS not connected",
+            })
+            return
+
+        layout = await asyncio.to_thread(self._obs_service.get_layout)
+        if layout:
+            await websocket.send_json({
+                "type": "obs-layout",
+                "regions": [
+                    {
+                        "name": r.name,
+                        "x": r.x,
+                        "y": r.y,
+                        "width": r.width,
+                        "height": r.height,
+                    }
+                    for r in layout.regions
+                ],
+                "canvasWidth": layout.canvas_width,
+                "canvasHeight": layout.canvas_height,
+            })
+
+    async def _broadcast_obs_layout(self, layout: SceneLayout) -> None:
+        """Broadcast OBS layout update to all connected clients."""
+        message = {
+            "type": "obs-layout",
+            "regions": [
+                {
+                    "name": r.name,
+                    "x": r.x,
+                    "y": r.y,
+                    "width": r.width,
+                    "height": r.height,
+                }
+                for r in layout.regions
+            ],
+            "canvasWidth": layout.canvas_width,
+            "canvasHeight": layout.canvas_height,
+        }
+
+        for uid, ws in self.client_connections.items():
+            try:
+                await ws.send_json(message)
+            except Exception:
+                pass  # Client may have disconnected

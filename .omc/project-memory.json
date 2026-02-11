@@ -1,0 +1,588 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1770815328740,
+  "projectRoot": "/mnt/d/Taniar/Documents/Git/Open-LLM-VTuber/Open-LLM-VTuber",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml",
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "fastapi",
+        "version": null,
+        "category": "backend"
+      },
+      {
+        "name": "pytest",
+        "version": null,
+        "category": "testing"
+      }
+    ],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "assets",
+      "docs",
+      "scripts",
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "assets": {
+      "path": "assets",
+      "purpose": "Static assets",
+      "fileCount": 11,
+      "lastAccessed": 1770815328645,
+      "keyFiles": [
+        "banner.cn.jpg",
+        "banner.jpg",
+        "banner.kr.jpg",
+        "i1.jpg",
+        "i1_app_mode.jpg"
+      ]
+    },
+    "avatars": {
+      "path": "avatars",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1770815328648,
+      "keyFiles": [
+        "mao.png",
+        "shizuku.png"
+      ]
+    },
+    "backgrounds": {
+      "path": "backgrounds",
+      "purpose": null,
+      "fileCount": 15,
+      "lastAccessed": 1770815328651,
+      "keyFiles": [
+        "README.md",
+        "cartoon-night-landscape-moon.jpeg",
+        "ceiling-window-room-night.jpeg",
+        "cityscape.jpeg",
+        "computer-room-illustration.jpeg"
+      ]
+    },
+    "cache": {
+      "path": "cache",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770815328654,
+      "keyFiles": []
+    },
+    "characters": {
+      "path": "characters",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1770815328658,
+      "keyFiles": [
+        "README.md",
+        "en_nuke_debate.yaml",
+        "en_unhelpful_ai.yaml",
+        "zh_米粒.yaml",
+        "zh_翻译腔.yaml"
+      ]
+    },
+    "chat_history": {
+      "path": "chat_history",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770815328661,
+      "keyFiles": []
+    },
+    "config_templates": {
+      "path": "config_templates",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1770815328663,
+      "keyFiles": [
+        "README.md",
+        "conf.ZH.default.yaml",
+        "conf.default.yaml"
+      ]
+    },
+    "doc": {
+      "path": "doc",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1770815328666,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1770815328669,
+      "keyFiles": [
+        "EXTENDING.md",
+        "WEBSOCKET_PROTOCOL.md"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1770815328672,
+      "keyFiles": [
+        "favicon.ico",
+        "index.html"
+      ]
+    },
+    "live2d-models": {
+      "path": "live2d-models",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770815328675,
+      "keyFiles": []
+    },
+    "logs": {
+      "path": "logs",
+      "purpose": null,
+      "fileCount": 46,
+      "lastAccessed": 1770815328678,
+      "keyFiles": [
+        "debug_2026-01-19.log",
+        "debug_2026-01-20.log",
+        "debug_2026-01-23.log",
+        "debug_2026-01-24.log",
+        "debug_2026-01-25.log"
+      ]
+    },
+    "models": {
+      "path": "models",
+      "purpose": "Data models",
+      "fileCount": 0,
+      "lastAccessed": 1770815328681,
+      "keyFiles": []
+    },
+    "prompts": {
+      "path": "prompts",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1770815328685,
+      "keyFiles": [
+        "README.md",
+        "__init__.py",
+        "prompt_loader.py"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 0,
+      "lastAccessed": 1770815328688,
+      "keyFiles": []
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1770815328691,
+      "keyFiles": []
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 11,
+      "lastAccessed": 1770815328694,
+      "keyFiles": [
+        "__init__.py",
+        "conftest.py",
+        "load_test_queue.py",
+        "test_backward_compat.py",
+        "test_i18n.py"
+      ]
+    },
+    "upgrade_codes": {
+      "path": "upgrade_codes",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1770815328697,
+      "keyFiles": [
+        "__init__.py",
+        "compare_yaml.py",
+        "config_sync.py",
+        "upgrade_manager.py",
+        "version_manager.py"
+      ]
+    },
+    "visitor_profiles": {
+      "path": "visitor_profiles",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770815328701,
+      "keyFiles": []
+    },
+    "web_tool": {
+      "path": "web_tool",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1770815328704,
+      "keyFiles": [
+        "README.md",
+        "constants.js",
+        "index.html",
+        "main.js",
+        "recorder.js"
+      ]
+    },
+    "frontend/assets": {
+      "path": "frontend/assets",
+      "purpose": "Static assets",
+      "fileCount": 2,
+      "lastAccessed": 1770815328722,
+      "keyFiles": [
+        "main-QEkl09-0.css",
+        "main-nu7uwxNJ.js"
+      ]
+    },
+    "prompts/utils": {
+      "path": "prompts/utils",
+      "purpose": "Utility functions",
+      "fileCount": 9,
+      "lastAccessed": 1770815328731,
+      "keyFiles": [
+        "concise_style_prompt.txt",
+        "group_conversation_prompt.txt",
+        "live2d_expression_prompt.txt"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/open_llm_vtuber/agent/agents/basic_memory_agent.py",
+      "accessCount": 26,
+      "lastAccessed": 1770819559610,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/memory_service.py",
+      "accessCount": 26,
+      "lastAccessed": 1770820756413,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/storage/sqlite_store.py",
+      "accessCount": 18,
+      "lastAccessed": 1770820755782,
+      "type": "file"
+    },
+    {
+      "path": "src",
+      "accessCount": 13,
+      "lastAccessed": 1770820068017,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/__init__.py",
+      "accessCount": 10,
+      "lastAccessed": 1770820003588,
+      "type": "file"
+    },
+    {
+      "path": "config_templates/conf.default.yaml",
+      "accessCount": 8,
+      "lastAccessed": 1770820013771,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/models.py",
+      "accessCount": 8,
+      "lastAccessed": 1770820789478,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/context_assembler.py",
+      "accessCount": 7,
+      "lastAccessed": 1770820001587,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/config.py",
+      "accessCount": 7,
+      "lastAccessed": 1770820755193,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/server.py",
+      "accessCount": 7,
+      "lastAccessed": 1770820764969,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/conversations/single_conversation.py",
+      "accessCount": 6,
+      "lastAccessed": 1770819538146,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/context/service_context.py",
+      "accessCount": 6,
+      "lastAccessed": 1770819545057,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/model_routes.py",
+      "accessCount": 6,
+      "lastAccessed": 1770820499140,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager/character.py",
+      "accessCount": 6,
+      "lastAccessed": 1770820769827,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 5,
+      "lastAccessed": 1770820079000,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/retrieval.py",
+      "accessCount": 5,
+      "lastAccessed": 1770820754542,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/extraction.py",
+      "accessCount": 5,
+      "lastAccessed": 1770820757127,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/evolution.py",
+      "accessCount": 5,
+      "lastAccessed": 1770820757786,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/live_routes.py",
+      "accessCount": 5,
+      "lastAccessed": 1770820766662,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager/__init__.py",
+      "accessCount": 4,
+      "lastAccessed": 1770819532916,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/embedding.py",
+      "accessCount": 4,
+      "lastAccessed": 1770820753914,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/websocket/handler.py",
+      "accessCount": 4,
+      "lastAccessed": 1770820768388,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber",
+      "accessCount": 4,
+      "lastAccessed": 1770820788021,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/agent_factory.py",
+      "accessCount": 3,
+      "lastAccessed": 1770819528230,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager/agent.py",
+      "accessCount": 3,
+      "lastAccessed": 1770819529255,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/context/engine_manager.py",
+      "accessCount": 3,
+      "lastAccessed": 1770819533362,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/live_config_routes.py",
+      "accessCount": 3,
+      "lastAccessed": 1770820765981,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager/utils.py",
+      "accessCount": 3,
+      "lastAccessed": 1770820779236,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/conversations/conversation_utils.py",
+      "accessCount": 2,
+      "lastAccessed": 1770815967506,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/stateless_llm/stateless_llm_interface.py",
+      "accessCount": 2,
+      "lastAccessed": 1770816292038,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/conversations/conversation_handler.py",
+      "accessCount": 2,
+      "lastAccessed": 1770819557790,
+      "type": "directory"
+    },
+    {
+      "path": "pyproject.toml",
+      "accessCount": 2,
+      "lastAccessed": 1770820055990,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/queue_routes.py",
+      "accessCount": 2,
+      "lastAccessed": 1770820469392,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager",
+      "accessCount": 2,
+      "lastAccessed": 1770820475506,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/config_manager/main.py",
+      "accessCount": 2,
+      "lastAccessed": 1770820477198,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/media_routes.py",
+      "accessCount": 2,
+      "lastAccessed": 1770820487094,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa",
+      "accessCount": 2,
+      "lastAccessed": 1770820490569,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/agents/agent_interface.py",
+      "accessCount": 1,
+      "lastAccessed": 1770816140890,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/base_agent.py",
+      "accessCount": 1,
+      "lastAccessed": 1770816141605,
+      "type": "file"
+    },
+    {
+      "path": "config_templates",
+      "accessCount": 1,
+      "lastAccessed": 1770819552709,
+      "type": "directory"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/working_memory.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820002281,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/token_counter.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820002920,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/umsa/storage/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820004270,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820012367,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/websocket_routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820013118,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/language_routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820017262,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/routes/redirect_routes.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820017905,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/stateless_llm/openai_compatible_llm.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820025727,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/stateless_llm/claude_llm.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820026404,
+      "type": "file"
+    },
+    {
+      "path": "src/open_llm_vtuber/agent/stateless_llm/ollama_llm.py",
+      "accessCount": 1,
+      "lastAccessed": 1770820027085,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

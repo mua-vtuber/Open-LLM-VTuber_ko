@@ -8,6 +8,7 @@ from .vad import VADConfig
 from .tts_preprocessor import TTSPreprocessorConfig
 
 from .agent import AgentConfig
+from ..umsa.config import MemoryConfig
 
 
 class CharacterConfig(I18nMixin):
@@ -26,6 +27,9 @@ class CharacterConfig(I18nMixin):
     vad_config: VADConfig = Field(..., alias="vad_config")
     tts_preprocessor_config: TTSPreprocessorConfig = Field(
         ..., alias="tts_preprocessor_config"
+    )
+    memory_config: MemoryConfig = Field(
+        default_factory=MemoryConfig, alias="memory_config"
     )
 
     # Specify namespace for this config class
@@ -46,6 +50,7 @@ class CharacterConfig(I18nMixin):
         "tts_config": "tts_config",
         "vad_config": "vad_config",
         "tts_preprocessor_config": "tts_preprocessor_config",
+        "memory_config": "memory_config",
     }
 
     @field_validator("persona_prompt")

@@ -22,6 +22,8 @@ from ...mcpp.tool_manager import ToolManager
 from ...mcpp.json_detector import StreamJSONDetector
 from ...mcpp.types import ToolCallObject
 from ...mcpp.tool_executor import ToolExecutor
+from ...umsa import WorkingMemory, MemoryService
+from ...umsa.config import MemoryConfig
 
 
 class BasicMemoryAgent(BaseAgent):
@@ -41,6 +43,7 @@ class BasicMemoryAgent(BaseAgent):
         tool_manager: Optional[ToolManager] = None,
         tool_executor: Optional[ToolExecutor] = None,
         mcp_prompt_string: str = "",
+        memory_config: Optional[MemoryConfig] = None,
     ):
         """Initialize agent with LLM and configuration."""
         super().__init__(
@@ -49,7 +52,21 @@ class BasicMemoryAgent(BaseAgent):
             faster_first_response=faster_first_response,
             segment_method=segment_method,
         )
-        self._memory = []
+        self._memory_config = memory_config
+
+        # Working memory: use context budget if UMSA enabled, else effectively unlimited
+        if memory_config and memory_config.enabled:
+            wm_tokens = memory_config.context.default_budget_tokens
+            self._memory_service = MemoryService(config=memory_config)
+            logger.info(
+                f"UMSA enabled: MemoryService with {wm_tokens} token budget"
+            )
+        else:
+            wm_tokens = 10_000_000  # Effectively unlimited
+            self._memory_service = None
+
+        self._working_memory = WorkingMemory(max_tokens=wm_tokens)
+        self._current_session_id: str | None = None
         self._use_mcpp = use_mcpp
         self.interrupt_method = interrupt_method
         self._tool_prompts = tool_prompts or {}
@@ -106,6 +123,8 @@ class BasicMemoryAgent(BaseAgent):
     def _set_llm(self, llm: StatelessLLMInterface):
         """Set the LLM for chat completion."""
         self._llm = llm
+        if self._memory_service:
+            self._memory_service.set_llm(llm)
         self.chat = self._chat_function_factory()
 
     def set_system(self, system: str):
@@ -121,7 +140,7 @@ class BasicMemoryAgent(BaseAgent):
         display_text: DisplayText | None = None,
         skip_memory: bool = False,
     ):
-        """Add message to memory."""
+        """Add message to working memory."""
         if skip_memory:
             return
 
@@ -142,75 +161,72 @@ class BasicMemoryAgent(BaseAgent):
         if not text_content and role == "assistant":
             return
 
-        message_data = {
-            "role": role,
-            "content": text_content,
-        }
-
-        if display_text:
-            if display_text.name:
-                message_data["name"] = display_text.name
-            if display_text.avatar:
-                message_data["avatar"] = display_text.avatar
-
-        if (
-            self._memory
-            and self._memory[-1]["role"] == role
-            and self._memory[-1]["content"] == text_content
-        ):
+        # Deduplication: skip if identical to last message
+        last = self._working_memory.last_message
+        if last and last.role == role and last.content == text_content:
             return
 
-        self._memory.append(message_data)
+        name = display_text.name if display_text and display_text.name else None
+        evicted = self._working_memory.add_message(
+            role=role, content=text_content, name=name,
+        )
+        if evicted:
+            logger.debug(
+                f"Memory evicted {len(evicted)} messages to stay within token budget"
+            )
 
-    def set_memory_from_history(self, conf_uid: str, history_uid: str) -> None: 
+        # Track message count for active session
+        if role == "user" and self._memory_service and self._current_session_id:
+            self._memory_service.increment_session_message_count(
+                self._current_session_id
+            )
+
+    def set_memory_from_history(self, conf_uid: str, history_uid: str) -> None:
         """Load memory from chat history."""
         messages = get_history(conf_uid, history_uid)
 
-        self._memory = []
+        converted = []
         for msg in messages:
             role = "user" if msg["role"] == "human" else "assistant"
             content = msg["content"]
             if isinstance(content, str) and content:
-                self._memory.append(
-                    {
-                        "role": role,
-                        "content": content,
-                    }
-                )
+                converted.append({"role": role, "content": content})
             else:
                 logger.warning(f"Skipping invalid message from history: {msg}")
-        logger.info(f"Loaded {len(self._memory)} messages from history.")
 
-    def handle_interrupt(self, heard_response: str) -> None: 
+        evicted = self._working_memory.set_from_history(converted)
+        loaded = self._working_memory.message_count
+        logger.info(
+            f"Loaded {loaded} messages from history"
+            + (f", evicted {len(evicted)} to fit token budget" if evicted else "")
+            + "."
+        )
+
+    def handle_interrupt(self, heard_response: str) -> None:
         """Handle user interruption."""
         if self._interrupt_handled:
             return
 
         self._interrupt_handled = True
 
-        if self._memory and self._memory[-1]["role"] == "assistant":
-            self._memory[-1]["content"] = heard_response + "..."
+        last = self._working_memory.last_message
+        if last and last.role == "assistant":
+            self._working_memory.update_last_content(heard_response + "...")
         else:
             if heard_response:
-                self._memory.append(
-                    {
-                        "role": "assistant",
-                        "content": heard_response + "...",
-                    }
+                self._working_memory.add_message(
+                    role="assistant", content=heard_response + "..."
                 )
 
         interrupt_role = "system" if self.interrupt_method == "system" else "user"
-        self._memory.append(
-            {
-                "role": interrupt_role,
-                "content": "[Interrupted by user]",
-            }
+        self._working_memory.add_message(
+            role=interrupt_role, content="[Interrupted by user]"
         )
         logger.info(f"Handled interrupt with role '{interrupt_role}'.")
 
     def _to_messages(self, input_data: BatchInput) -> List[Dict[str, Any]]:
         """Prepare messages for LLM API call."""
-        messages = self._memory.copy()
+        messages = self._working_memory.to_chat_messages()
         user_content = []
         text_prompt = self._to_text_prompt(input_data)
         if text_prompt:
@@ -260,15 +276,17 @@ class BasicMemoryAgent(BaseAgent):
         self,
         initial_messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
+        system_prompt: str | None = None,
     ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
         """Handle Claude interaction loop with tool support."""
+        effective_system = system_prompt if system_prompt is not None else self._system
         messages = initial_messages.copy()
         current_turn_text = ""
         pending_tool_calls = []
         current_assistant_message_content = []
 
         while True:
-            stream = self._llm.chat_completion(messages, self._system, tools=tools)
+            stream = self._llm.chat_completion(messages, effective_system, tools=tools)
             pending_tool_calls.clear()
             current_assistant_message_content.clear()
 
@@ -368,25 +386,27 @@ class BasicMemoryAgent(BaseAgent):
         self,
         initial_messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
+        system_prompt: str | None = None,
     ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
         """Handle OpenAI interaction with tool support."""
+        effective_system = system_prompt if system_prompt is not None else self._system
         messages = initial_messages.copy()
         current_turn_text = ""
         pending_tool_calls: Union[List[ToolCallObject], List[Dict[str, Any]]] = []
-        current_system_prompt = self._system
+        current_system_prompt = effective_system
 
         while True:
             if self.prompt_mode_flag:
                 if self._mcp_prompt_string:
                     current_system_prompt = (
-                        f"{self._system}\n\n{self._mcp_prompt_string}"
+                        f"{effective_system}\n\n{self._mcp_prompt_string}"
                     )
                 else:
                     logger.warning("Prompt mode active but mcp_prompt_string is empty!")
-                    current_system_prompt = self._system
+                    current_system_prompt = effective_system
                 tools_for_api = None
             else:
-                current_system_prompt = self._system
+                current_system_prompt = effective_system
                 tools_for_api = tools
 
             stream = self._llm.chat_completion(
@@ -554,7 +574,22 @@ class BasicMemoryAgent(BaseAgent):
             self.reset_interrupt()
             self.prompt_mode_flag = False
 
+            # Capture user text for extraction
+            user_text = self._to_text_prompt(input_data)
             messages = self._to_messages(input_data)
+
+            # Apply UMSA context building with memory retrieval if enabled
+            if self._memory_service:
+                ctx = await self._memory_service.build_context(
+                    messages=messages,
+                    system_prompt=self._system,
+                )
+                effective_system = ctx.system_content
+                effective_messages = ctx.messages
+            else:
+                effective_system = self._system
+                effective_messages = messages
+
             tools = None
             tool_mode = None
             llm_supports_native_tools = False
@@ -570,7 +605,7 @@ class BasicMemoryAgent(BaseAgent):
                     llm_supports_native_tools = True
                 else:
                     logger.warning(
-                        f"LLM type {type(self._llm)} not explicitly handled for tool mode determination." 
+                        f"LLM type {type(self._llm)} not explicitly handled for tool mode determination."
                     )
 
                 if llm_supports_native_tools and not tools:
@@ -583,22 +618,24 @@ class BasicMemoryAgent(BaseAgent):
                     f"Starting Claude tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._claude_tool_interaction_loop(
-                    messages, tools if tools else []
+                    effective_messages, tools if tools else [],
+                    system_prompt=effective_system,
                 ):
                     yield output
-                return
             elif self._use_mcpp and tool_mode == "OpenAI":
                 logger.debug(
                     f"Starting OpenAI tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._openai_tool_interaction_loop(
-                    messages, tools if tools else []
+                    effective_messages, tools if tools else [],
+                    system_prompt=effective_system,
                 ):
                     yield output
-                return
             else:
                 logger.info("Starting simple chat completion.")
-                token_stream = self._llm.chat_completion(messages, self._system)
+                token_stream = self._llm.chat_completion(
+                    effective_messages, effective_system
+                )
                 complete_response = ""
                 async for event in token_stream:
                     text_chunk = ""
@@ -614,6 +651,21 @@ class BasicMemoryAgent(BaseAgent):
                 if complete_response:
                     self._add_message(complete_response, "assistant")
 
+            # Trigger memory extraction after turn completes
+            if self._memory_service and user_text:
+                last_msg = self._working_memory.last_message
+                assistant_text = last_msg.content if last_msg and last_msg.role == "assistant" else ""
+                if assistant_text:
+                    from ...umsa.models import Message as UMSAMessage
+                    try:
+                        await self._memory_service.process_turn(
+                            user_message=UMSAMessage(role="user", content=user_text),
+                            assistant_message=UMSAMessage(role="assistant", content=assistant_text),
+                            entity_id=None,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Memory extraction failed: {e}")
+
         return self._apply_transformers(chat_with_memory)
 
     async def chat(
@@ -625,9 +677,39 @@ class BasicMemoryAgent(BaseAgent):
         async for output in chat_func_decorated(input_data):
             yield output
 
+    async def start_session(
+        self,
+        entity_id: str | None = None,
+        platform: str = "direct",
+    ) -> str | None:
+        """Start a memory session. Returns session_id or None if UMSA disabled."""
+        if self._memory_service is None:
+            return None
+        session_id = await self._memory_service.start_session(
+            entity_id=entity_id, platform=platform,
+        )
+        self._current_session_id = session_id
+        return session_id
+
+    async def end_session(self) -> None:
+        """End the current memory session, flushing any buffered extraction."""
+        if self._memory_service is None:
+            return
+        # Flush any remaining buffered turns
+        await self._memory_service.flush_extraction()
+        session_id = getattr(self, "_current_session_id", None)
+        if session_id:
+            await self._memory_service.end_session(session_id)
+            self._current_session_id = None
+
+    async def close(self) -> None:
+        """Release resources held by the agent."""
+        if self._memory_service:
+            await self._memory_service.close()
+
     def start_group_conversation(
         self, human_name: str, ai_participants: List[str]
-    ) -> None: 
+    ) -> None:
         """Start a group conversation."""
         if not self._tool_prompts:
             logger.warning("Tool prompts dictionary is not set.")
@@ -644,7 +726,7 @@ class BasicMemoryAgent(BaseAgent):
             group_context = prompt_loader.load_util(prompt_name).format(
                 human_name=human_name, other_ais=other_ais
             )
-            self._memory.append({"role": "user", "content": group_context})
+            self._working_memory.add_message(role="user", content=group_context)
         except FileNotFoundError:
             logger.error(f"Group conversation prompt file not found: {prompt_name}")
         except KeyError as e:

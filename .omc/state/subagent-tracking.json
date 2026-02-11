@@ -1,0 +1,116 @@
+{
+  "agents": [
+    {
+      "agent_id": "a8ce0eb",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T12:58:29.446Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T12:59:18.285Z",
+      "duration_ms": 48839
+    },
+    {
+      "agent_id": "aef5a85",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T12:58:36.336Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T12:59:56.250Z",
+      "duration_ms": 79914
+    },
+    {
+      "agent_id": "af9c951",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T12:58:42.210Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T12:59:21.920Z",
+      "duration_ms": 39710
+    },
+    {
+      "agent_id": "af49171",
+      "agent_type": "Plan",
+      "started_at": "2026-02-11T13:02:33.314Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T13:07:08.086Z",
+      "duration_ms": 274772
+    },
+    {
+      "agent_id": "a0d8a4e",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T14:18:44.605Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:19:48.805Z",
+      "duration_ms": 64200
+    },
+    {
+      "agent_id": "a2ebbbc",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T14:18:56.972Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:19:56.693Z",
+      "duration_ms": 59721
+    },
+    {
+      "agent_id": "a870721",
+      "agent_type": "expert-security",
+      "started_at": "2026-02-11T14:26:27.170Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:30:00.265Z",
+      "duration_ms": 213095
+    },
+    {
+      "agent_id": "a43c2d3",
+      "agent_type": "expert-security",
+      "started_at": "2026-02-11T14:26:37.086Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:30:07.774Z",
+      "duration_ms": 210688
+    },
+    {
+      "agent_id": "ad78f78",
+      "agent_type": "expert-security",
+      "started_at": "2026-02-11T14:26:48.265Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:29:47.168Z",
+      "duration_ms": 178903
+    },
+    {
+      "agent_id": "ae6b75b",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T14:34:14.952Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:35:24.868Z",
+      "duration_ms": 69916
+    },
+    {
+      "agent_id": "a6f37af",
+      "agent_type": "Explore",
+      "started_at": "2026-02-11T14:34:25.014Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:35:50.858Z",
+      "duration_ms": 85844
+    },
+    {
+      "agent_id": "ac58f33",
+      "agent_type": "Plan",
+      "started_at": "2026-02-11T14:36:28.135Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-11T14:42:29.477Z",
+      "duration_ms": 361342
+    }
+  ],
+  "total_spawned": 12,
+  "total_completed": 12,
+  "total_failed": 0,
+  "last_updated": "2026-02-11T14:44:56.838Z"
+}

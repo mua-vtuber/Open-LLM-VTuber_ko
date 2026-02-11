@@ -520,6 +520,26 @@ character_config:
         source_lang: 'zh'
         target_lang: 'ja'
 
+  # UMSA Memory System Configuration
+  memory_config:
+    enabled: false  # Set to true to enable token-budgeted context assembly and memory
+    storage:
+      sqlite_db_path: "./memory/umsa.db"
+    context:
+      default_budget_tokens: 4096  # Total token budget for context assembly
+    extraction:
+      enabled: true
+      batch_size: 5        # Accumulate N turns before extracting
+      min_importance: 0.3
+    consolidation:
+      enabled: true
+      decay_half_life_days: 30.0
+    retrieval:
+      top_k: 10
+      vector_weight: 0.5
+      fts_weight: 0.3
+      graph_weight: 0.2
+
 # Live Streaming Integration
 live_config:
   # Live Chat Monitoring Configuration

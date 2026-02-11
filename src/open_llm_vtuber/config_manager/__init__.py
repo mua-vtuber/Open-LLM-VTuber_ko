@@ -61,6 +61,7 @@ from .agent import (
     Mem0LLMConfig,
     Mem0EmbedderConfig,
 )
+from ..umsa.config import MemoryConfig
 from .env_config import (
     EnvConfig,
     get_config,
@@ -103,6 +104,8 @@ __all__ = [
     "Mem0VectorStoreConfig",
     "Mem0LLMConfig",
     "Mem0EmbedderConfig",
+    # Memory related classes
+    "MemoryConfig",
     # ASR related classes
     "ASRConfig",
     "AzureASRConfig",

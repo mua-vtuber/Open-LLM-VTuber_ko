@@ -105,6 +105,7 @@ class EngineManager:
         tool_manager: "ToolManager | None",
         tool_executor: "ToolExecutor | None",
         mcp_prompt: str,
+        memory_config=None,
     ) -> None:
         """Initialize or update the agent engine based on configuration."""
         logger.info(f"Initializing Agent: {agent_config.conversation_agent_choice}")
@@ -132,6 +133,7 @@ class EngineManager:
                 tool_manager=tool_manager,
                 tool_executor=tool_executor,
                 mcp_prompt_string=mcp_prompt,
+                memory_config=memory_config,
             )
 
             logger.debug(f"Agent choice: {agent_config.conversation_agent_choice}")

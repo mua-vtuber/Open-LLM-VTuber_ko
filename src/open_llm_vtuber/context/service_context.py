@@ -287,6 +287,7 @@ class ServiceContext:
             tool_manager=self._mcp_manager.tool_manager,
             tool_executor=self._mcp_manager.tool_executor,
             mcp_prompt=self._mcp_manager.mcp_prompt,
+            memory_config=char_config.memory_config,
         )
         self.system_prompt = system_prompt
 
@@ -333,6 +334,7 @@ class ServiceContext:
             tool_manager=self._mcp_manager.tool_manager,
             tool_executor=self._mcp_manager.tool_executor,
             mcp_prompt=self._mcp_manager.mcp_prompt,
+            memory_config=self.character_config.memory_config,
         )
         self.system_prompt = system_prompt
         self.character_config.agent_config = agent_config

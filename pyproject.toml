@@ -8,7 +8,7 @@ dependencies = [
     "anthropic>=0.40.0",
     "azure-cognitiveservices-speech>=1.41.1",
     "chardet>=5.2.0",
-    "cartesia>=2.0.0", 
+    "cartesia>=2.0.0",
     "edge-tts>=7.0.0",
     "elevenlabs>=1.0.0",
     "fastapi[standard]>=0.115.8",
@@ -44,6 +44,8 @@ dependencies = [
     "chzzkpy>=2.0.0; python_version >= '3.11'",
     "discord.py[voice]>=2.3.0",
     "PyNaCl>=1.5.0",
+    "obsws-python>=1.7.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.optional-dependencies]
