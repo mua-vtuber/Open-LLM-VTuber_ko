@@ -69,6 +69,7 @@ class SQLiteStore:
 
         # Create tables
         await self._create_tables()
+        await self._migrate_knowledge_nodes()
         await self._create_indexes()
 
         await self._db.commit()
@@ -218,7 +219,55 @@ class SQLiteStore:
             END
         """)
 
+        # Stream Episodes table (Phase 2)
+        await self._db.execute("""
+            CREATE TABLE IF NOT EXISTS stream_episodes (
+                id TEXT PRIMARY KEY,
+                session_id TEXT REFERENCES sessions(session_id),
+                summary TEXT NOT NULL,
+                topics_json TEXT,
+                key_events_json TEXT,
+                participant_count INTEGER,
+                sentiment TEXT,
+                started_at TEXT,
+                ended_at TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Procedural Rules table (Phase 2)
+        await self._db.execute("""
+            CREATE TABLE IF NOT EXISTS procedural_rules (
+                id TEXT PRIMARY KEY,
+                rule_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                confidence REAL DEFAULT 0.5,
+                source TEXT,
+                active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         logger.debug("All tables created successfully")
+
+    async def _migrate_knowledge_nodes(self) -> None:
+        """Add Phase 2 columns to knowledge_nodes if they don't exist."""
+        async with self._db.execute("PRAGMA table_info(knowledge_nodes)") as cursor:
+            cols = await cursor.fetchall()
+        existing = {c[1] for c in cols}
+        migrations = [
+            ("valid_at", "TEXT"),
+            ("invalid_at", "TEXT"),
+            ("mention_count", "INTEGER DEFAULT 0"),
+            ("last_mentioned_at", "TEXT"),
+        ]
+        for col_name, col_type in migrations:
+            if col_name not in existing:
+                await self._db.execute(
+                    f"ALTER TABLE knowledge_nodes ADD COLUMN {col_name} {col_type}"
+                )
+        logger.debug("knowledge_nodes migration check complete")
 
     async def _create_indexes(self) -> None:
         """Create indexes for performance optimization."""
@@ -497,7 +546,8 @@ class SQLiteStore:
         if entity_id:
             query = """
                 SELECT node_id, entity_id, node_type, content,
-                       importance, created_at, last_accessed_at, access_count, metadata
+                       importance, created_at, last_accessed_at, access_count, metadata,
+                       mention_count, last_mentioned_at, valid_at, invalid_at
                 FROM knowledge_nodes
                 WHERE entity_id = ?
                 ORDER BY importance DESC
@@ -507,7 +557,8 @@ class SQLiteStore:
         else:
             query = """
                 SELECT node_id, entity_id, node_type, content,
-                       importance, created_at, last_accessed_at, access_count, metadata
+                       importance, created_at, last_accessed_at, access_count, metadata,
+                       mention_count, last_mentioned_at, valid_at, invalid_at
                 FROM knowledge_nodes
                 ORDER BY importance DESC
                 LIMIT ?
@@ -527,6 +578,10 @@ class SQLiteStore:
                     "last_accessed_at": row[6],
                     "access_count": row[7],
                     "metadata": row[8],
+                    "mention_count": row[9],
+                    "last_mentioned_at": row[10],
+                    "valid_at": row[11],
+                    "invalid_at": row[12],
                 }
                 for row in rows
             ]
@@ -857,3 +912,158 @@ class SQLiteStore:
         )
         await self._db.commit()
         logger.debug(f"Consolidation log inserted for session {log['session_id']}")
+
+    # ── Phase 2 methods ─────────────────────────────────────────────────
+
+    async def insert_stream_episode(self, episode: dict) -> str:
+        """Insert a stream episode record.
+
+        Args:
+            episode: Episode dictionary with required fields (id, summary)
+
+        Returns:
+            Episode ID
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        await self._db.execute(
+            """
+            INSERT INTO stream_episodes
+                (id, session_id, summary, topics_json, key_events_json,
+                 participant_count, sentiment, started_at, ended_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                episode["id"],
+                episode.get("session_id"),
+                episode["summary"],
+                episode.get("topics_json"),
+                episode.get("key_events_json"),
+                episode.get("participant_count"),
+                episode.get("sentiment"),
+                episode.get("started_at"),
+                episode.get("ended_at"),
+            ),
+        )
+        await self._db.commit()
+        logger.debug(f"Stream episode inserted: {episode['id']}")
+        return episode["id"]
+
+    async def get_stream_episodes(self, limit: int = 10) -> list[dict]:
+        """Get recent stream episodes ordered by creation time.
+
+        Args:
+            limit: Maximum results
+
+        Returns:
+            List of episode dictionaries
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        async with self._db.execute(
+            "SELECT * FROM stream_episodes ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            cols = [d[0] for d in cursor.description]
+            return [dict(zip(cols, row)) for row in rows]
+
+    async def insert_procedural_rule(self, rule: dict) -> str:
+        """Insert a procedural rule.
+
+        Args:
+            rule: Rule dictionary with required fields (id, rule_type, content)
+
+        Returns:
+            Rule ID
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        await self._db.execute(
+            """
+            INSERT INTO procedural_rules
+                (id, rule_type, content, confidence, source, active)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rule["id"],
+                rule["rule_type"],
+                rule["content"],
+                rule.get("confidence", 0.5),
+                rule.get("source"),
+                rule.get("active", 1),
+            ),
+        )
+        await self._db.commit()
+        logger.debug(f"Procedural rule inserted: {rule['id']}")
+        return rule["id"]
+
+    async def get_active_procedural_rules(self) -> list[dict]:
+        """Get all active procedural rules ordered by confidence.
+
+        Returns:
+            List of active rule dictionaries
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        async with self._db.execute(
+            "SELECT * FROM procedural_rules WHERE active = 1 ORDER BY confidence DESC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            cols = [d[0] for d in cursor.description]
+            return [dict(zip(cols, row)) for row in rows]
+
+    async def update_mention(
+        self, node_id: str, importance_boost: float = 0.05,
+    ) -> None:
+        """Increment mention count and boost importance for a knowledge node.
+
+        Args:
+            node_id: Node identifier
+            importance_boost: Amount to increase importance (capped at 1.0)
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized. Call initialize() first.")
+
+        await self._db.execute(
+            """
+            UPDATE knowledge_nodes
+            SET mention_count = COALESCE(mention_count, 0) + 1,
+                last_mentioned_at = CURRENT_TIMESTAMP,
+                importance = MIN(1.0, importance + ?)
+            WHERE node_id = ?
+            """,
+            (importance_boost, node_id),
+        )
+        await self._db.commit()
+        logger.debug(f"Knowledge node mention updated: {node_id}")
+
+    async def insert_supersedes_edge(
+        self, new_node_id: str, old_node_id: str,
+    ) -> str:
+        """Create a 'supersedes' edge from a new node to an old node.
+
+        Args:
+            new_node_id: The newer replacement node
+            old_node_id: The older node being superseded
+
+        Returns:
+            Edge ID
+        """
+        from uuid import uuid4
+
+        edge_id = str(uuid4())
+        await self.insert_knowledge_edge(
+            {
+                "edge_id": edge_id,
+                "source_node_id": new_node_id,
+                "target_node_id": old_node_id,
+                "edge_type": "supersedes",
+                "strength": 1.0,
+            }
+        )
+        return edge_id

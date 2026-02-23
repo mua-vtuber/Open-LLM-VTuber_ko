@@ -35,15 +35,24 @@ class EmbeddingConfig(BaseModel):
     trust_remote_code: bool = False
 
 
+class StreamContextConfig(BaseModel):
+    """Stream context tracking configuration."""
+
+    max_events: int = 20
+    topic_change_threshold: int = 5
+    summary_interval: int = 10
+
+
 class BudgetAllocation(BaseModel):
     """Token budget allocation percentages (must sum to 1.0)."""
 
     system_prompt: float = 0.15
+    stream_context: float = 0.10
     entity_profile: float = 0.10
-    session_summary: float = 0.10
+    procedural: float = 0.05
     retrieved_memories: float = 0.15
-    recent_messages: float = 0.35
-    few_shot_examples: float = 0.05
+    recent_messages: float = 0.25
+    episodic: float = 0.10
     response_reserve: float = 0.10
 
 
@@ -62,6 +71,9 @@ class ExtractionConfig(BaseModel):
     min_importance: float = 0.3
     confidence_threshold: float = 0.6
     dedup_threshold: float = 0.90
+    regex_enabled: bool = True
+    llm_extraction_mode: str = "auto"  # "local", "cli", "auto", "disabled"
+    cli_command: str = ""
 
 
 class ConsolidationConfig(BaseModel):
@@ -73,6 +85,7 @@ class ConsolidationConfig(BaseModel):
     pruning_threshold: float = 0.1
     decay_half_life_days: float = 30.0  # 30 days for general facts
     max_merge_candidates: int = 500
+    reflection_threshold: int = 10
 
 
 class RetrievalConfig(BaseModel):
@@ -82,6 +95,8 @@ class RetrievalConfig(BaseModel):
     vector_weight: float = 0.5
     fts_weight: float = 0.3
     graph_weight: float = 0.2
+    embedding_provider: str = "local"  # "local", "api", "disabled"
+    max_latency_ms: int = 200
 
 
 class FewShotConfig(BaseModel):
@@ -104,3 +119,4 @@ class MemoryConfig(BaseModel):
     consolidation: ConsolidationConfig = Field(default_factory=ConsolidationConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     few_shot: FewShotConfig = Field(default_factory=FewShotConfig)
+    stream_context: StreamContextConfig = Field(default_factory=StreamContextConfig)

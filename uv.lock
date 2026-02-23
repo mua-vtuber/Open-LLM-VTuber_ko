@@ -1897,6 +1897,11 @@ local = [
     { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
@@ -1962,6 +1967,9 @@ requires-dist = [
     { name = "websocket-client", specifier = ">=1.8.0" },
 ]
 provides-extras = ["dev", "cloud-only", "gpu", "local", "all"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "openai"
