@@ -2,6 +2,11 @@
 
 Uses a single LLM prompt to extract structured facts from conversation turns.
 Accumulated turns are batched before extraction to reduce LLM calls.
+
+When LLM is unavailable or disabled, a regex-based extractor provides
+synchronous hot-path extraction as a fallback. When both are available,
+regex runs first (immediate) and LLM adds batch results; the two sets are
+deduplicated before returning.
 """
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ from loguru import logger
 
 from .config import ExtractionConfig
 from .models import ExtractionResult, MemoryType, SemanticMemory
+from .regex_extractor import RegexExtractor
 
 if TYPE_CHECKING:
     from ..agent.stateless_llm.stateless_llm_interface import StatelessLLMInterface
@@ -50,26 +56,58 @@ If nothing worth extracting, return: []
 
 
 class MemoryExtractor:
-    """Extracts structured memories from conversation turns using LLM.
+    """Extracts structured memories from conversation turns.
 
-    Implements the SimpleMem approach: batch conversation turns, send a single
-    LLM prompt, and parse the structured JSON response.
+    Supports two extraction backends that can run independently or together:
+
+    * **LLM** -- high-quality batch extraction via a stateless LLM prompt.
+    * **Regex** -- synchronous hot-path extraction using compiled patterns
+      (``RegexExtractor``).  Regex results always carry ``confidence=0.5``
+      to distinguish them from LLM-extracted memories (``confidence=0.8``).
+
+    Routing logic in ``extract()``:
+
+    * ``llm_extraction_mode == "disabled"`` or ``llm is None`` -- regex only.
+    * ``regex_enabled is False`` -- LLM only.
+    * Both enabled -- regex runs first (hot-path), then LLM adds batch
+      results.  The combined set is deduplicated by normalised content.
     """
 
     def __init__(
         self,
-        llm: StatelessLLMInterface,
+        llm: StatelessLLMInterface | None = None,
         config: ExtractionConfig | None = None,
     ):
         """Initialize extractor.
 
         Args:
-            llm: Stateless LLM for extraction prompts
-            config: Extraction configuration
+            llm: Stateless LLM for extraction prompts.  May be ``None`` when
+                operating in regex-only mode.
+            config: Extraction configuration.
+
+        Raises:
+            ValueError: If both LLM and regex extraction are unavailable.
         """
-        self._llm = llm
         self._config = config or ExtractionConfig()
+        self._llm = llm
         self._turn_buffer: list[dict] = []
+
+        # Build regex extractor when enabled
+        self._regex_extractor: RegexExtractor | None = None
+        if self._config.regex_enabled:
+            self._regex_extractor = RegexExtractor()
+
+        # Validate that at least one extraction method is available
+        llm_available = (
+            self._llm is not None
+            and self._config.llm_extraction_mode != "disabled"
+        )
+        if not llm_available and self._regex_extractor is None:
+            raise ValueError(
+                "No extraction backend available: LLM is None or disabled "
+                "and regex_enabled is False.  Enable at least one extraction "
+                "method."
+            )
 
     @property
     def buffer_size(self) -> int:
@@ -109,12 +147,19 @@ class MemoryExtractor:
     ) -> ExtractionResult:
         """Extract memories from buffered conversation turns.
 
+        Routing:
+
+        * LLM disabled / unavailable -- regex only (user messages).
+        * Regex disabled -- LLM only (full conversation transcript).
+        * Both available -- regex hot-path first, then LLM batch; results
+          are merged and deduplicated.
+
         Args:
-            entity_id: Default entity_id for extracted memories
-            force: Extract even if buffer hasn't reached batch_size
+            entity_id: Default entity_id for extracted memories.
+            force: Extract even if buffer hasn't reached batch_size.
 
         Returns:
-            ExtractionResult with extracted SemanticMemory instances
+            ExtractionResult with extracted SemanticMemory instances.
         """
         if not self._turn_buffer:
             return ExtractionResult()
@@ -125,17 +170,39 @@ class MemoryExtractor:
         turns_to_process = list(self._turn_buffer)
         self._turn_buffer.clear()
 
-        conversation_text = self._format_turns(turns_to_process)
-        raw_json = await self._call_llm(conversation_text)
+        llm_available = (
+            self._llm is not None
+            and self._config.llm_extraction_mode != "disabled"
+        )
 
-        if not raw_json:
-            logger.debug("Extraction returned empty response")
-            return ExtractionResult()
+        memories: list[SemanticMemory] = []
 
-        memories = self._parse_response(raw_json, entity_id)
+        # --- Regex hot-path (synchronous, user messages only) ---------------
+        if self._regex_extractor is not None:
+            regex_memories = self._extract_regex(turns_to_process, entity_id)
+            memories.extend(regex_memories)
+            logger.debug(
+                f"Regex extracted {len(regex_memories)} memories "
+                f"from {len(turns_to_process)} turns"
+            )
+
+        # --- LLM batch extraction -------------------------------------------
+        if llm_available:
+            conversation_text = self._format_turns(turns_to_process)
+            raw_json = await self._call_llm(conversation_text)
+            if raw_json:
+                llm_memories = self._parse_response(raw_json, entity_id)
+                memories = self._merge_and_dedup(memories, llm_memories)
+            else:
+                logger.debug("LLM extraction returned empty response")
+
+        # --- Filter by thresholds -------------------------------------------
         memories = self._filter_by_thresholds(memories)
 
-        logger.info(f"Extracted {len(memories)} memories from {len(turns_to_process)} turns")
+        logger.info(
+            f"Extracted {len(memories)} memories from "
+            f"{len(turns_to_process)} turns"
+        )
         return ExtractionResult(memories=memories)
 
     def _format_turns(self, turns: list[dict]) -> str:
@@ -147,6 +214,97 @@ class MemoryExtractor:
             lines.append(f"Assistant: {turn['assistant']}")
             lines.append("")
         return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Regex extraction helpers
+    # ------------------------------------------------------------------
+
+    def _extract_regex(
+        self,
+        turns: list[dict],
+        entity_id: str | None,
+    ) -> list[SemanticMemory]:
+        """Run regex extraction on the **user** messages of *turns*.
+
+        Only user messages are scanned because assistant responses are
+        generated text and should not contribute memories about the user.
+
+        Each user message is processed individually to ensure per-sentence
+        regex patterns (which rely on ``$`` for end-of-input anchoring)
+        match correctly.
+
+        Args:
+            turns: List of turn dicts (``user``, ``assistant``, ``entity_id``).
+            entity_id: Default entity ID to assign to extracted memories.
+
+        Returns:
+            List of ``SemanticMemory`` instances from regex matches.
+        """
+        assert self._regex_extractor is not None  # caller guarantees
+
+        # Process each user message individually so that end-of-string
+        # anchors in regex patterns work correctly for each sentence.
+        all_results: list[dict] = []
+        seen_contents: set[str] = set()
+        for turn in turns:
+            raw_results = self._regex_extractor.extract(turn["user"])
+            for item in raw_results:
+                content_key = " ".join(item["content"].split()).lower()
+                if content_key not in seen_contents:
+                    seen_contents.add(content_key)
+                    all_results.append(item)
+
+        memories: list[SemanticMemory] = []
+        for item in all_results:
+            type_str = item.get("memory_type", "atomic_fact")
+            try:
+                memory_type = MemoryType(type_str)
+            except ValueError:
+                memory_type = MemoryType.ATOMIC_FACT
+
+            memories.append(
+                SemanticMemory(
+                    entity_id=entity_id,
+                    memory_type=memory_type,
+                    content=item["content"],
+                    importance=item.get("importance", 0.5),
+                    confidence=item.get("confidence", 0.5),
+                    category=item.get("category"),
+                )
+            )
+
+        return memories
+
+    @staticmethod
+    def _merge_and_dedup(
+        existing: list[SemanticMemory],
+        incoming: list[SemanticMemory],
+    ) -> list[SemanticMemory]:
+        """Merge *incoming* into *existing*, dropping content duplicates.
+
+        Deduplication is based on whitespace-normalised, lowercased content.
+        When a duplicate is detected the existing entry (typically from the
+        regex hot-path) is kept and the incoming duplicate is dropped.
+
+        Args:
+            existing: Memories already collected (e.g. from regex).
+            incoming: New memories to merge (e.g. from LLM).
+
+        Returns:
+            Combined, deduplicated list.
+        """
+        seen: set[str] = set()
+        for m in existing:
+            seen.add(" ".join(m.content.split()).lower())
+
+        merged = list(existing)
+        for m in incoming:
+            key = " ".join(m.content.split()).lower()
+            if key not in seen:
+                seen.add(key)
+                merged.append(m)
+
+        return merged
 
     async def _call_llm(self, conversation_text: str) -> str:
         """Call LLM to extract facts from conversation text.
