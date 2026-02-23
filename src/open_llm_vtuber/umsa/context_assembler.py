@@ -25,7 +25,8 @@ class AssembledContext:
     """
 
     system_content: str
-    """Combined system prompt (persona + profile + session summary + memories)."""
+    """Combined system prompt (persona + stream context + profile + procedural
+    rules + memories + episodic summary)."""
 
     messages: list[dict] = field(default_factory=list)
     """Recent conversation messages fitted to the token budget."""
@@ -34,13 +35,14 @@ class AssembledContext:
 class ContextAssembler:
     """Assembles LLM context from multiple components within token budget.
 
-    Components:
+    Components (Phase 2):
     - System prompt (character definition, personality)
+    - Stream context (current streaming status, events, topics)
     - Entity profile (relationship context)
-    - Session summary (conversation continuity)
+    - Procedural rules (behavioral rules derived from memories)
     - Retrieved memories (long-term knowledge from RAG)
+    - Episodic summary (condensed summaries of previous sessions)
     - Recent messages (immediate conversation context)
-    - Few-shot examples (response quality improvement)
 
     Each component gets a percentage-based token budget allocation.
     Unused allocations are redistributed to other components.
@@ -73,9 +75,10 @@ class ContextAssembler:
         system_prompt: str,
         recent_messages: list[dict],
         entity_profile: EntityProfile | None = None,
-        session_summary: str = "",
+        stream_context: str = "",
+        procedural_rules: str = "",
+        episodic_summary: str = "",
         retrieved_memories: list[RetrievalResult] | None = None,
-        few_shot_examples: list[dict] | None = None,
     ) -> AssembledContext:
         """Assemble context within token budget, returning system and messages separately.
 
@@ -87,18 +90,20 @@ class ContextAssembler:
             system_prompt: Character definition and personality
             recent_messages: Chat history (user/assistant turns)
             entity_profile: Relationship context
-            session_summary: Conversation continuity summary
+            stream_context: Formatted stream context text (current status, events)
+            procedural_rules: Formatted procedural rules text (behavioral rules)
+            episodic_summary: Condensed summaries of previous sessions
             retrieved_memories: Long-term knowledge from RAG
-            few_shot_examples: Response style examples
 
         Returns:
             AssembledContext with system_content and messages separated
         """
         budgets = self._calculate_budgets(
             has_profile=entity_profile is not None,
-            has_session=bool(session_summary.strip()),
+            has_stream_context=bool(stream_context.strip()),
+            has_procedural=bool(procedural_rules.strip()),
             has_memories=bool(retrieved_memories),
-            has_examples=bool(few_shot_examples),
+            has_episodic=bool(episodic_summary.strip()),
         )
 
         logger.debug(f"Calculated token budgets: {budgets}")
@@ -112,7 +117,16 @@ class ContextAssembler:
         )
         system_parts.append(system_prompt_fitted)
 
-        # 2. Entity profile (if available)
+        # 2. Stream context (if available)
+        if stream_context.strip():
+            stream_fitted = self._fit_text(
+                stream_context, budgets["stream_context"]
+            )
+            system_parts.append(
+                f"\n\n[Current Stream Status]\n{stream_fitted}"
+            )
+
+        # 3. Entity profile (if available)
         if entity_profile:
             profile_text = entity_profile.format_for_context()
             profile_fitted = self._fit_text(profile_text, budgets["entity_profile"])
@@ -120,14 +134,14 @@ class ContextAssembler:
                 f"\n\n[About the person you're talking to]\n{profile_fitted}"
             )
 
-        # 3. Session summary (if available)
-        if session_summary.strip():
-            summary_fitted = self._fit_text(
-                session_summary, budgets["session_summary"]
+        # 4. Procedural rules (if available) — already formatted by ProceduralMemory
+        if procedural_rules.strip():
+            procedural_fitted = self._fit_text(
+                procedural_rules, budgets["procedural"]
             )
-            system_parts.append(f"\n\n[Conversation so far]\n{summary_fitted}")
+            system_parts.append(f"\n\n{procedural_fitted}")
 
-        # 4. Retrieved memories (if available)
+        # 5. Retrieved memories (if available)
         if retrieved_memories:
             memories_text = self._format_memories(
                 retrieved_memories, budgets["retrieved_memories"]
@@ -135,15 +149,12 @@ class ContextAssembler:
             if memories_text:
                 system_parts.append(f"\n\n[Relevant memories]\n{memories_text}")
 
-        # 5. Few-shot examples (if available)
-        if few_shot_examples:
-            examples_text = self._format_few_shot_examples(
-                few_shot_examples, budgets["few_shot_examples"]
+        # 6. Episodic summary (if available)
+        if episodic_summary.strip():
+            episodic_fitted = self._fit_text(
+                episodic_summary, budgets["episodic"]
             )
-            if examples_text:
-                system_parts.append(
-                    f"\n\n[Response style examples]\n{examples_text}"
-                )
+            system_parts.append(f"\n\n[Previous sessions]\n{episodic_fitted}")
 
         system_content = "".join(system_parts)
 
@@ -175,9 +186,10 @@ class ContextAssembler:
         system_prompt: str,
         recent_messages: list[dict],
         entity_profile: EntityProfile | None = None,
-        session_summary: str = "",
+        stream_context: str = "",
+        procedural_rules: str = "",
+        episodic_summary: str = "",
         retrieved_memories: list[RetrievalResult] | None = None,
-        few_shot_examples: list[dict] | None = None,
     ) -> list[dict]:
         """Assemble context within token budget.
 
@@ -191,9 +203,10 @@ class ContextAssembler:
             system_prompt=system_prompt,
             recent_messages=recent_messages,
             entity_profile=entity_profile,
-            session_summary=session_summary,
+            stream_context=stream_context,
+            procedural_rules=procedural_rules,
+            episodic_summary=episodic_summary,
             retrieved_memories=retrieved_memories,
-            few_shot_examples=few_shot_examples,
         )
         context = [{"role": "system", "content": ctx.system_content}]
         context.extend(ctx.messages)
@@ -202,23 +215,27 @@ class ContextAssembler:
     def _calculate_budgets(
         self,
         has_profile: bool,
-        has_session: bool,
+        has_stream_context: bool,
+        has_procedural: bool,
         has_memories: bool,
-        has_examples: bool,
+        has_episodic: bool,
     ) -> dict[str, int]:
         """Calculate actual token budgets, redistributing unused allocations.
 
         Redistribution rules:
-        - If no entity profile: redistribute to retrieved_memories
-        - If no session summary: redistribute to recent_messages
+        - If no entity profile: redistribute to retrieved_memories (if present),
+          otherwise to recent_messages
+        - If no stream context: redistribute to recent_messages
+        - If no procedural rules: redistribute to recent_messages
         - If no retrieved memories: redistribute to recent_messages
-        - If no few-shot examples: redistribute to recent_messages
+        - If no episodic summary: redistribute to recent_messages
 
         Args:
             has_profile: Whether entity profile is available
-            has_session: Whether session summary is available
+            has_stream_context: Whether stream context is available
+            has_procedural: Whether procedural rules are available
             has_memories: Whether retrieved memories are available
-            has_examples: Whether few-shot examples are available
+            has_episodic: Whether episodic summary is available
 
         Returns:
             Dict mapping component names to token budgets
@@ -235,9 +252,13 @@ class ContextAssembler:
             extra_for_memories += allocations["entity_profile"]
             allocations["entity_profile"] = 0.0
 
-        if not has_session:
-            extra_for_messages += allocations["session_summary"]
-            allocations["session_summary"] = 0.0
+        if not has_stream_context:
+            extra_for_messages += allocations["stream_context"]
+            allocations["stream_context"] = 0.0
+
+        if not has_procedural:
+            extra_for_messages += allocations["procedural"]
+            allocations["procedural"] = 0.0
 
         if not has_memories:
             extra_for_messages += allocations["retrieved_memories"]
@@ -247,9 +268,9 @@ class ContextAssembler:
             allocations["retrieved_memories"] += extra_for_memories
             extra_for_memories = 0.0
 
-        if not has_examples:
-            extra_for_messages += allocations["few_shot_examples"]
-            allocations["few_shot_examples"] = 0.0
+        if not has_episodic:
+            extra_for_messages += allocations["episodic"]
+            allocations["episodic"] = 0.0
 
         # If memories don't exist, their extra also goes to messages
         if not has_memories and extra_for_memories > 0:
@@ -265,15 +286,16 @@ class ContextAssembler:
 
         budgets = {
             "system_prompt": int(available_tokens * allocations["system_prompt"]),
+            "stream_context": int(
+                available_tokens * allocations["stream_context"]
+            ),
             "entity_profile": int(available_tokens * allocations["entity_profile"]),
-            "session_summary": int(available_tokens * allocations["session_summary"]),
+            "procedural": int(available_tokens * allocations["procedural"]),
             "retrieved_memories": int(
                 available_tokens * allocations["retrieved_memories"]
             ),
             "recent_messages": int(available_tokens * allocations["recent_messages"]),
-            "few_shot_examples": int(
-                available_tokens * allocations["few_shot_examples"]
-            ),
+            "episodic": int(available_tokens * allocations["episodic"]),
         }
 
         return budgets
@@ -432,62 +454,6 @@ class ContextAssembler:
 
         logger.debug(
             f"Formatted {len(formatted_parts)}/{len(memories)} memories, "
-            f"{current_tokens}/{max_tokens} tokens"
-        )
-
-        return result
-
-    def _format_few_shot_examples(
-        self, examples: list[dict], max_tokens: int
-    ) -> str:
-        """Format few-shot examples as text, fitting within budget.
-
-        Args:
-            examples: List of example message dicts (role + content)
-            max_tokens: Maximum token budget
-
-        Returns:
-            Formatted examples text
-        """
-        if not examples:
-            return ""
-
-        # Format examples as conversation turns
-        formatted_parts = []
-        current_tokens = 0
-
-        for example in examples:
-            role = example.get("role", "user")
-            content = example.get("content", "")
-
-            # Format: User: ...
-            # Assistant: ...
-            role_label = "User" if role == "user" else "Assistant"
-            example_text = f"{role_label}: {content}"
-
-            example_tokens = self.token_counter.count(example_text)
-
-            if current_tokens + example_tokens <= max_tokens:
-                formatted_parts.append(example_text)
-                current_tokens += example_tokens
-            else:
-                # Try to fit partial example
-                remaining_tokens = max_tokens - current_tokens
-                if remaining_tokens > 30:  # Only if meaningful space remains
-                    fitted_content = self._fit_text(
-                        content, remaining_tokens - len(role_label) - 10
-                    )
-                    if fitted_content:
-                        formatted_parts.append(f"{role_label}: {fitted_content}")
-                        current_tokens += self.token_counter.count(
-                            f"{role_label}: {fitted_content}"
-                        )
-                break
-
-        result = "\n\n".join(formatted_parts)
-
-        logger.debug(
-            f"Formatted {len(formatted_parts)}/{len(examples)} examples, "
             f"{current_tokens}/{max_tokens} tokens"
         )
 
