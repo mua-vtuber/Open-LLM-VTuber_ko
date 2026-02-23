@@ -2,11 +2,12 @@
 
 This module provides the main MemoryService class that consuming applications use.
 Provides token-budgeted context building, memory extraction, hybrid retrieval,
-and session management.
+stream context tracking, procedural memory, reflection, and session management.
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Protocol
@@ -14,13 +15,17 @@ from typing import Protocol
 from loguru import logger
 
 from .config import MemoryConfig
+from .conflict_detector import ConflictDetector
 from .context_assembler import AssembledContext, ContextAssembler
 from .embedding import EmbeddingService
 from .evolution import MemoryEvolver
 from .extraction import MemoryExtractor
 from .models import Message, SemanticMemory
+from .procedural_memory import ProceduralMemory
+from .reflection import ReflectionEngine
 from .retrieval import HybridRetriever
 from .storage.sqlite_store import SQLiteStore
+from .stream_context import StreamContext
 from .token_counter import TokenCounter
 from .working_memory import WorkingMemory
 
@@ -96,10 +101,15 @@ class MemoryService:
     - Token-budgeted context building with memory retrieval
     - Memory extraction from conversation turns
     - Hybrid retrieval (vector + FTS5 + graph) with Stanford 3-factor scoring
+    - Real-time stream context tracking (Phase 2)
+    - Procedural memory (learned behavioral rules) (Phase 2)
+    - Reflection engine for insight synthesis (Phase 2)
+    - Conflict detection for contradicting memories (Phase 2)
     - Session lifecycle tracking
     - Memory CRUD operations
 
-    All components are lazily initialized on first use.
+    Phase 1 components are lazily initialized on first use.
+    Phase 2 cognitive components are eagerly initialized (in-memory, lightweight).
     """
 
     def __init__(self, config: MemoryConfig | None = None):
@@ -109,6 +119,8 @@ class MemoryService:
             config: Memory configuration (uses defaults if not provided)
         """
         self.config = config or MemoryConfig()
+
+        # Phase 1 components (lazy initialization)
         self._working_memory: WorkingMemory | None = None
         self._context_assembler: ContextAssembler | None = None
         self._token_counter: TokenCounter | None = None
@@ -120,6 +132,17 @@ class MemoryService:
         self._evolver: MemoryEvolver | None = None
         self._active_sessions: dict[str, dict] = {}
 
+        # Phase 2 cognitive components (eager initialization, in-memory)
+        sc_cfg = self.config.stream_context
+        self._stream_context = StreamContext(
+            max_events=sc_cfg.max_events,
+            topic_change_threshold=sc_cfg.topic_change_threshold,
+            summary_interval=sc_cfg.summary_interval,
+        )
+        self._procedural_memory = ProceduralMemory()
+        self._reflection_engine = ReflectionEngine(llm=None)
+        self._conflict_detector = ConflictDetector()
+
         logger.debug(
             f"MemoryService full config: {self.config.model_dump()}"
         )
@@ -128,8 +151,18 @@ class MemoryService:
             f"sqlite_db_path={self.config.storage.sqlite_db_path!r}"
         )
 
+    @property
+    def stream_context(self) -> StreamContext:
+        """Public access to the stream context instance."""
+        return self._stream_context
+
+    @property
+    def procedural_memory(self) -> ProceduralMemory:
+        """Public access to the procedural memory instance."""
+        return self._procedural_memory
+
     def set_llm(self, llm) -> None:
-        """Set the LLM instance for extraction (called after agent creation).
+        """Set the LLM instance for extraction and reflection.
 
         Args:
             llm: StatelessLLMInterface instance shared with the agent
@@ -139,6 +172,10 @@ class MemoryService:
                 llm=llm, config=self.config.extraction,
             )
             logger.info("MemoryExtractor initialized with shared LLM")
+
+        # Also provide LLM to the reflection engine for richer insights
+        self._reflection_engine._llm = llm
+        logger.debug("ReflectionEngine LLM updated")
 
     def _ensure_components(self) -> None:
         """Lazy initialization of context assembly components."""
@@ -225,8 +262,9 @@ class MemoryService:
         """Build token-budgeted context with memory retrieval.
 
         Retrieves relevant memories from long-term storage using hybrid search
-        (vector + FTS5 + graph with Stanford 3-factor scoring), then assembles
-        everything within the token budget.
+        (vector + FTS5 + graph with Stanford 3-factor scoring), gathers stream
+        context and procedural rules, loads recent episodic summaries, then
+        assembles everything within the token budget.
 
         Args:
             messages: Recent conversation messages
@@ -267,13 +305,19 @@ class MemoryService:
                 except Exception as e:
                     logger.warning(f"Memory retrieval failed: {e}")
 
+        # Gather Phase 2 context: stream context, procedural rules, episodic summary
+        stream_context_text = self._stream_context.format_for_context()
+        procedural_rules_text = self._procedural_memory.format_for_context()
+        episodic_summary = await self._load_episodic_summary()
+
         ctx = self._context_assembler.assemble_split(
             system_prompt=system_prompt,
             recent_messages=messages,
             entity_profile=None,
-            session_summary="",
+            stream_context=stream_context_text,
+            procedural_rules=procedural_rules_text,
+            episodic_summary=episodic_summary,
             retrieved_memories=retrieved_memories or None,
-            few_shot_examples=None,
         )
 
         logger.info(
@@ -284,22 +328,56 @@ class MemoryService:
 
         return ctx
 
+    async def _load_episodic_summary(self) -> str:
+        """Load recent stream episodes and format as episodic summary text.
+
+        Returns:
+            Formatted episodic summary string, or "" if unavailable.
+        """
+        try:
+            if self._store is None or not self._store_initialized:
+                return ""
+            episodes = await self._store.get_stream_episodes(limit=5)
+            if not episodes:
+                return ""
+            parts = []
+            for ep in episodes:
+                summary = ep.get("summary", "")
+                if summary:
+                    parts.append(f"- {summary}")
+            return "\n".join(parts) if parts else ""
+        except Exception as e:
+            logger.warning(f"Failed to load episodic summary: {e}")
+            return ""
+
     async def process_turn(
         self,
         user_message: Message,
         assistant_message: Message,
         entity_id: str | None = None,
     ) -> None:
-        """Process a conversation turn for memory extraction.
+        """Process a conversation turn for memory extraction and stream context.
 
-        Adds the turn to the extraction buffer. When the buffer reaches
-        batch_size, triggers LLM-based extraction and persists results.
+        Updates the stream context with the user message, then adds the turn
+        to the extraction buffer. When the buffer reaches batch_size, triggers
+        LLM-based extraction and persists results.
 
         Args:
             user_message: User's message
             assistant_message: Assistant's response
             entity_id: Optional entity identifier
         """
+        # Update stream context with user message
+        try:
+            author = user_message.name or entity_id or "user"
+            self._stream_context.update(
+                author=author,
+                content=user_message.content,
+                msg_type="chat",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update stream context: {e}")
+
         if not self._extractor:
             logger.debug("process_turn: extractor not available, skipping")
             return
@@ -383,7 +461,8 @@ class MemoryService:
     ) -> str:
         """Start a new conversation session.
 
-        Creates a session record in SQLite and tracks it locally.
+        Creates a session record in SQLite, loads procedural rules from storage,
+        and clears the stream context for the new session.
 
         Args:
             entity_id: Optional entity identifier
@@ -413,6 +492,18 @@ class MemoryService:
         except Exception as e:
             logger.warning(f"Failed to persist session to SQLite: {e}")
 
+        # Phase 2: Load procedural rules from storage
+        try:
+            store = await self._ensure_store()
+            rules = await store.get_active_procedural_rules()
+            self._procedural_memory.load_rules(rules)
+            logger.debug(f"Loaded {len(rules)} procedural rules for session")
+        except Exception as e:
+            logger.warning(f"Failed to load procedural rules: {e}")
+
+        # Phase 2: Clear stream context for new session
+        self._stream_context.clear()
+
         logger.info(
             f"Session started: {session_id} "
             f"(entity={entity_id}, platform={platform})"
@@ -425,10 +516,13 @@ class MemoryService:
         Performs full session consolidation:
         1. Persists session end to SQLite
         2. Flushes any remaining extraction buffer
-        3. Creates an Episode node summarizing the session
-        4. Updates entity profile (touch_entity)
-        5. Runs memory evolution (merge + prune)
-        6. Writes a consolidation log entry
+        3. Saves stream context as a stream episode
+        4. Creates an Episode node summarizing the session
+        5. Updates entity profile (touch_entity)
+        6. Runs reflection engine on recent knowledge nodes
+        7. Runs memory evolution (merge + prune)
+        8. Writes a consolidation log entry
+        9. Clears stream context
 
         Args:
             session_id: Session identifier to end
@@ -460,7 +554,28 @@ class MemoryService:
         except Exception as e:
             logger.warning(f"Flush extraction failed at session end: {e}")
 
-        # 3. Create Episode node for this session
+        # 3. Save stream context as a stream episode (Phase 2)
+        try:
+            store = await self._ensure_store()
+            ep_dict = self._stream_context.to_episode_dict()
+            episode_id = f"streamepisode_{session_id}"
+            ep_data = {
+                "id": episode_id,
+                "session_id": session_id,
+                "summary": ep_dict.get("summary", ""),
+                "topics_json": json.dumps(ep_dict.get("topics", [])),
+                "key_events_json": json.dumps(ep_dict.get("key_events", [])),
+                "participant_count": ep_dict.get("participant_count", 0),
+                "sentiment": ep_dict.get("sentiment", "neutral"),
+                "started_at": ep_dict.get("started_at"),
+                "ended_at": ep_dict.get("ended_at"),
+            }
+            await store.insert_stream_episode(ep_data)
+            logger.debug(f"Stream episode saved: {episode_id}")
+        except Exception as e:
+            logger.warning(f"Failed to save stream episode: {e}")
+
+        # 4. Create Episode node for this session
         episode_node_id = None
         if message_count > 0:
             try:
@@ -483,7 +598,7 @@ class MemoryService:
                 logger.warning(f"Failed to create episode node: {e}")
                 episode_node_id = None
 
-        # 4. Update entity profile
+        # 5. Update entity profile
         if entity_id:
             try:
                 store = await self._ensure_store()
@@ -491,7 +606,34 @@ class MemoryService:
             except Exception as e:
                 logger.warning(f"Failed to touch entity profile: {e}")
 
-        # 5. Run memory evolution if consolidation is enabled
+        # 6. Run reflection engine on recent knowledge nodes (Phase 2)
+        try:
+            store = await self._ensure_store()
+            recent_nodes = await store.get_knowledge_nodes(
+                entity_id=entity_id, limit=50,
+            )
+            if recent_nodes:
+                insights = self._reflection_engine.reflect_sync(recent_nodes)
+                for insight in insights:
+                    try:
+                        await store.insert_knowledge_node({
+                            "node_id": insight["id"],
+                            "entity_id": insight.get("entity_id"),
+                            "node_type": insight.get("memory_type", "meta_summary"),
+                            "content": insight["content"],
+                            "importance": insight.get("importance", 0.5),
+                            "metadata": None,
+                        })
+                    except Exception as e:
+                        logger.warning(f"Failed to persist reflection insight: {e}")
+                if insights:
+                    logger.debug(
+                        f"Reflection generated {len(insights)} insights"
+                    )
+        except Exception as e:
+            logger.warning(f"Reflection engine failed: {e}")
+
+        # 7. Run memory evolution if consolidation is enabled
         evolution_result = {"merged": 0, "pruned": 0}
         if self.config.consolidation.enabled:
             try:
@@ -500,7 +642,7 @@ class MemoryService:
             except Exception as e:
                 logger.warning(f"Memory evolution failed: {e}")
 
-        # 6. Write consolidation log
+        # 8. Write consolidation log
         try:
             store = await self._ensure_store()
             await store.insert_consolidation_log({
@@ -516,6 +658,9 @@ class MemoryService:
             })
         except Exception as e:
             logger.warning(f"Failed to write consolidation log: {e}")
+
+        # 9. Clear stream context (Phase 2)
+        self._stream_context.clear()
 
         logger.info(
             f"Session ended: {session_id} (messages={message_count}, "
