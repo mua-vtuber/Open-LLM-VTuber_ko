@@ -39,7 +39,9 @@ class Message(BaseModel):
     def token_estimate(self) -> int:
         """Rough token estimate (4 chars ≈ 1 token for English, 2 chars for CJK)."""
         cjk_count = sum(
-            1 for c in self.content if "\u4e00" <= c <= "\u9fff"
+            1
+            for c in self.content
+            if "\u4e00" <= c <= "\u9fff"
             or "\uac00" <= c <= "\ud7af"
             or "\u3040" <= c <= "\u309f"
             or "\u30a0" <= c <= "\u30ff"
@@ -134,8 +136,10 @@ class EntityProfile(BaseModel):
         if self.top_topics:
             parts.append(f"Topics: {', '.join(self.top_topics[:5])}")
         if self.average_sentiment != 0.0:
-            tone = "positive" if self.average_sentiment > 0.2 else (
-                "negative" if self.average_sentiment < -0.2 else "neutral"
+            tone = (
+                "positive"
+                if self.average_sentiment > 0.2
+                else ("negative" if self.average_sentiment < -0.2 else "neutral")
             )
             parts.append(f"Tone: {tone}")
         if self.known_facts_count > 0:

@@ -141,7 +141,9 @@ def _ensure_sense_voice_model(model_path: str) -> None:
 
 
 # Registry mapping model type to factory function
-MODEL_FACTORIES: dict[str, Callable[["VoiceRecognition"], sherpa_onnx.OfflineRecognizer]] = {
+MODEL_FACTORIES: dict[
+    str, Callable[["VoiceRecognition"], sherpa_onnx.OfflineRecognizer]
+] = {
     "transducer": _create_transducer,
     "paraformer": _create_paraformer,
     "nemo_ctc": _create_nemo_ctc,
@@ -240,8 +242,7 @@ class VoiceRecognition(ASRInterface):
         if factory is None:
             available = ", ".join(sorted(MODEL_FACTORIES.keys()))
             raise ValueError(
-                f"Invalid model type: {self.model_type}. "
-                f"Available types: {available}"
+                f"Invalid model type: {self.model_type}. Available types: {available}"
             )
         return factory(self)
 

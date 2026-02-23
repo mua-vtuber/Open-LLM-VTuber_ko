@@ -27,6 +27,7 @@ class TTSInterface(metaclass=abc.ABCMeta):
     def _ensure_cache_dir(self) -> None:
         """Ensure the cache directory exists."""
         os.makedirs(self.new_audio_dir, exist_ok=True)
+
     async def async_generate_audio(self, text: str, file_name_no_ext=None) -> str:
         """
         Asynchronously generate speech audio file using TTS.

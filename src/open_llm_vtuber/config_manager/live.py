@@ -2,13 +2,15 @@ from pydantic import Field
 from typing import Any, Dict, ClassVar, List
 from .i18n import I18nMixin, Description
 
-_SENSITIVE_FIELDS = frozenset({
-    "client_secret",
-    "access_token",
-    "refresh_token",
-    "api_key",
-    "bot_token",
-})
+_SENSITIVE_FIELDS = frozenset(
+    {
+        "client_secret",
+        "access_token",
+        "refresh_token",
+        "api_key",
+        "bot_token",
+    }
+)
 
 
 class YouTubeChatConfig(I18nMixin):

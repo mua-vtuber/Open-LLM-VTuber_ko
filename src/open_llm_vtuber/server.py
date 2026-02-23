@@ -14,7 +14,12 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 
-from .routes import init_client_ws_route, init_webtool_routes, init_proxy_route, init_model_routes
+from .routes import (
+    init_client_ws_route,
+    init_webtool_routes,
+    init_proxy_route,
+    init_model_routes,
+)
 from .service_context import ServiceContext
 from .config_manager.utils import Config
 
@@ -60,8 +65,16 @@ class CacheStaticFiles(CORSStaticFiles):
     """
 
     ALLOWED_EXTENSIONS = (
-        ".wav", ".mp3", ".ogg", ".flac", ".aac",
-        ".png", ".jpg", ".jpeg", ".gif", ".webp",
+        ".wav",
+        ".mp3",
+        ".ogg",
+        ".flac",
+        ".aac",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
     )
 
     async def get_response(self, path: str, scope):
@@ -93,32 +106,23 @@ class WebSocketServer:
     OPENAPI_TAGS = [
         {
             "name": "models",
-            "description": "Live2D 모델 관리 - 모델 목록, 외부 모델 경로 추가/삭제"
+            "description": "Live2D 모델 관리 - 모델 목록, 외부 모델 경로 추가/삭제",
         },
         {
             "name": "queue",
-            "description": "메시지 대기열 큐 - 큐 조회, 데이터 초기화, 우선순위 규칙 관리"
+            "description": "메시지 대기열 큐 - 큐 조회, 데이터 초기화, 우선순위 규칙 관리",
         },
-        {
-            "name": "config",
-            "description": "설정 관리 - 라이브/리반 설정 조회 및 변경"
-        },
+        {"name": "config", "description": "설정 관리 - 라이브/리반 설정 조회 및 변경"},
         {
             "name": "media",
-            "description": "음성/미디어 처리 - ASR (음성 인식), TTS (음성 합성)"
+            "description": "음성/미디어 처리 - ASR (음성 인식), TTS (음성 합성)",
         },
         {
             "name": "live",
-            "description": "라이브스트리밍 연동 - Chzzk OAuth, YouTube 연동"
+            "description": "라이브스트리밍 연동 - Chzzk OAuth, YouTube 연동",
         },
-        {
-            "name": "languages",
-            "description": "다국어 지원 가능 언어 목록"
-        },
-        {
-            "name": "websocket",
-            "description": "WebSocket 연결 - 클라이언트 실시간 통신"
-        },
+        {"name": "languages", "description": "다국어 지원 가능 언어 목록"},
+        {"name": "websocket", "description": "WebSocket 연결 - 클라이언트 실시간 통신"},
     ]
 
     def __init__(self, config: Config, default_context_cache: ServiceContext = None):

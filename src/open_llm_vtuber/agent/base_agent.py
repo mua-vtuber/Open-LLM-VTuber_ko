@@ -48,10 +48,10 @@ class BaseAgent(AgentInterface):
     def _apply_transformers(self, chat_func: Callable) -> Callable:
         """
         Apply common transformers (decorators) to a chat function.
-        
+
         Args:
             chat_func: The core chat function to wrap.
-            
+
         Returns:
             Callable: Wrapped chat function with all transformers applied.
         """
@@ -70,10 +70,10 @@ class BaseAgent(AgentInterface):
     def _to_text_prompt(self, input_data: BatchInput) -> str:
         """
         Format input data to a plain text prompt.
-        
+
         Args:
             input_data: BatchInput object.
-            
+
         Returns:
             str: Combined text prompt.
         """

@@ -13,9 +13,9 @@ import sys
 import io
 
 # Force UTF-8 encoding for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 from src.open_llm_vtuber.i18n_manager import I18nManager
 from src.open_llm_vtuber.config_manager.character import CharacterConfig
@@ -35,22 +35,28 @@ def test_i18n_manager():
 
     # Test English
     print("English translations:")
-    print(f"  conf_name: {I18nManager.get('conf_name', lang='en', namespace='character')}")
+    print(
+        f"  conf_name: {I18nManager.get('conf_name', lang='en', namespace='character')}"
+    )
     print(f"  host: {I18nManager.get('host', lang='en', namespace='system')}")
 
     # Test Chinese
     print("\nChinese translations:")
-    print(f"  conf_name: {I18nManager.get('conf_name', lang='zh', namespace='character')}")
+    print(
+        f"  conf_name: {I18nManager.get('conf_name', lang='zh', namespace='character')}"
+    )
     print(f"  host: {I18nManager.get('host', lang='zh', namespace='system')}")
 
     # Test Korean
     print("\nKorean translations:")
-    print(f"  conf_name: {I18nManager.get('conf_name', lang='ko', namespace='character')}")
+    print(
+        f"  conf_name: {I18nManager.get('conf_name', lang='ko', namespace='character')}"
+    )
     print(f"  host: {I18nManager.get('host', lang='ko', namespace='system')}")
 
     # Test fallback
     print("\nFallback test (non-existent key):")
-    result = I18nManager.get('nonexistent_key', lang='ko', namespace='character')
+    result = I18nManager.get("nonexistent_key", lang="ko", namespace="character")
     print(f"  nonexistent_key: {result} (should return key itself)")
 
     print("\n[OK] I18nManager tests passed!")
@@ -64,14 +70,14 @@ def test_config_classes():
 
     # Test CharacterConfig
     print("\nCharacterConfig descriptions:")
-    for lang in ['en', 'zh', 'ko']:
-        desc = CharacterConfig.get_field_description('conf_name', lang_code=lang)
+    for lang in ["en", "zh", "ko"]:
+        desc = CharacterConfig.get_field_description("conf_name", lang_code=lang)
         print(f"  [{lang}] conf_name: {desc}")
 
     # Test SystemConfig
     print("\nSystemConfig descriptions:")
-    for lang in ['en', 'zh', 'ko']:
-        desc = SystemConfig.get_field_description('host', lang_code=lang)
+    for lang in ["en", "zh", "ko"]:
+        desc = SystemConfig.get_field_description("host", lang_code=lang)
         print(f"  [{lang}] host: {desc}")
 
     print("\n[OK] Config class tests passed!")
@@ -99,7 +105,7 @@ def test_all_character_fields():
     ]
 
     for field in fields:
-        desc = CharacterConfig.get_field_description(field, lang_code='ko')
+        desc = CharacterConfig.get_field_description(field, lang_code="ko")
         print(f"  {field:30s} → {desc}")
 
     print("\n[OK] All field tests passed!")
@@ -126,6 +132,7 @@ def main():
     except Exception as e:
         print(f"\n[ERROR] Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

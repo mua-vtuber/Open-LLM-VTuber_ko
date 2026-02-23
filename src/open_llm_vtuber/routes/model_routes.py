@@ -101,7 +101,9 @@ def _scan_models_in_folder(
                 folder_path, folder_name, url_prefix, subdir, supported_extensions
             )
 
-            logger.info(f"[model_routes] Found direct model: {folder_name} at {model_url}")
+            logger.info(
+                f"[model_routes] Found direct model: {folder_name} at {model_url}"
+            )
             valid_characters.append(
                 {
                     "name": folder_name,
@@ -137,20 +139,30 @@ def _scan_models_in_folder(
 
                     model_url = f"{url_prefix}/{url_subpath}"
                     avatar_url = _find_avatar_url_direct(
-                        folder_path, model_name, url_prefix, subdir, supported_extensions
+                        folder_path,
+                        model_name,
+                        url_prefix,
+                        subdir,
+                        supported_extensions,
                     )
 
                     # 표시 이름은 폴더 이름 사용 (더 의미있는 이름일 수 있음)
-                    display_name = folder_name if folder_name != model_name else model_name
+                    display_name = (
+                        folder_name if folder_name != model_name else model_name
+                    )
 
-                    logger.info(f"[model_routes] Found model with different name: {display_name} ({model_name}) at {model_url}")
+                    logger.info(
+                        f"[model_routes] Found model with different name: {display_name} ({model_name}) at {model_url}"
+                    )
                     valid_characters.append(
                         {
                             "name": display_name,
                             "avatar": avatar_url,
                             "model_path": model_url,
                             "source": source,
-                            "folder_path": folder_path if source == "external" else None,
+                            "folder_path": folder_path
+                            if source == "external"
+                            else None,
                         }
                     )
                     direct_model_found = True
@@ -182,22 +194,32 @@ def _scan_models_in_folder(
                     model3_file_path = os.path.join(subfolder_path, model_file)
                     url_subpath = f"{subfolder_name}/{model_file}"
 
-                logger.debug(f"[model_routes] Checking subfolder model path: {model3_file_path}")
+                logger.debug(
+                    f"[model_routes] Checking subfolder model path: {model3_file_path}"
+                )
 
                 if os.path.isfile(model3_file_path):
                     model_url = f"{url_prefix}/{url_subpath}"
                     avatar_url = _find_avatar_url(
-                        folder_path, subfolder_name, url_prefix, subdir, supported_extensions
+                        folder_path,
+                        subfolder_name,
+                        url_prefix,
+                        subdir,
+                        supported_extensions,
                     )
 
-                    logger.info(f"[model_routes] Found subfolder model: {subfolder_name} at {model_url}")
+                    logger.info(
+                        f"[model_routes] Found subfolder model: {subfolder_name} at {model_url}"
+                    )
                     valid_characters.append(
                         {
                             "name": subfolder_name,
                             "avatar": avatar_url,
                             "model_path": model_url,
                             "source": source,
-                            "folder_path": folder_path if source == "external" else None,
+                            "folder_path": folder_path
+                            if source == "external"
+                            else None,
                         }
                     )
                     subfolder_model_found = True
@@ -215,7 +237,9 @@ def _scan_models_in_folder(
                         continue
 
                     for file_entry in os.scandir(search_path):
-                        if file_entry.is_file() and file_entry.name.endswith(".model3.json"):
+                        if file_entry.is_file() and file_entry.name.endswith(
+                            ".model3.json"
+                        ):
                             model_file = file_entry.name
                             model_name = model_file.replace(".model3.json", "")
 
@@ -226,20 +250,28 @@ def _scan_models_in_folder(
 
                             model_url = f"{url_prefix}/{url_subpath}"
                             avatar_url = _find_avatar_url(
-                                folder_path, subfolder_name, url_prefix, subdir, supported_extensions
+                                folder_path,
+                                subfolder_name,
+                                url_prefix,
+                                subdir,
+                                supported_extensions,
                             )
 
                             # 표시 이름은 폴더 이름 사용
                             display_name = subfolder_name
 
-                            logger.info(f"[model_routes] Found subfolder model with different name: {display_name} ({model_name}) at {model_url}")
+                            logger.info(
+                                f"[model_routes] Found subfolder model with different name: {display_name} ({model_name}) at {model_url}"
+                            )
                             valid_characters.append(
                                 {
                                     "name": display_name,
                                     "avatar": avatar_url,
                                     "model_path": model_url,
                                     "source": source,
-                                    "folder_path": folder_path if source == "external" else None,
+                                    "folder_path": folder_path
+                                    if source == "external"
+                                    else None,
                                 }
                             )
                             subfolder_model_found = True
@@ -248,12 +280,18 @@ def _scan_models_in_folder(
                     if subfolder_model_found:
                         break
 
-    logger.info(f"[model_routes] Total models found in {folder_path}: {len(valid_characters)}")
+    logger.info(
+        f"[model_routes] Total models found in {folder_path}: {len(valid_characters)}"
+    )
     return valid_characters
 
 
 def _find_avatar_url_direct(
-    folder_path: str, model_name: str, url_prefix: str, subdir: str, extensions: list[str]
+    folder_path: str,
+    model_name: str,
+    url_prefix: str,
+    subdir: str,
+    extensions: list[str],
 ) -> str | None:
     """모델 폴더 직접 선택 시 아바타 이미지 URL 찾기"""
     # 탐색할 위치들 (순서대로 시도)
@@ -263,8 +301,18 @@ def _find_avatar_url_direct(
         # 2. subdir 내부 (예: runtime)
         (os.path.join(folder_path, subdir), subdir) if subdir else None,
         # 3. 텍스처 폴더 내부
-        (os.path.join(folder_path, subdir, f"{model_name}.1024"), f"{subdir}/{model_name}.1024") if subdir else None,
-        (os.path.join(folder_path, subdir, f"{model_name}.4096"), f"{subdir}/{model_name}.4096") if subdir else None,
+        (
+            os.path.join(folder_path, subdir, f"{model_name}.1024"),
+            f"{subdir}/{model_name}.1024",
+        )
+        if subdir
+        else None,
+        (
+            os.path.join(folder_path, subdir, f"{model_name}.4096"),
+            f"{subdir}/{model_name}.4096",
+        )
+        if subdir
+        else None,
     ]
 
     for search_info in search_paths:
@@ -282,7 +330,11 @@ def _find_avatar_url_direct(
 
 
 def _find_avatar_url(
-    folder_path: str, model_name: str, url_prefix: str, subdir: str, extensions: list[str]
+    folder_path: str,
+    model_name: str,
+    url_prefix: str,
+    subdir: str,
+    extensions: list[str],
 ) -> str | None:
     """모델의 아바타 이미지 URL 찾기 (여러 위치 탐색)"""
     # 탐색할 위치들 (순서대로 시도)
@@ -290,9 +342,16 @@ def _find_avatar_url(
         # 1. 모델 폴더 직접
         (os.path.join(folder_path, model_name), f"{model_name}"),
         # 2. subdir 내부 (예: runtime)
-        (os.path.join(folder_path, model_name, subdir), f"{model_name}/{subdir}") if subdir else None,
+        (os.path.join(folder_path, model_name, subdir), f"{model_name}/{subdir}")
+        if subdir
+        else None,
         # 3. 텍스처 폴더 내부
-        (os.path.join(folder_path, model_name, subdir, f"{model_name}.1024"), f"{model_name}/{subdir}/{model_name}.1024") if subdir else None,
+        (
+            os.path.join(folder_path, model_name, subdir, f"{model_name}.1024"),
+            f"{model_name}/{subdir}/{model_name}.1024",
+        )
+        if subdir
+        else None,
     ]
 
     for search_info in search_paths:
@@ -358,11 +417,10 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
                 break
 
         if not folder_path:
-            logger.warning(f"[model_routes] External folder not found for mount: {mount_path}")
-            return JSONResponse(
-                {"detail": "Not Found"},
-                status_code=404
+            logger.warning(
+                f"[model_routes] External folder not found for mount: {mount_path}"
             )
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
 
         # 파일 경로 구성
         full_path = os.path.join(folder_path, file_path)
@@ -371,21 +429,16 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         # 보안: 폴더 외부 접근 방지
         if not full_path.startswith(os.path.normpath(folder_path)):
             logger.warning(f"[model_routes] Path traversal attempt: {full_path}")
-            return JSONResponse(
-                {"detail": "Forbidden"},
-                status_code=403
-            )
+            return JSONResponse({"detail": "Forbidden"}, status_code=403)
 
         if not os.path.isfile(full_path):
             logger.debug(f"[model_routes] File not found: {full_path}")
-            return JSONResponse(
-                {"detail": "Not Found"},
-                status_code=404
-            )
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
 
         # CORS 헤더와 함께 파일 반환
         # Content-Type 추론
         import mimetypes
+
         content_type, _ = mimetypes.guess_type(full_path)
         if content_type is None:
             content_type = "application/octet-stream"
@@ -397,7 +450,7 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
-            }
+            },
         )
         return response
 
@@ -487,7 +540,10 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         response_model=AddFolderResponse,
         responses={
             200: {"description": "폴더 등록 성공", "model": AddFolderResponse},
-            400: {"description": "잘못된 요청 (경로 누락, 폴더 미존재)", "model": ErrorResponse},
+            400: {
+                "description": "잘못된 요청 (경로 누락, 폴더 미존재)",
+                "model": ErrorResponse,
+            },
         },
     )
     async def add_external_model_folder(request: Request):
@@ -508,16 +564,14 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
             data = await request.json()
         except Exception:
             return JSONResponse(
-                {"success": False, "error": "Invalid JSON body"},
-                status_code=400
+                {"success": False, "error": "Invalid JSON body"}, status_code=400
             )
 
         folder_path = data.get("path", "").strip()
 
         if not folder_path:
             return JSONResponse(
-                {"success": False, "error": "폴더 경로가 필요합니다"},
-                status_code=400
+                {"success": False, "error": "폴더 경로가 필요합니다"}, status_code=400
             )
 
         # 경로 정규화 및 절대 경로 변환
@@ -526,14 +580,12 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         # 경로 탐색 공격 방지: ".." 포함 여부 확인
         if ".." in os.path.normpath(data.get("path", "")):
             return JSONResponse(
-                {"success": False, "error": "잘못된 경로입니다"},
-                status_code=400
+                {"success": False, "error": "잘못된 경로입니다"}, status_code=400
             )
 
         if not os.path.isdir(folder_path):
             return JSONResponse(
-                {"success": False, "error": "폴더가 존재하지 않습니다"},
-                status_code=400
+                {"success": False, "error": "폴더가 존재하지 않습니다"}, status_code=400
             )
 
         # 동적 마운트 경로 생성
@@ -544,7 +596,9 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         if already_registered:
             # 기존 마운트 경로 사용
             mount_path = _external_model_folders[folder_path]
-            logger.info(f"[model_routes] Folder already registered, re-mounting: {folder_path} -> {mount_path}")
+            logger.info(
+                f"[model_routes] Folder already registered, re-mounting: {folder_path} -> {mount_path}"
+            )
         else:
             # 새 마운트 경로 생성
             mount_path = f"/external-models/{safe_name}"
@@ -558,17 +612,23 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
 
         # 마운트는 더 이상 동적으로 하지 않음
         # 대신 /external-models/{folder_name}/{path:path} 라우트를 통해 파일 서빙
-        logger.info(f"[model_routes] Registered external folder: {folder_path} -> {mount_path}")
+        logger.info(
+            f"[model_routes] Registered external folder: {folder_path} -> {mount_path}"
+        )
 
         # 등록 저장
         _external_model_folders[folder_path] = mount_path
 
-        return JSONResponse({
-            "success": True,
-            "path": folder_path,
-            "mount_path": mount_path,
-            "message": "이미 등록된 폴더입니다 (재마운트)" if already_registered else None
-        })
+        return JSONResponse(
+            {
+                "success": True,
+                "path": folder_path,
+                "mount_path": mount_path,
+                "message": "이미 등록된 폴더입니다 (재마운트)"
+                if already_registered
+                else None,
+            }
+        )
 
     @router.delete(
         "/live2d-models/remove-folder",
@@ -605,16 +665,14 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
             data = await request.json()
         except Exception:
             return JSONResponse(
-                {"success": False, "error": "Invalid JSON body"},
-                status_code=400
+                {"success": False, "error": "Invalid JSON body"}, status_code=400
             )
 
         folder_path = data.get("path", "").strip()
 
         if not folder_path:
             return JSONResponse(
-                {"success": False, "error": "폴더 경로가 필요합니다"},
-                status_code=400
+                {"success": False, "error": "폴더 경로가 필요합니다"}, status_code=400
             )
 
         # 경로 정규화
@@ -622,16 +680,17 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
 
         if folder_path in _external_model_folders:
             del _external_model_folders[folder_path]
-            return JSONResponse({
-                "success": True,
-                "path": folder_path,
-                "message": "폴더가 제거되었습니다 (마운트 해제는 서버 재시작 시 적용)"
-            })
+            return JSONResponse(
+                {
+                    "success": True,
+                    "path": folder_path,
+                    "message": "폴더가 제거되었습니다 (마운트 해제는 서버 재시작 시 적용)",
+                }
+            )
         else:
-            return JSONResponse({
-                "success": False,
-                "error": "등록되지 않은 폴더입니다"
-            }, status_code=404)
+            return JSONResponse(
+                {"success": False, "error": "등록되지 않은 폴더입니다"}, status_code=404
+            )
 
     return router
 

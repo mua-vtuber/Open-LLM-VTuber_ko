@@ -13,13 +13,19 @@ import sys
 import io
 
 # Force UTF-8 encoding for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 from upgrade_codes.upgrade_core.constants import (
-    TEXTS, TEXTS_MERGE, TEXTS_COMPARE, UPGRADE_TEXTS,
-    get_text, get_merge_text, get_compare_text, get_upgrade_routine_text
+    TEXTS,
+    TEXTS_MERGE,
+    TEXTS_COMPARE,
+    UPGRADE_TEXTS,
+    get_text,
+    get_merge_text,
+    get_compare_text,
+    get_upgrade_routine_text,
 )
 
 
@@ -73,14 +79,26 @@ def test_helper_functions():
     print(f"  [ko] new_config_item: {get_merge_text('new_config_item', lang='ko')}")
 
     print("\nget_compare_text():")
-    print(f"  [en] compare_passed: {get_compare_text('compare_passed', lang='en', name='test')}")
-    print(f"  [zh] compare_passed: {get_compare_text('compare_passed', lang='zh', name='测试')}")
-    print(f"  [ko] compare_passed: {get_compare_text('compare_passed', lang='ko', name='테스트')}")
+    print(
+        f"  [en] compare_passed: {get_compare_text('compare_passed', lang='en', name='test')}"
+    )
+    print(
+        f"  [zh] compare_passed: {get_compare_text('compare_passed', lang='zh', name='测试')}"
+    )
+    print(
+        f"  [ko] compare_passed: {get_compare_text('compare_passed', lang='ko', name='테스트')}"
+    )
 
     print("\nget_upgrade_routine_text():")
-    print(f"  [en] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='en', from_version='1.0', to_version='2.0')}")
-    print(f"  [zh] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='zh', from_version='1.0', to_version='2.0')}")
-    print(f"  [ko] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='ko', from_version='1.0', to_version='2.0')}")
+    print(
+        f"  [en] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='en', from_version='1.0', to_version='2.0')}"
+    )
+    print(
+        f"  [zh] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='zh', from_version='1.0', to_version='2.0')}"
+    )
+    print(
+        f"  [ko] upgrading_path: {get_upgrade_routine_text('upgrading_path', lang='ko', from_version='1.0', to_version='2.0')}"
+    )
 
     print("\n[OK] Helper function tests passed!")
 
@@ -93,15 +111,15 @@ def test_all_korean_keys():
 
     # Sample some keys
     keys = [
-        'backup_user_config',
-        'pulling',
-        'upgrade_complete',
-        'checking_remote',
-        'version_upgrade_success'
+        "backup_user_config",
+        "pulling",
+        "upgrade_complete",
+        "checking_remote",
+        "version_upgrade_success",
     ]
 
     for key in keys:
-        text = get_text(key, lang='ko')
+        text = get_text(key, lang="ko")
         print(f"  {key:30s} → {text[:50]}...")
 
     print("\n[OK] All Korean translation tests passed!")
@@ -128,6 +146,7 @@ def main():
     except Exception as e:
         print(f"\n[ERROR] Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

@@ -68,8 +68,7 @@ class WebSocketHandler:
         # Initialize Queue Manager
         self._queue_config = QueueConfig()
         self._input_queue_manager = InputQueueManager(
-            config=self._queue_config,
-            message_handler=self._process_queued_message
+            config=self._queue_config, message_handler=self._process_queued_message
         )
         logger.info("WebSocketHandler initialized with InputQueueManager")
 
@@ -113,46 +112,48 @@ class WebSocketHandler:
 
     def _register_message_handlers(self) -> None:
         """Register all message handlers with the router."""
-        self.message_router.register_handlers({
-            # Group operations
-            "add-client-to-group": self._handle_group_operation,
-            "remove-client-from-group": self._handle_group_operation,
-            "request-group-info": self._handle_group_info,
-            # History operations
-            "fetch-history-list": self.history_handler.handle_history_list_request,
-            "fetch-and-set-history": self.history_handler.handle_fetch_history,
-            "create-new-history": self.history_handler.handle_create_history,
-            "delete-history": self.history_handler.handle_delete_history,
-            # Audio operations
-            "mic-audio-data": self.audio_handler.handle_audio_data,
-            "raw-audio-data": self.audio_handler.handle_raw_audio_data,
-            "audio-play-start": self._handle_audio_play_start,
-            # Conversation triggers
-            "mic-audio-end": self._handle_conversation_trigger,
-            "text-input": self._handle_conversation_trigger,
-            "ai-speak-signal": self._handle_conversation_trigger,
-            "interrupt-signal": self._handle_interrupt,
-            # Config operations
-            "fetch-configs": self.config_handler.handle_fetch_configs,
-            "switch-config": self.config_handler.handle_config_switch,
-            "fetch-backgrounds": self.config_handler.handle_fetch_backgrounds,
-            "request-init-config": self.config_handler.handle_init_config_request,
-            "fetch-tts-config": self.config_handler.handle_fetch_tts_config,
-            "fetch-live-config": self.config_handler.handle_fetch_live_config,
-            # Memory operations
-            "get_memories": self.memory_handler.handle_get_memories,
-            "delete_memory": self.memory_handler.handle_delete_memory,
-            "delete_all_memories": self.memory_handler.handle_delete_all_memories,
-            # Priority rules operations
-            "fetch-priority-rules": self._handle_fetch_priority_rules,
-            "update-priority-rules": self._handle_update_priority_rules,
-            # OBS operations
-            "obs-connect": self._handle_obs_connect,
-            "obs-disconnect": self._handle_obs_disconnect,
-            "obs-get-layout": self._handle_obs_get_layout,
-            # Utility
-            "heartbeat": self._handle_heartbeat,
-        })
+        self.message_router.register_handlers(
+            {
+                # Group operations
+                "add-client-to-group": self._handle_group_operation,
+                "remove-client-from-group": self._handle_group_operation,
+                "request-group-info": self._handle_group_info,
+                # History operations
+                "fetch-history-list": self.history_handler.handle_history_list_request,
+                "fetch-and-set-history": self.history_handler.handle_fetch_history,
+                "create-new-history": self.history_handler.handle_create_history,
+                "delete-history": self.history_handler.handle_delete_history,
+                # Audio operations
+                "mic-audio-data": self.audio_handler.handle_audio_data,
+                "raw-audio-data": self.audio_handler.handle_raw_audio_data,
+                "audio-play-start": self._handle_audio_play_start,
+                # Conversation triggers
+                "mic-audio-end": self._handle_conversation_trigger,
+                "text-input": self._handle_conversation_trigger,
+                "ai-speak-signal": self._handle_conversation_trigger,
+                "interrupt-signal": self._handle_interrupt,
+                # Config operations
+                "fetch-configs": self.config_handler.handle_fetch_configs,
+                "switch-config": self.config_handler.handle_config_switch,
+                "fetch-backgrounds": self.config_handler.handle_fetch_backgrounds,
+                "request-init-config": self.config_handler.handle_init_config_request,
+                "fetch-tts-config": self.config_handler.handle_fetch_tts_config,
+                "fetch-live-config": self.config_handler.handle_fetch_live_config,
+                # Memory operations
+                "get_memories": self.memory_handler.handle_get_memories,
+                "delete_memory": self.memory_handler.handle_delete_memory,
+                "delete_all_memories": self.memory_handler.handle_delete_all_memories,
+                # Priority rules operations
+                "fetch-priority-rules": self._handle_fetch_priority_rules,
+                "update-priority-rules": self._handle_update_priority_rules,
+                # OBS operations
+                "obs-connect": self._handle_obs_connect,
+                "obs-disconnect": self._handle_obs_disconnect,
+                "obs-get-layout": self._handle_obs_get_layout,
+                # Utility
+                "heartbeat": self._handle_heartbeat,
+            }
+        )
 
     # ==========================================================================
     # Public API - Connection Lifecycle
@@ -181,12 +182,12 @@ class WebSocketHandler:
             while True:
                 try:
                     data = await websocket.receive_json()
-                    
+
                     # Log message reception (optional, using existing handler)
                     message_handler.handle_message(client_uid, data)
 
                     # Add client_uid to message for processing
-                    data['client_uid'] = client_uid
+                    data["client_uid"] = client_uid
 
                     # Enqueue message
                     success = await self._input_queue_manager.enqueue(data)
@@ -210,7 +211,9 @@ class WebSocketHandler:
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
                     await websocket.send_text(
-                        json.dumps({"type": "error", "message": "An internal error occurred"})
+                        json.dumps(
+                            {"type": "error", "message": "An internal error occurred"}
+                        )
                     )
                     continue
 
@@ -242,7 +245,7 @@ class WebSocketHandler:
         Args:
             message: The message dictionary containing 'client_uid' and message data.
         """
-        client_uid = message.get('client_uid')
+        client_uid = message.get("client_uid")
         if not client_uid:
             logger.error("Message missing client_uid")
             return
@@ -262,13 +265,13 @@ class WebSocketHandler:
                 websocket=websocket,
                 client_uid=client_uid,
                 data=message,
-                message_handlers=self.message_router.handlers # Using registered handlers
+                message_handlers=self.message_router.handlers,  # Using registered handlers
             )
         except Exception as e:
             logger.error(
                 f"Error processing queued message (client: {client_uid}, "
                 f"type: {message.get('type', 'unknown')}): {e}",
-                exc_info=True
+                exc_info=True,
             )
 
     def get_queue_status(self) -> Dict[str, Any]:
@@ -281,15 +284,15 @@ class WebSocketHandler:
         status = self._input_queue_manager.get_status()
 
         return {
-            'pending': status.get('queue_size', 0),
-            'processing': 1 if status.get('current_message') else 0,
-            'max_size': status.get('queue_max_size', 0),
-            'total_received': status.get('total_received', 0),
-            'total_processed': status.get('total_processed', 0),
-            'total_dropped': status.get('total_dropped', 0),
-            'running': status.get('running', False),
-            'avg_processing_time': status.get('avg_processing_time', 0.0),
-            'processing_rate': status.get('processing_rate', 0.0)
+            "pending": status.get("queue_size", 0),
+            "processing": 1 if status.get("current_message") else 0,
+            "max_size": status.get("queue_max_size", 0),
+            "total_received": status.get("total_received", 0),
+            "total_processed": status.get("total_processed", 0),
+            "total_dropped": status.get("total_dropped", 0),
+            "running": status.get("running", False),
+            "avg_processing_time": status.get("avg_processing_time", 0.0),
+            "processing_rate": status.get("processing_rate", 0.0),
         }
 
     # ==========================================================================
@@ -304,9 +307,7 @@ class WebSocketHandler:
         self, group_members: list[str], message: dict, exclude_uid: str = None
     ) -> None:
         """Broadcasts a message to group members."""
-        await self.group_handler.broadcast_to_group(
-            group_members, message, exclude_uid
-        )
+        await self.group_handler.broadcast_to_group(group_members, message, exclude_uid)
 
     # ==========================================================================
     # Private - Message Handler Wrappers (for handlers needing extra context)
@@ -393,16 +394,17 @@ class WebSocketHandler:
     ) -> None:
         """Handle request to fetch priority rules."""
         try:
-            await websocket.send_json({
-                "type": "priority-rules-data",
-                "priority_rules": self._queue_config.priority_rules.to_dict()
-            })
+            await websocket.send_json(
+                {
+                    "type": "priority-rules-data",
+                    "priority_rules": self._queue_config.priority_rules.to_dict(),
+                }
+            )
         except Exception as e:
             logger.error(f"Error sending priority rules: {e}")
-            await websocket.send_json({
-                "type": "priority-rules-error",
-                "error": "An internal error occurred"
-            })
+            await websocket.send_json(
+                {"type": "priority-rules-error", "error": "An internal error occurred"}
+            )
 
     async def _handle_update_priority_rules(
         self, websocket: WebSocket, client_uid: str, data: dict
@@ -412,24 +414,27 @@ class WebSocketHandler:
             priority_rules_data = data.get("priority_rules", {})
 
             # Update the priority rules
-            success = self._queue_config.priority_rules.update_from_dict(priority_rules_data)
+            success = self._queue_config.priority_rules.update_from_dict(
+                priority_rules_data
+            )
 
             if success:
                 logger.info(f"Priority rules updated by client {client_uid}")
                 # Broadcast the update to all clients
                 await self.broadcast_priority_rules_update()
             else:
-                await websocket.send_json({
-                    "type": "priority-rules-update-error",
-                    "error": "Invalid priority rules data"
-                })
+                await websocket.send_json(
+                    {
+                        "type": "priority-rules-update-error",
+                        "error": "Invalid priority rules data",
+                    }
+                )
 
         except Exception as e:
             logger.error(f"Error updating priority rules: {e}")
-            await websocket.send_json({
-                "type": "priority-rules-update-error",
-                "error": "Operation failed"
-            })
+            await websocket.send_json(
+                {"type": "priority-rules-update-error", "error": "Operation failed"}
+            )
 
     # ==========================================================================
     # Public API - Priority Rules
@@ -462,7 +467,7 @@ class WebSocketHandler:
         """
         message = {
             "type": "priority-rules-updated",
-            "priority_rules": self._queue_config.priority_rules.to_dict()
+            "priority_rules": self._queue_config.priority_rules.to_dict(),
         }
         for client_uid, websocket in self.client_connections.items():
             try:
@@ -502,9 +507,7 @@ class WebSocketHandler:
             if self._obs_service:
                 self._obs_service.disconnect()
 
-            self._obs_service = OBSService(
-                host=host, port=port, password=password
-            )
+            self._obs_service = OBSService(host=host, port=port, password=password)
             connected = await asyncio.to_thread(self._obs_service.connect)
 
             if connected:
@@ -514,31 +517,35 @@ class WebSocketHandler:
                     interval=poll_interval,
                 )
 
-                await websocket.send_json({
-                    "type": "obs-status",
-                    "connected": True,
-                    "message": "Connected to OBS",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "obs-status",
+                        "connected": True,
+                        "message": "Connected to OBS",
+                    }
+                )
 
                 # Send initial layout
-                layout = await asyncio.to_thread(
-                    self._obs_service.get_layout
-                )
+                layout = await asyncio.to_thread(self._obs_service.get_layout)
                 if layout:
                     await self._broadcast_obs_layout(layout)
             else:
-                await websocket.send_json({
+                await websocket.send_json(
+                    {
+                        "type": "obs-status",
+                        "connected": False,
+                        "message": "Failed to connect to OBS",
+                    }
+                )
+        except Exception as e:
+            logger.error(f"OBS connect error: {e}")
+            await websocket.send_json(
+                {
                     "type": "obs-status",
                     "connected": False,
                     "message": "Failed to connect to OBS",
-                })
-        except Exception as e:
-            logger.error(f"OBS connect error: {e}")
-            await websocket.send_json({
-                "type": "obs-status",
-                "connected": False,
-                "message": "Failed to connect to OBS",
-            })
+                }
+            )
 
     async def _handle_obs_disconnect(
         self, websocket: WebSocket, client_uid: str, data: dict
@@ -549,41 +556,47 @@ class WebSocketHandler:
             self._obs_service.disconnect()
             self._obs_service = None
 
-        await websocket.send_json({
-            "type": "obs-status",
-            "connected": False,
-            "message": "Disconnected from OBS",
-        })
+        await websocket.send_json(
+            {
+                "type": "obs-status",
+                "connected": False,
+                "message": "Disconnected from OBS",
+            }
+        )
 
     async def _handle_obs_get_layout(
         self, websocket: WebSocket, client_uid: str, data: dict
     ) -> None:
         """Get current OBS layout on demand."""
         if not self._obs_service or not self._obs_service.is_connected:
-            await websocket.send_json({
-                "type": "obs-status",
-                "connected": False,
-                "message": "OBS not connected",
-            })
+            await websocket.send_json(
+                {
+                    "type": "obs-status",
+                    "connected": False,
+                    "message": "OBS not connected",
+                }
+            )
             return
 
         layout = await asyncio.to_thread(self._obs_service.get_layout)
         if layout:
-            await websocket.send_json({
-                "type": "obs-layout",
-                "regions": [
-                    {
-                        "name": r.name,
-                        "x": r.x,
-                        "y": r.y,
-                        "width": r.width,
-                        "height": r.height,
-                    }
-                    for r in layout.regions
-                ],
-                "canvasWidth": layout.canvas_width,
-                "canvasHeight": layout.canvas_height,
-            })
+            await websocket.send_json(
+                {
+                    "type": "obs-layout",
+                    "regions": [
+                        {
+                            "name": r.name,
+                            "x": r.x,
+                            "y": r.y,
+                            "width": r.width,
+                            "height": r.height,
+                        }
+                        for r in layout.regions
+                    ],
+                    "canvasWidth": layout.canvas_width,
+                    "canvasHeight": layout.canvas_height,
+                }
+            )
 
     async def _broadcast_obs_layout(self, layout: SceneLayout) -> None:
         """Broadcast OBS layout update to all connected clients."""

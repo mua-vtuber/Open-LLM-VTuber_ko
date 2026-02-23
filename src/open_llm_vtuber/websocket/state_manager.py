@@ -1,4 +1,5 @@
 """Client state management for WebSocket connections."""
+
 import asyncio
 from typing import Dict, Optional, Any
 import numpy as np

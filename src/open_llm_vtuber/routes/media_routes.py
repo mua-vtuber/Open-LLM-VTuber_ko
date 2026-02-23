@@ -45,7 +45,9 @@ def init_media_routes(default_context_cache: ServiceContext) -> APIRouter:
             500: {"description": "서버 오류", "model": ErrorResponse},
         },
     )
-    async def transcribe_audio(file: UploadFile = File(..., description="변환할 WAV 오디오 파일")):
+    async def transcribe_audio(
+        file: UploadFile = File(..., description="변환할 WAV 오디오 파일"),
+    ):
         """
         오디오 파일을 텍스트로 변환합니다.
 
@@ -93,7 +95,9 @@ def init_media_routes(default_context_cache: ServiceContext) -> APIRouter:
             logger.error(f"Audio format error: {e}")
             return Response(
                 content=json.dumps(
-                    {"error": "Invalid audio format. Please ensure the file is 16-bit PCM WAV format."}
+                    {
+                        "error": "Invalid audio format. Please ensure the file is 16-bit PCM WAV format."
+                    }
                 ),
                 status_code=400,
                 media_type="application/json",

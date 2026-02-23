@@ -1,4 +1,5 @@
 """WebSocket message routing by type."""
+
 from typing import Callable, Dict, Any, Optional, Awaitable
 from fastapi import WebSocket, WebSocketDisconnect
 import json
@@ -56,7 +57,9 @@ class WebSocketMessageRouter:
                 await self._default_handler(client_id, message)
                 return True
             except Exception as e:
-                logger.error(f"Default handler error for {message_type} from {client_id}: {e}")
+                logger.error(
+                    f"Default handler error for {message_type} from {client_id}: {e}"
+                )
                 return False
 
         logger.warning(f"No handler for message type: {message_type} from {client_id}")

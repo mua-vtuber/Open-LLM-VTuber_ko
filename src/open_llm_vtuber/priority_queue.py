@@ -22,6 +22,7 @@ class PriorityMessage:
     heapq는 최소 힙이므로, 우선순위가 높을수록 먼저 처리되도록
     priority 값을 음수로 저장합니다.
     """
+
     priority: int = field(compare=True)
     timestamp: float = field(compare=True)
     data: Dict[str, Any] = field(compare=False)
@@ -51,7 +52,9 @@ class PriorityQueue:
     def __init__(
         self,
         config: Optional[QueueConfig] = None,
-        alert_callback: Optional[Callable[[str, str, str], Coroutine[Any, Any, None]]] = None
+        alert_callback: Optional[
+            Callable[[str, str, str], Coroutine[Any, Any, None]]
+        ] = None,
     ):
         """
         우선순위 큐를 초기화합니다.
@@ -87,16 +90,13 @@ class PriorityQueue:
         """
         async with self._lock:
             # 메시지에서 우선순위 추출 (기본값: NORMAL)
-            priority_value = message.get('priority', MessagePriority.NORMAL)
+            priority_value = message.get("priority", MessagePriority.NORMAL)
 
             # QueueConfig를 사용하여 우선순위 레벨 결정
             priority_level = self.config.get_priority_level(priority_value)
 
             # 우선순위 메시지 객체 생성
-            priority_msg = PriorityMessage(
-                priority=priority_level,
-                data=message
-            )
+            priority_msg = PriorityMessage(priority=priority_level, data=message)
 
             # 큐 오버플로우 체크
             if len(self._queue) >= self.config.max_queue_size:
@@ -138,10 +138,7 @@ class PriorityQueue:
             while not self._queue:
                 try:
                     if timeout:
-                        await asyncio.wait_for(
-                            self._not_empty.wait(),
-                            timeout=timeout
-                        )
+                        await asyncio.wait_for(self._not_empty.wait(), timeout=timeout)
                     else:
                         await self._not_empty.wait()
                 except asyncio.TimeoutError:
@@ -167,7 +164,7 @@ class PriorityQueue:
         # priority가 음수로 저장되어 있으므로, 가장 큰 값(가장 덜 음수)이 가장 낮은 우선순위
         # 우선순위별로 메시지 그룹화
         low_priority_indices = []
-        max_priority = float('-inf')  # 가장 낮은 우선순위 (가장 큰 음수가 아닌 값)
+        max_priority = float("-inf")  # 가장 낮은 우선순위 (가장 큰 음수가 아닌 값)
 
         for i, msg in enumerate(self._queue):
             if msg.priority > max_priority:
@@ -179,10 +176,7 @@ class PriorityQueue:
         # 낮은 우선순위 메시지 중 가장 오래된 것 드롭
         if low_priority_indices:
             # 설정에 따라 드롭할 개수 결정
-            drop_count = min(
-                self.config.overflow_drop_count,
-                len(low_priority_indices)
-            )
+            drop_count = min(self.config.overflow_drop_count, len(low_priority_indices))
 
             # 타임스탬프로 정렬하여 가장 오래된 것부터 드롭
             # (priority, timestamp) 튜플로 정렬
@@ -245,9 +239,7 @@ class PriorityQueue:
 
         try:
             await self._alert_callback(
-                "overflow",
-                f"큐 오버플로우: {dropped_count}개 메시지 드롭됨",
-                "warning"
+                "overflow", f"큐 오버플로우: {dropped_count}개 메시지 드롭됨", "warning"
             )
             self._last_overflow_alert = now
         except Exception:
@@ -289,11 +281,11 @@ class PriorityQueue:
             Dict[str, int]: 메트릭 정보
         """
         return {
-            'total_enqueued': self._total_enqueued,
-            'total_dequeued': self._total_dequeued,
-            'total_dropped': self._total_dropped,
-            'current_size': self.qsize(),
-            'max_size': self.config.max_queue_size
+            "total_enqueued": self._total_enqueued,
+            "total_dequeued": self._total_dequeued,
+            "total_dropped": self._total_dropped,
+            "current_size": self.qsize(),
+            "max_size": self.config.max_queue_size,
         }
 
     async def clear(self) -> int:

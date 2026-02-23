@@ -22,8 +22,7 @@ from src.open_llm_vtuber.queue_config import QueueConfig, MessagePriority  # noq
 
 # 로깅 설정
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -95,7 +94,7 @@ async def send_messages_burst(
     queue_manager: InputQueueManager,
     stats: LoadTestStats,
     messages_per_second: int,
-    duration_seconds: int
+    duration_seconds: int,
 ):
     """
     지정된 속도로 메시지를 전송합니다.
@@ -133,11 +132,11 @@ async def send_messages_burst(
 
         # 메시지 생성
         message = {
-            'type': message_type,
-            'content': f'테스트 메시지 #{i + 1}',
-            'priority': priority,
-            'timestamp': datetime.now().isoformat(),
-            'test_id': i,
+            "type": message_type,
+            "content": f"테스트 메시지 #{i + 1}",
+            "priority": priority,
+            "timestamp": datetime.now().isoformat(),
+            "test_id": i,
         }
 
         # 메시지 전송
@@ -191,7 +190,7 @@ async def run_load_test():
 
     # 테스트 파라미터
     messages_per_second = 15  # 초당 15개 메시지 (요구사항: 10+)
-    duration_seconds = 30      # 30초 동안 테스트
+    duration_seconds = 30  # 30초 동안 테스트
 
     logger.info("=" * 60)
     logger.info("입력 큐 부하 테스트 시작")
@@ -207,8 +206,7 @@ async def run_load_test():
 
     # 입력 큐 매니저 생성
     queue_manager = InputQueueManager(
-        config=config,
-        message_handler=dummy_message_handler
+        config=config, message_handler=dummy_message_handler
     )
 
     # 통계 수집 객체
@@ -220,16 +218,11 @@ async def run_load_test():
         logger.info("큐 매니저 시작됨")
 
         # 모니터링 태스크 시작 (백그라운드)
-        monitor_task = asyncio.create_task(
-            monitor_queue(queue_manager, interval=5.0)
-        )
+        monitor_task = asyncio.create_task(monitor_queue(queue_manager, interval=5.0))
 
         # 부하 테스트 실행
         await send_messages_burst(
-            queue_manager,
-            stats,
-            messages_per_second,
-            duration_seconds
+            queue_manager, stats, messages_per_second, duration_seconds
         )
 
         # 큐가 비워질 때까지 대기 (최대 60초)
@@ -258,7 +251,7 @@ async def run_load_test():
 
         # 최종 상태 수집
         final_status = queue_manager.get_status()
-        stats.total_processed = final_status['total_processed']
+        stats.total_processed = final_status["total_processed"]
 
     finally:
         # 큐 매니저 중지
@@ -297,8 +290,7 @@ def validate_results(stats: LoadTestStats, queue_manager: InputQueueManager) -> 
         logger.info("✓ 모든 메시지가 성공적으로 큐에 추가됨")
     else:
         logger.error(
-            f"✗ 일부 메시지가 드롭됨: "
-            f"{stats.total_dropped}/{stats.total_sent}"
+            f"✗ 일부 메시지가 드롭됨: {stats.total_dropped}/{stats.total_sent}"
         )
         success = False
 
@@ -315,20 +307,17 @@ def validate_results(stats: LoadTestStats, queue_manager: InputQueueManager) -> 
         success = False
 
     # 3. 처리 실패 확인
-    if final_status['total_failed'] == 0:
+    if final_status["total_failed"] == 0:
         logger.info("✓ 처리 실패 없음")
     else:
-        logger.warning(
-            f"⚠ 처리 실패: {final_status['total_failed']}개"
-        )
+        logger.warning(f"⚠ 처리 실패: {final_status['total_failed']}개")
 
     # 4. 큐가 정상적으로 비워졌는지 확인
     if queue_manager.is_queue_empty():
         logger.info("✓ 큐가 정상적으로 비워짐")
     else:
         logger.warning(
-            f"⚠ 큐에 처리되지 않은 메시지가 남아있음: "
-            f"{final_status['queue_size']}개"
+            f"⚠ 큐에 처리되지 않은 메시지가 남아있음: {final_status['queue_size']}개"
         )
 
     logger.info("=" * 60)

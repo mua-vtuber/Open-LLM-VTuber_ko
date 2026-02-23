@@ -9,7 +9,14 @@ Phase 1: Foundation - Token-budgeted context management
 Phase 2: Cognitive Memory - Stream context, extraction pipeline, reflection
 """
 
-from .models import Message, MemoryType, SemanticMemory, Episode, EntityProfile, RetrievalResult
+from .models import (
+    Message,
+    MemoryType,
+    SemanticMemory,
+    Episode,
+    EntityProfile,
+    RetrievalResult,
+)
 from .config import MemoryConfig
 from .embedding import EmbeddingService
 from .evolution import MemoryEvolver

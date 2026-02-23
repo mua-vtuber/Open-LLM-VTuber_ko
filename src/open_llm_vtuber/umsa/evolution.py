@@ -63,9 +63,7 @@ class MemoryEvolver:
         merge_count = await self._merge_similar(entity_id)
         prune_count = await self._prune_stale(entity_id)
 
-        logger.info(
-            f"Evolution complete: merged={merge_count}, pruned={prune_count}"
-        )
+        logger.info(f"Evolution complete: merged={merge_count}, pruned={prune_count}")
         return {"merged": merge_count, "pruned": prune_count}
 
     async def _merge_similar(self, entity_id: str | None) -> int:
@@ -130,13 +128,15 @@ class MemoryEvolver:
 
                 # Record merge provenance as a graph edge
                 try:
-                    await self._store.insert_knowledge_edge({
-                        "edge_id": f"merge_{keep['node_id']}_{discard['node_id']}",
-                        "source_node_id": keep["node_id"],
-                        "target_node_id": discard["node_id"],
-                        "edge_type": "merged_from",
-                        "strength": similarity,
-                    })
+                    await self._store.insert_knowledge_edge(
+                        {
+                            "edge_id": f"merge_{keep['node_id']}_{discard['node_id']}",
+                            "source_node_id": keep["node_id"],
+                            "target_node_id": discard["node_id"],
+                            "edge_type": "merged_from",
+                            "strength": similarity,
+                        }
+                    )
                 except Exception:
                     pass  # Edge creation is best-effort
 

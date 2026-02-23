@@ -100,7 +100,9 @@ class TestConstruction:
         with pytest.raises(ValueError, match="(?i)no extraction"):
             MemoryExtractor(llm=None, config=config)
 
-    def test_llm_provided_regex_disabled(self, llm_only_config: ExtractionConfig) -> None:
+    def test_llm_provided_regex_disabled(
+        self, llm_only_config: ExtractionConfig
+    ) -> None:
         """Constructing with LLM but regex disabled should have no regex extractor."""
         ext = MemoryExtractor(llm=_make_llm_mock(), config=llm_only_config)
         assert ext._regex_extractor is None

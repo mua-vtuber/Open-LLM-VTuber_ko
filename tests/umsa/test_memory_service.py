@@ -145,9 +145,11 @@ class TestBuildContextPhase2:
         service._token_counter = MagicMock()
 
         # Mock _ensure_retriever to avoid real embedding
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         await service.build_context(
             messages=sample_messages,
@@ -159,7 +161,9 @@ class TestBuildContextPhase2:
         assert call_kwargs["stream_context"] != ""
 
     @pytest.mark.asyncio
-    async def test_build_context_passes_procedural_rules(self, service, sample_messages):
+    async def test_build_context_passes_procedural_rules(
+        self, service, sample_messages
+    ):
         """build_context() passes procedural rules to assembler."""
         service._procedural_memory.add_rule("greeting", "Always say hello first")
 
@@ -171,9 +175,11 @@ class TestBuildContextPhase2:
         service._context_assembler = mock_assembler
         service._working_memory = MagicMock()
         service._token_counter = MagicMock()
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         await service.build_context(
             messages=sample_messages,
@@ -185,7 +191,9 @@ class TestBuildContextPhase2:
         assert "Always say hello first" in call_kwargs["procedural_rules"]
 
     @pytest.mark.asyncio
-    async def test_build_context_passes_episodic_summary(self, service, sample_messages):
+    async def test_build_context_passes_episodic_summary(
+        self, service, sample_messages
+    ):
         """build_context() queries recent episodes and passes episodic_summary."""
         mock_assembler = MagicMock()
         mock_assembler.assemble_split.return_value = AssembledContext(
@@ -199,15 +207,20 @@ class TestBuildContextPhase2:
         # Mock store to return episodes
         mock_store = AsyncMock()
         mock_store.get_stream_episodes.return_value = [
-            {"summary": "User discussed gaming preferences", "topics_json": '["gaming"]'},
+            {
+                "summary": "User discussed gaming preferences",
+                "topics_json": '["gaming"]',
+            },
             {"summary": "User talked about cooking", "topics_json": '["cooking"]'},
         ]
         service._store = mock_store
         service._store_initialized = True
 
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         await service.build_context(
             messages=sample_messages,
@@ -229,9 +242,11 @@ class TestBuildContextPhase2:
         service._context_assembler = mock_assembler
         service._working_memory = MagicMock()
         service._token_counter = MagicMock()
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         await service.build_context(
             messages=sample_messages,
@@ -254,9 +269,11 @@ class TestBuildContextPhase2:
         service._context_assembler = mock_assembler
         service._working_memory = MagicMock()
         service._token_counter = MagicMock()
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         await service.build_context(
             messages=sample_messages,
@@ -287,9 +304,11 @@ class TestBuildContextPhase2:
         service._store = mock_store
         service._store_initialized = True
 
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         # Should not raise, should use empty episodic summary
         result = await service.build_context(
@@ -314,8 +333,18 @@ class TestStartSessionPhase2:
         """start_session() loads procedural rules from SQLite."""
         mock_store = AsyncMock()
         mock_store.get_active_procedural_rules.return_value = [
-            {"id": "r1", "rule_type": "greeting", "content": "Say hello", "confidence": 0.8},
-            {"id": "r2", "rule_type": "tone", "content": "Be friendly", "confidence": 0.7},
+            {
+                "id": "r1",
+                "rule_type": "greeting",
+                "content": "Say hello",
+                "confidence": 0.8,
+            },
+            {
+                "id": "r2",
+                "rule_type": "tone",
+                "content": "Be friendly",
+                "confidence": 0.7,
+            },
         ]
         mock_store.insert_session = AsyncMock()
         service._store = mock_store
@@ -433,14 +462,31 @@ class TestEndSessionPhase2:
         mock_store.insert_stream_episode = AsyncMock(return_value="ep_1")
         mock_store.insert_consolidation_log = AsyncMock()
         mock_store.touch_entity = AsyncMock()
-        mock_store.get_knowledge_nodes = AsyncMock(return_value=[
-            {"node_id": "n1", "entity_id": "user1", "content": "likes cats",
-             "node_type": "preference", "importance": 0.5},
-            {"node_id": "n2", "entity_id": "user1", "content": "has a cat",
-             "node_type": "atomic_fact", "importance": 0.6},
-            {"node_id": "n3", "entity_id": "user1", "content": "cat named Miso",
-             "node_type": "atomic_fact", "importance": 0.7},
-        ])
+        mock_store.get_knowledge_nodes = AsyncMock(
+            return_value=[
+                {
+                    "node_id": "n1",
+                    "entity_id": "user1",
+                    "content": "likes cats",
+                    "node_type": "preference",
+                    "importance": 0.5,
+                },
+                {
+                    "node_id": "n2",
+                    "entity_id": "user1",
+                    "content": "has a cat",
+                    "node_type": "atomic_fact",
+                    "importance": 0.6,
+                },
+                {
+                    "node_id": "n3",
+                    "entity_id": "user1",
+                    "content": "cat named Miso",
+                    "node_type": "atomic_fact",
+                    "importance": 0.7,
+                },
+            ]
+        )
         mock_store.insert_procedural_rule = AsyncMock()
         service._store = mock_store
         service._store_initialized = True
@@ -478,38 +524,56 @@ class TestEndSessionPhase2:
         mock_store.insert_stream_episode = AsyncMock(return_value="ep_1")
         mock_store.insert_consolidation_log = AsyncMock()
         mock_store.touch_entity = AsyncMock()
-        mock_store.get_knowledge_nodes = AsyncMock(return_value=[
-            {"node_id": "n1", "entity_id": "user1", "content": "pref1",
-             "node_type": "preference", "importance": 0.5},
-            {"node_id": "n2", "entity_id": "user1", "content": "pref2",
-             "node_type": "preference", "importance": 0.6},
-            {"node_id": "n3", "entity_id": "user1", "content": "pref3",
-             "node_type": "preference", "importance": 0.7},
-        ])
+        mock_store.get_knowledge_nodes = AsyncMock(
+            return_value=[
+                {
+                    "node_id": "n1",
+                    "entity_id": "user1",
+                    "content": "pref1",
+                    "node_type": "preference",
+                    "importance": 0.5,
+                },
+                {
+                    "node_id": "n2",
+                    "entity_id": "user1",
+                    "content": "pref2",
+                    "node_type": "preference",
+                    "importance": 0.6,
+                },
+                {
+                    "node_id": "n3",
+                    "entity_id": "user1",
+                    "content": "pref3",
+                    "node_type": "preference",
+                    "importance": 0.7,
+                },
+            ]
+        )
         mock_store.insert_procedural_rule = AsyncMock()
         service._store = mock_store
         service._store_initialized = True
         service.config.consolidation.enabled = False
 
         # Mock reflection to return an insight
-        service._reflection_engine.reflect_sync = MagicMock(return_value=[
-            {
-                "id": "insight_1",
-                "entity_id": "user1",
-                "memory_type": "meta_summary",
-                "content": "User has many preferences",
-                "importance": 0.8,
-                "source_node_ids": ["n1", "n2", "n3"],
-            }
-        ])
+        service._reflection_engine.reflect_sync = MagicMock(
+            return_value=[
+                {
+                    "id": "insight_1",
+                    "entity_id": "user1",
+                    "memory_type": "meta_summary",
+                    "content": "User has many preferences",
+                    "importance": 0.8,
+                    "source_node_ids": ["n1", "n2", "n3"],
+                }
+            ]
+        )
 
         await service.end_session(session_id)
 
         # Verify insight was persisted as a knowledge node
         insert_calls = mock_store.insert_knowledge_node.call_args_list
         insight_calls = [
-            c for c in insert_calls
-            if c[0][0].get("node_type") == "meta_summary"
+            c for c in insert_calls if c[0][0].get("node_type") == "meta_summary"
         ]
         assert len(insight_calls) == 1
         assert insight_calls[0][0][0]["content"] == "User has many preferences"
@@ -703,9 +767,11 @@ class TestEdgeCases:
         service._context_assembler = mock_assembler
         service._working_memory = MagicMock()
         service._token_counter = MagicMock()
-        service._ensure_retriever = AsyncMock(return_value=MagicMock(
-            retrieve=AsyncMock(return_value=[]),
-        ))
+        service._ensure_retriever = AsyncMock(
+            return_value=MagicMock(
+                retrieve=AsyncMock(return_value=[]),
+            )
+        )
 
         # Store not initialized -> _store is None
         result = await service.build_context(

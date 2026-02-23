@@ -81,15 +81,11 @@ class MemoryServiceInterface(Protocol):
         """Delete a semantic memory."""
         ...
 
-    async def get_all_memories(
-        self, entity_id: str | None = None
-    ) -> list[dict]:
+    async def get_all_memories(self, entity_id: str | None = None) -> list[dict]:
         """Get all memories, optionally filtered by entity."""
         ...
 
-    async def delete_all_memories(
-        self, entity_id: str | None = None
-    ) -> bool:
+    async def delete_all_memories(self, entity_id: str | None = None) -> bool:
         """Delete all memories, optionally filtered by entity."""
         ...
 
@@ -143,9 +139,7 @@ class MemoryService:
         self._reflection_engine = ReflectionEngine(llm=None)
         self._conflict_detector = ConflictDetector()
 
-        logger.debug(
-            f"MemoryService full config: {self.config.model_dump()}"
-        )
+        logger.debug(f"MemoryService full config: {self.config.model_dump()}")
         logger.info(
             f"MemoryService initialized: enabled={self.config.enabled}, "
             f"sqlite_db_path={self.config.storage.sqlite_db_path!r}"
@@ -169,7 +163,8 @@ class MemoryService:
         """
         if self.config.extraction.enabled:
             self._extractor = MemoryExtractor(
-                llm=llm, config=self.config.extraction,
+                llm=llm,
+                config=self.config.extraction,
             )
             logger.info("MemoryExtractor initialized with shared LLM")
 
@@ -186,9 +181,7 @@ class MemoryService:
             logger.debug("WorkingMemory initialized")
 
         if self._token_counter is None:
-            self._token_counter = TokenCounter(
-                model="gpt-3.5-turbo"
-            )
+            self._token_counter = TokenCounter(model="gpt-3.5-turbo")
             logger.debug("TokenCounter initialized")
 
         if self._context_assembler is None:
@@ -207,7 +200,9 @@ class MemoryService:
         if not self._store_initialized:
             await self._store.initialize()
             self._store_initialized = True
-            logger.debug(f"SQLiteStore initialized at {self.config.storage.sqlite_db_path}")
+            logger.debug(
+                f"SQLiteStore initialized at {self.config.storage.sqlite_db_path}"
+            )
         return self._store
 
     async def _ensure_retriever(self) -> HybridRetriever:
@@ -286,9 +281,9 @@ class MemoryService:
         retrieved_memories = []
         if messages:
             query_parts = [
-                msg["content"] for msg in messages[-3:]
-                if msg.get("role") == "user"
-                and isinstance(msg.get("content"), str)
+                msg["content"]
+                for msg in messages[-3:]
+                if msg.get("role") == "user" and isinstance(msg.get("content"), str)
             ]
             if query_parts:
                 query = " ".join(query_parts)
@@ -409,7 +404,8 @@ class MemoryService:
 
         try:
             result = await self._extractor.extract(
-                entity_id=entity_id, force=True,
+                entity_id=entity_id,
+                force=True,
             )
         except Exception as e:
             logger.error(f"Memory extraction failed: {e}")
@@ -422,14 +418,16 @@ class MemoryService:
         try:
             store = await self._ensure_store()
             for memory in result.memories:
-                await store.insert_knowledge_node({
-                    "node_id": memory.id,
-                    "entity_id": memory.entity_id,
-                    "node_type": memory.memory_type.value,
-                    "content": memory.content,
-                    "importance": memory.importance,
-                    "metadata": None,
-                })
+                await store.insert_knowledge_node(
+                    {
+                        "node_id": memory.id,
+                        "entity_id": memory.entity_id,
+                        "node_type": memory.memory_type.value,
+                        "content": memory.content,
+                        "importance": memory.importance,
+                        "metadata": None,
+                    }
+                )
             logger.info(
                 f"Persisted {len(result.memories)} extracted memories to SQLite"
             )
@@ -448,9 +446,7 @@ class MemoryService:
             for memory, embedding in zip(result.memories, embeddings):
                 blob = EmbeddingService.serialize_embedding(embedding)
                 await store.update_node_embedding(memory.id, blob)
-            logger.info(
-                f"Embedded {len(embeddings)} extracted memories"
-            )
+            logger.info(f"Embedded {len(embeddings)} extracted memories")
         except Exception as e:
             logger.warning(f"Failed to embed extracted memories: {e}")
 
@@ -483,12 +479,14 @@ class MemoryService:
 
         try:
             store = await self._ensure_store()
-            await store.insert_session({
-                "session_id": session_id,
-                "entity_id": entity_id,
-                "platform": platform,
-                "started_at": started_at,
-            })
+            await store.insert_session(
+                {
+                    "session_id": session_id,
+                    "entity_id": entity_id,
+                    "platform": platform,
+                    "started_at": started_at,
+                }
+            )
         except Exception as e:
             logger.warning(f"Failed to persist session to SQLite: {e}")
 
@@ -505,8 +503,7 @@ class MemoryService:
         self._stream_context.clear()
 
         logger.info(
-            f"Session started: {session_id} "
-            f"(entity={entity_id}, platform={platform})"
+            f"Session started: {session_id} (entity={entity_id}, platform={platform})"
         )
         return session_id
 
@@ -585,14 +582,16 @@ class MemoryService:
                     f"Session {session_id}: {message_count} messages "
                     f"on platform '{platform}'"
                 )
-                await store.insert_knowledge_node({
-                    "node_id": episode_node_id,
-                    "entity_id": entity_id,
-                    "node_type": "episode",
-                    "content": summary,
-                    "importance": min(0.3 + message_count * 0.05, 0.9),
-                    "metadata": None,
-                })
+                await store.insert_knowledge_node(
+                    {
+                        "node_id": episode_node_id,
+                        "entity_id": entity_id,
+                        "node_type": "episode",
+                        "content": summary,
+                        "importance": min(0.3 + message_count * 0.05, 0.9),
+                        "metadata": None,
+                    }
+                )
                 logger.debug(f"Episode node created: {episode_node_id}")
             except Exception as e:
                 logger.warning(f"Failed to create episode node: {e}")
@@ -610,26 +609,27 @@ class MemoryService:
         try:
             store = await self._ensure_store()
             recent_nodes = await store.get_knowledge_nodes(
-                entity_id=entity_id, limit=50,
+                entity_id=entity_id,
+                limit=50,
             )
             if recent_nodes:
                 insights = self._reflection_engine.reflect_sync(recent_nodes)
                 for insight in insights:
                     try:
-                        await store.insert_knowledge_node({
-                            "node_id": insight["id"],
-                            "entity_id": insight.get("entity_id"),
-                            "node_type": insight.get("memory_type", "meta_summary"),
-                            "content": insight["content"],
-                            "importance": insight.get("importance", 0.5),
-                            "metadata": None,
-                        })
+                        await store.insert_knowledge_node(
+                            {
+                                "node_id": insight["id"],
+                                "entity_id": insight.get("entity_id"),
+                                "node_type": insight.get("memory_type", "meta_summary"),
+                                "content": insight["content"],
+                                "importance": insight.get("importance", 0.5),
+                                "metadata": None,
+                            }
+                        )
                     except Exception as e:
                         logger.warning(f"Failed to persist reflection insight: {e}")
                 if insights:
-                    logger.debug(
-                        f"Reflection generated {len(insights)} insights"
-                    )
+                    logger.debug(f"Reflection generated {len(insights)} insights")
         except Exception as e:
             logger.warning(f"Reflection engine failed: {e}")
 
@@ -645,17 +645,19 @@ class MemoryService:
         # 8. Write consolidation log
         try:
             store = await self._ensure_store()
-            await store.insert_consolidation_log({
-                "session_id": session_id,
-                "consolidated_at": ended_at,
-                "nodes_created": 1 if episode_node_id else 0,
-                "edges_created": 0,
-                "summary": (
-                    f"messages={message_count}, "
-                    f"merged={evolution_result['merged']}, "
-                    f"pruned={evolution_result['pruned']}"
-                ),
-            })
+            await store.insert_consolidation_log(
+                {
+                    "session_id": session_id,
+                    "consolidated_at": ended_at,
+                    "nodes_created": 1 if episode_node_id else 0,
+                    "edges_created": 0,
+                    "summary": (
+                        f"messages={message_count}, "
+                        f"merged={evolution_result['merged']}, "
+                        f"pruned={evolution_result['pruned']}"
+                    ),
+                }
+            )
         except Exception as e:
             logger.warning(f"Failed to write consolidation log: {e}")
 
@@ -699,7 +701,9 @@ class MemoryService:
         try:
             retriever = await self._ensure_retriever()
             results = await retriever.retrieve(
-                query=query, entity_id=entity_id, top_k=top_k,
+                query=query,
+                entity_id=entity_id,
+                top_k=top_k,
             )
         except Exception as e:
             logger.warning(f"search_memories failed: {e}")
@@ -708,11 +712,13 @@ class MemoryService:
         memories = []
         for r in results:
             try:
-                memories.append(SemanticMemory(
-                    id=r.id,
-                    content=r.content,
-                    importance=r.score,
-                ))
+                memories.append(
+                    SemanticMemory(
+                        id=r.id,
+                        content=r.content,
+                        importance=r.score,
+                    )
+                )
             except Exception:
                 continue
 
@@ -729,14 +735,16 @@ class MemoryService:
             Memory ID
         """
         store = await self._ensure_store()
-        await store.insert_knowledge_node({
-            "node_id": memory.id,
-            "entity_id": memory.entity_id,
-            "node_type": memory.memory_type.value,
-            "content": memory.content,
-            "importance": memory.importance,
-            "metadata": None,
-        })
+        await store.insert_knowledge_node(
+            {
+                "node_id": memory.id,
+                "entity_id": memory.entity_id,
+                "node_type": memory.memory_type.value,
+                "content": memory.content,
+                "importance": memory.importance,
+                "metadata": None,
+            }
+        )
 
         # Generate and store embedding
         try:
@@ -771,9 +779,7 @@ class MemoryService:
             logger.warning(f"delete_memory failed: {e}")
             return False
 
-    async def get_all_memories(
-        self, entity_id: str | None = None
-    ) -> list[dict]:
+    async def get_all_memories(self, entity_id: str | None = None) -> list[dict]:
         """Get all memories from storage.
 
         Args:
@@ -791,9 +797,7 @@ class MemoryService:
             logger.warning(f"get_all_memories failed: {e}")
             return []
 
-    async def delete_all_memories(
-        self, entity_id: str | None = None
-    ) -> bool:
+    async def delete_all_memories(self, entity_id: str | None = None) -> bool:
         """Delete all memories from storage.
 
         Args:

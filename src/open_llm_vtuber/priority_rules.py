@@ -14,9 +14,10 @@ from loguru import logger
 
 class InputSource(str, Enum):
     """입력 소스 타입"""
-    CHAT = "chat"           # 채팅 메시지
-    VOICE = "voice"         # 음성 입력
-    SUPERCHAT = "superchat" # 슈퍼챗/후원 메시지
+
+    CHAT = "chat"  # 채팅 메시지
+    VOICE = "voice"  # 음성 입력
+    SUPERCHAT = "superchat"  # 슈퍼챗/후원 메시지
 
 
 class PriorityMode(str, Enum):
@@ -26,10 +27,11 @@ class PriorityMode(str, Enum):
     각 모드는 채팅과 음성 입력이 동시에 발생했을 때
     어떤 입력을 우선 처리할지 결정합니다.
     """
-    CHAT_FIRST = "chat_first"               # 채팅 우선
-    VOICE_FIRST = "voice_first"             # 음성 우선
-    SUPERCHAT_PRIORITY = "superchat_priority" # 슈퍼챗만 우선, 나머지는 음성 우선
-    BALANCED = "balanced"                   # 균형 모드 (선착순)
+
+    CHAT_FIRST = "chat_first"  # 채팅 우선
+    VOICE_FIRST = "voice_first"  # 음성 우선
+    SUPERCHAT_PRIORITY = "superchat_priority"  # 슈퍼챗만 우선, 나머지는 음성 우선
+    BALANCED = "balanced"  # 균형 모드 (선착순)
 
 
 class PriorityRules:
@@ -53,9 +55,7 @@ class PriorityRules:
 
         # 동시 입력 발생 시 대기 시간 (초 단위, 기본값: 2초)
         # 이 시간 동안 다른 입력이 없으면 현재 입력을 처리
-        self.wait_time: float = float(
-            os.getenv("PRIORITY_WAIT_TIME", "2.0")
-        )
+        self.wait_time: float = float(os.getenv("PRIORITY_WAIT_TIME", "2.0"))
 
         # 중단 허용 여부 (기본값: False)
         # True일 경우 우선순위가 높은 입력이 들어오면 현재 처리 중단
@@ -81,7 +81,9 @@ class PriorityRules:
             os.getenv("PRIORITY_CHAT_ACTIVE_VOICE_DELAY", "3.0")
         )
 
-    def get_priority_value(self, source: InputSource, is_processing: Optional[InputSource] = None) -> int:
+    def get_priority_value(
+        self, source: InputSource, is_processing: Optional[InputSource] = None
+    ) -> int:
         """
         입력 소스에 대한 우선순위 값을 계산합니다.
 
@@ -132,7 +134,9 @@ class PriorityRules:
             # 균형 모드에서는 중단 불가
             return 50
 
-    def get_delay_time(self, source: InputSource, is_processing: Optional[InputSource] = None) -> float:
+    def get_delay_time(
+        self, source: InputSource, is_processing: Optional[InputSource] = None
+    ) -> float:
         """
         입력 소스에 대한 대기 시간을 계산합니다.
 
@@ -161,7 +165,9 @@ class PriorityRules:
 
         return self.wait_time
 
-    def should_interrupt(self, new_source: InputSource, current_source: InputSource) -> bool:
+    def should_interrupt(
+        self, new_source: InputSource, current_source: InputSource
+    ) -> bool:
         """
         새로운 입력이 현재 처리를 중단시켜야 하는지 판단합니다.
 
@@ -175,7 +181,9 @@ class PriorityRules:
         # 중단 불허 설정인 경우
         if not self.allow_interruption:
             # 슈퍼챗만 예외
-            return new_source == InputSource.SUPERCHAT and self.superchat_always_priority
+            return (
+                new_source == InputSource.SUPERCHAT and self.superchat_always_priority
+            )
 
         # 슈퍼챗은 항상 중단 가능
         if new_source == InputSource.SUPERCHAT and self.superchat_always_priority:
@@ -183,12 +191,18 @@ class PriorityRules:
 
         # 모드별 중단 규칙
         if self.priority_mode == PriorityMode.CHAT_FIRST:
-            return new_source == InputSource.CHAT and current_source == InputSource.VOICE
+            return (
+                new_source == InputSource.CHAT and current_source == InputSource.VOICE
+            )
         elif self.priority_mode == PriorityMode.VOICE_FIRST:
-            return new_source == InputSource.VOICE and current_source == InputSource.CHAT
+            return (
+                new_source == InputSource.VOICE and current_source == InputSource.CHAT
+            )
         elif self.priority_mode == PriorityMode.SUPERCHAT_PRIORITY:
             # 슈퍼챗 외에는 음성이 채팅 중단 가능
-            return new_source == InputSource.VOICE and current_source == InputSource.CHAT
+            return (
+                new_source == InputSource.VOICE and current_source == InputSource.CHAT
+            )
         else:  # BALANCED
             # 균형 모드에서는 중단 불가
             return False
@@ -284,7 +298,9 @@ class PriorityRules:
                 try:
                     self.priority_mode = PriorityMode(data["priority_mode"])
                 except ValueError:
-                    logger.error(f"Invalid priority_mode value: {data['priority_mode']}")
+                    logger.error(
+                        f"Invalid priority_mode value: {data['priority_mode']}"
+                    )
                     return False
 
             # wait_time 업데이트 (범위: 0 ~ 30)
@@ -300,11 +316,17 @@ class PriorityRules:
                 self.allow_interruption = bool(data["allow_interruption"])
 
             # superchat_always_priority 업데이트
-            if "superchat_always_priority" in data and data["superchat_always_priority"] is not None:
+            if (
+                "superchat_always_priority" in data
+                and data["superchat_always_priority"] is not None
+            ):
                 self.superchat_always_priority = bool(data["superchat_always_priority"])
 
             # voice_active_chat_delay 업데이트 (범위: 0 ~ 60)
-            if "voice_active_chat_delay" in data and data["voice_active_chat_delay"] is not None:
+            if (
+                "voice_active_chat_delay" in data
+                and data["voice_active_chat_delay"] is not None
+            ):
                 voice_delay = float(data["voice_active_chat_delay"])
                 if voice_delay < 0 or voice_delay > 60:
                     logger.error(f"voice_active_chat_delay out of range: {voice_delay}")
@@ -312,7 +334,10 @@ class PriorityRules:
                 self.voice_active_chat_delay = voice_delay
 
             # chat_active_voice_delay 업데이트 (범위: 0 ~ 60)
-            if "chat_active_voice_delay" in data and data["chat_active_voice_delay"] is not None:
+            if (
+                "chat_active_voice_delay" in data
+                and data["chat_active_voice_delay"] is not None
+            ):
                 chat_delay = float(data["chat_active_voice_delay"])
                 if chat_delay < 0 or chat_delay > 60:
                     logger.error(f"chat_active_voice_delay out of range: {chat_delay}")

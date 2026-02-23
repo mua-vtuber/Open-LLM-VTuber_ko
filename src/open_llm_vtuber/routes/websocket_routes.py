@@ -40,9 +40,9 @@ def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
         APIRouter: Configured router with WebSocket endpoint.
     """
     global _ws_handler
-    
+
     router = APIRouter()
-    
+
     # WebSocketHandler 인스턴스가 없으면 생성
     if _ws_handler is None:
         _ws_handler = WebSocketHandler(default_context_cache)

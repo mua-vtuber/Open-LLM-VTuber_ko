@@ -2,6 +2,7 @@
 Open-LLM-VTuber Test Fixtures
 공통 테스트 픽스처 및 모킹 유틸리티
 """
+
 import pytest
 from unittest.mock import AsyncMock
 from typing import AsyncIterator
@@ -21,7 +22,7 @@ def mock_tts():
     """Mock TTS 오디오를 위한 픽스처"""
     mock = AsyncMock()
     # 샘플 오디오 데이터 (빈 WAV 헤더)
-    mock.generate_audio.return_value = async_generator([b'\x00' * 1024])
+    mock.generate_audio.return_value = async_generator([b"\x00" * 1024])
     return mock
 
 
@@ -53,7 +54,7 @@ def sample_config():
         },
         "asr": {
             "provider": "sherpa_onnx",
-        }
+        },
     }
 
 
@@ -62,7 +63,9 @@ def mock_websocket():
     """Mock WebSocket 연결"""
     ws = AsyncMock()
     ws.send_json = AsyncMock()
-    ws.receive_json = AsyncMock(return_value={"type": "text-input", "data": {"text": "Hello"}})
+    ws.receive_json = AsyncMock(
+        return_value={"type": "text-input", "data": {"text": "Hello"}}
+    )
     ws.close = AsyncMock()
     return ws
 

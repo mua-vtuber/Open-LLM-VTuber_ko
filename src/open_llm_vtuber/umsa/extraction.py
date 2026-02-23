@@ -99,8 +99,7 @@ class MemoryExtractor:
 
         # Validate that at least one extraction method is available
         llm_available = (
-            self._llm is not None
-            and self._config.llm_extraction_mode != "disabled"
+            self._llm is not None and self._config.llm_extraction_mode != "disabled"
         )
         if not llm_available and self._regex_extractor is None:
             raise ValueError(
@@ -129,11 +128,13 @@ class MemoryExtractor:
         Returns:
             True if buffer is full and extraction should be triggered
         """
-        self._turn_buffer.append({
-            "user": user_content,
-            "assistant": assistant_content,
-            "entity_id": entity_id,
-        })
+        self._turn_buffer.append(
+            {
+                "user": user_content,
+                "assistant": assistant_content,
+                "entity_id": entity_id,
+            }
+        )
         return len(self._turn_buffer) >= self._config.batch_size
 
     def clear_buffer(self) -> None:
@@ -171,8 +172,7 @@ class MemoryExtractor:
         self._turn_buffer.clear()
 
         llm_available = (
-            self._llm is not None
-            and self._config.llm_extraction_mode != "disabled"
+            self._llm is not None and self._config.llm_extraction_mode != "disabled"
         )
 
         memories: list[SemanticMemory] = []
@@ -200,8 +200,7 @@ class MemoryExtractor:
         memories = self._filter_by_thresholds(memories)
 
         logger.info(
-            f"Extracted {len(memories)} memories from "
-            f"{len(turns_to_process)} turns"
+            f"Extracted {len(memories)} memories from {len(turns_to_process)} turns"
         )
         return ExtractionResult(memories=memories)
 
@@ -364,7 +363,7 @@ class MemoryExtractor:
         if text.startswith("```"):
             first_newline = text.find("\n")
             if first_newline != -1:
-                text = text[first_newline + 1:]
+                text = text[first_newline + 1 :]
             if text.endswith("```"):
                 text = text[:-3].strip()
 
@@ -426,7 +425,8 @@ class MemoryExtractor:
             Filtered list meeting threshold criteria
         """
         filtered = [
-            m for m in memories
+            m
+            for m in memories
             if m.importance >= self._config.min_importance
             and m.confidence >= self._config.confidence_threshold
         ]

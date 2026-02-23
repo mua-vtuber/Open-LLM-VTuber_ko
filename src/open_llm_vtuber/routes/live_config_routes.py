@@ -124,7 +124,10 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
         ),
         response_model=LiveConfigUpdateResponse,
         responses={
-            200: {"description": "설정 업데이트 성공", "model": LiveConfigUpdateResponse},
+            200: {
+                "description": "설정 업데이트 성공",
+                "model": LiveConfigUpdateResponse,
+            },
             400: {"description": "잘못된 요청 (업데이트할 필드 없음)"},
             500: {"description": "서버 오류", "model": ErrorResponse},
         },
@@ -150,8 +153,7 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
             update_dict = update.model_dump(exclude_none=True)
             if not update_dict:
                 raise HTTPException(
-                    status_code=400,
-                    detail="업데이트할 필드가 없습니다"
+                    status_code=400, detail="업데이트할 필드가 없습니다"
                 )
 
             # 2. 현재 전체 설정 읽기
@@ -173,19 +175,14 @@ def init_live_config_routes(default_context_cache: ServiceContext) -> APIRouter:
             logger.info("Live config가 성공적으로 업데이트되었습니다")
 
             return JSONResponse(
-                {
-                    "success": True,
-                    "live_config": new_live_config.safe_dump()
-                },
-                status_code=200
+                {"success": True, "live_config": new_live_config.safe_dump()},
+                status_code=200,
             )
 
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"Live config 업데이트 중 오류 발생: {e}")
-            return JSONResponse(
-                {"error": "Operation failed"}, status_code=500
-            )
+            return JSONResponse({"error": "Operation failed"}, status_code=500)
 
     return router

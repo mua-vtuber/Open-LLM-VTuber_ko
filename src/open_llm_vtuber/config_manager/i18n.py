@@ -80,7 +80,7 @@ class Description(MultiLingualString):
         - Old style: Description(en="Name...", zh="名称...")
         """
         # If old-style (en/zh) is provided, convert to new style
-        if 'en' in data and 'key' not in data:
+        if "en" in data and "key" not in data:
             # Create a hash-based key for legacy descriptions
             key = f"legacy_{abs(hash(data.get('en', '')))}"
             super().__init__(key=key, namespace="legacy", **data)
@@ -143,10 +143,7 @@ class Description(MultiLingualString):
 
     @classmethod
     def create(
-        cls,
-        key: str,
-        namespace: str = "config",
-        notes_key: Optional[str] = None
+        cls, key: str, namespace: str = "config", notes_key: Optional[str] = None
     ) -> "Description":
         """
         Factory method to create a Description from translation keys.

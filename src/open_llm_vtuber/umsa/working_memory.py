@@ -49,9 +49,7 @@ class WorkingMemory:
         self._messages: list[Message] = []
         self._current_tokens = 0
 
-        logger.debug(
-            f"WorkingMemory initialized with max_tokens={max_tokens}"
-        )
+        logger.debug(f"WorkingMemory initialized with max_tokens={max_tokens}")
 
     def add_message(
         self,
@@ -98,9 +96,7 @@ class WorkingMemory:
         evicted = self._evict_if_needed()
 
         if evicted:
-            logger.info(
-                f"Evicted {len(evicted)} messages to stay within token budget"
-            )
+            logger.info(f"Evicted {len(evicted)} messages to stay within token budget")
 
         return evicted
 
@@ -155,9 +151,7 @@ class WorkingMemory:
             return
 
         # Truncate and mark as interrupted
-        interrupted_content = (
-            f"{heard_response}\n[INTERRUPTED by {interrupt_role}]"
-        )
+        interrupted_content = f"{heard_response}\n[INTERRUPTED by {interrupt_role}]"
 
         # Recalculate tokens
         old_tokens = self.token_counter.count(last_message.content)
@@ -179,9 +173,7 @@ class WorkingMemory:
         self._current_tokens = 0
         logger.info(f"Cleared {message_count} messages from working memory")
 
-    def set_from_history(
-        self, messages: list[dict[str, Any]]
-    ) -> list[Message]:
+    def set_from_history(self, messages: list[dict[str, Any]]) -> list[Message]:
         """Load messages from chat history, evicting if over budget.
 
         Args:

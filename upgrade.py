@@ -183,7 +183,9 @@ def _restore_stash(texts: dict, force: bool = False) -> bool:
         upgrade_manager.run_command, "git stash pop"
     )
     success, output = operation
-    logger.debug(texts["operation_time"].format(operation="git stash pop", time=elapsed))
+    logger.debug(
+        texts["operation_time"].format(operation="git stash pop", time=elapsed)
+    )
 
     if not success:
         logger.error(texts["conflict_warning"])

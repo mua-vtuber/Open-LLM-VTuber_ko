@@ -71,11 +71,13 @@ async def process_single_conversation(
         except Exception as e:
             logger.error(f"Error processing user input: {e}")
             await websocket_send(
-                json.dumps({
-                    "type": "error",
-                    "code": "INPUT_PROCESSING_ERROR",
-                    "message": f"Failed to process input: {str(e)}"
-                })
+                json.dumps(
+                    {
+                        "type": "error",
+                        "code": "INPUT_PROCESSING_ERROR",
+                        "message": f"Failed to process input: {str(e)}",
+                    }
+                )
             )
             raise
 
@@ -131,21 +133,25 @@ async def process_single_conversation(
         except asyncio.TimeoutError:
             logger.error("Agent response timed out")
             await websocket_send(
-                json.dumps({
-                    "type": "error",
-                    "code": "TIMEOUT",
-                    "message": "AI response timed out"
-                })
+                json.dumps(
+                    {
+                        "type": "error",
+                        "code": "TIMEOUT",
+                        "message": "AI response timed out",
+                    }
+                )
             )
             raise
         except Exception as e:
             logger.exception(f"Error processing agent response stream: {e}")
             await websocket_send(
-                json.dumps({
-                    "type": "error",
-                    "code": "GENERATION_ERROR",
-                    "message": f"Error generating response: {str(e)}"
-                })
+                json.dumps(
+                    {
+                        "type": "error",
+                        "code": "GENERATION_ERROR",
+                        "message": f"Error generating response: {str(e)}",
+                    }
+                )
             )
             # Don't re-raise immediately to allow cleanup, but log critical error
             raise
@@ -166,17 +172,25 @@ async def process_single_conversation(
 
     except asyncio.CancelledError:
         logger.info(f"🛑 Conversation {session_emoji} cancelled because interrupted.")
-        await websocket_send(json.dumps({"type": "control", "text": "conversation-cancelled"}))
+        await websocket_send(
+            json.dumps({"type": "control", "text": "conversation-cancelled"})
+        )
         raise
     except Exception as e:
         logger.error(f"Unexpected error in conversation chain: {e}")
         # Only send if not already sent by inner blocks
         try:
             await websocket_send(
-                json.dumps({"type": "error", "code": "INTERNAL_ERROR", "message": f"Internal error: {str(e)}"})
+                json.dumps(
+                    {
+                        "type": "error",
+                        "code": "INTERNAL_ERROR",
+                        "message": f"Internal error: {str(e)}",
+                    }
+                )
             )
         except Exception:
-            pass # Connection might be closed
+            pass  # Connection might be closed
         raise
     finally:
         # End memory session if one was started
@@ -187,5 +201,5 @@ async def process_single_conversation(
                 logger.warning(f"Failed to end memory session: {e}")
 
         # Cleanup
-        await cleanup_conversation(tts_manager)
+        await cleanup_conversation(tts_manager, session_emoji)
         logger.info(f"Conversation {session_emoji} finished/cleaned up.")

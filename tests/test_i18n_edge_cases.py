@@ -8,9 +8,9 @@ import sys
 import io
 
 # Force UTF-8 encoding for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 from src.open_llm_vtuber.i18n_manager import I18nManager
 from src.open_llm_vtuber.config_manager.character import CharacterConfig
@@ -51,7 +51,9 @@ def test_missing_language():
     # Test with upgrade system
     result = TEXTS["ja"]["welcome_message"]  # Unsupported language
     print(f"  Upgrade TEXTS['ja']: {result[:50]}...")
-    assert "version" in result.lower() or "upgrade" in result.lower(), "Should use fallback"
+    assert "version" in result.lower() or "upgrade" in result.lower(), (
+        "Should use fallback"
+    )
 
     print("  ✅ Language fallback works correctly\n")
 
@@ -66,10 +68,14 @@ def test_format_string_errors():
     result = get_text("version_upgrade_success", lang="en", old="1.0")
     # Missing 'new' parameter, should return string as-is or with error
     print(f"  Missing format param: {result}")
-    assert "old" in result or "new" in result or "version" in result.lower(), "Should handle gracefully"
+    assert "old" in result or "new" in result or "version" in result.lower(), (
+        "Should handle gracefully"
+    )
 
     # Test with extra format parameters (should be ignored)
-    result = get_text("upgrade_complete", lang="en", extra_param="ignored", another="test")
+    result = get_text(
+        "upgrade_complete", lang="en", extra_param="ignored", another="test"
+    )
     print(f"  Extra format params: {result}")
     assert result == "Upgrade complete!", "Should ignore extra parameters"
 
@@ -158,6 +164,7 @@ def test_special_characters():
 
     # Test special format characters with curly braces
     from upgrade_codes.upgrade_core.constants import get_compare_text
+
     result = get_compare_text("compare_passed", lang="en", name="test{value}")
     print(f"  Special chars in format: {result}")
     assert "test{value}" in result, "Should handle special characters"
@@ -194,11 +201,13 @@ def main():
     except AssertionError as e:
         print(f"\n[ASSERTION FAILED] {e}")
         import traceback
+
         traceback.print_exc()
         return 1
     except Exception as e:
         print(f"\n[ERROR] Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

@@ -1,4 +1,5 @@
 """WebSocket connection lifecycle management."""
+
 from typing import Dict, Optional, Set, Callable
 from fastapi import WebSocket
 import asyncio
@@ -23,7 +24,9 @@ class WebSocketConnectionManager:
         try:
             await websocket.accept()
             self.active_connections[client_id] = websocket
-            logger.info(f"Client {client_id} connected. Total connections: {len(self.active_connections)}")
+            logger.info(
+                f"Client {client_id} connected. Total connections: {len(self.active_connections)}"
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to accept connection for {client_id}: {e}")
@@ -37,7 +40,9 @@ class WebSocketConnectionManager:
                 await websocket.close()
             except Exception:
                 pass  # 이미 닫힌 연결
-            logger.info(f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}")
+            logger.info(
+                f"Client {client_id} disconnected. Total connections: {len(self.active_connections)}"
+            )
 
     def get_connection(self, client_id: str) -> Optional[WebSocket]:
         """클라이언트 연결 객체 조회"""
@@ -75,7 +80,9 @@ class WebSocketConnectionManager:
 
         return sent_count
 
-    async def broadcast_to_group(self, group_id: str, data: dict, exclude: Optional[Set[str]] = None) -> int:
+    async def broadcast_to_group(
+        self, group_id: str, data: dict, exclude: Optional[Set[str]] = None
+    ) -> int:
         """특정 그룹 멤버들에게 메시지 전송"""
         exclude = exclude or set()
         client_ids = self._connection_groups.get(group_id, set())
@@ -150,7 +157,9 @@ class ConnectionManager:
             logger.info(f"Connection established for client {client_uid}")
 
         except Exception as e:
-            logger.error(f"Failed to initialize connection for client {client_uid}: {e}")
+            logger.error(
+                f"Failed to initialize connection for client {client_uid}: {e}"
+            )
             await self._cleanup_failed_connection(client_uid)
             raise
 
@@ -185,7 +194,7 @@ class ConnectionManager:
         self.client_connections.pop(client_uid, None)
         context = self.client_contexts.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
-        
+
         if client_uid in self.current_conversation_tasks:
             task = self.current_conversation_tasks[client_uid]
             if task and not task.done():
@@ -220,8 +229,12 @@ class ConnectionManager:
         session_service_context = ServiceContext()
         await session_service_context.load_cache(
             config=self.default_context_cache.config.model_copy(deep=True),
-            system_config=self.default_context_cache.system_config.model_copy(deep=True),
-            character_config=self.default_context_cache.character_config.model_copy(deep=True),
+            system_config=self.default_context_cache.system_config.model_copy(
+                deep=True
+            ),
+            character_config=self.default_context_cache.character_config.model_copy(
+                deep=True
+            ),
             live2d_model=self.default_context_cache.live2d_model,
             asr_engine=self.default_context_cache.asr_engine,
             tts_engine=self.default_context_cache.tts_engine,

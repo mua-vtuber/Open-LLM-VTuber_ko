@@ -466,8 +466,12 @@ class SQLiteStore:
         return session["session_id"]
 
     async def end_session(
-        self, session_id: str, ended_at: str, message_count: int = 0,
-        sentiment_avg: float | None = None, topics: str | None = None,
+        self,
+        session_id: str,
+        ended_at: str,
+        message_count: int = 0,
+        sentiment_avg: float | None = None,
+        topics: str | None = None,
     ) -> None:
         """Mark a session as ended.
 
@@ -587,7 +591,9 @@ class SQLiteStore:
             ]
 
     async def update_node_embedding(
-        self, node_id: str, embedding: bytes,
+        self,
+        node_id: str,
+        embedding: bytes,
     ) -> None:
         """Update the embedding BLOB for a knowledge node.
 
@@ -605,7 +611,8 @@ class SQLiteStore:
         await self._db.commit()
 
     async def get_all_embeddings(
-        self, entity_id: str | None = None,
+        self,
+        entity_id: str | None = None,
     ) -> list[dict]:
         """Get all nodes that have embeddings, for vector search.
 
@@ -652,7 +659,10 @@ class SQLiteStore:
             ]
 
     async def search_fts(
-        self, query: str, entity_id: str | None = None, limit: int = 20,
+        self,
+        query: str,
+        entity_id: str | None = None,
+        limit: int = 20,
     ) -> list[dict]:
         """Full-text search on knowledge nodes content.
 
@@ -710,7 +720,10 @@ class SQLiteStore:
             return []
 
     async def get_connected_nodes(
-        self, node_id: str, max_depth: int = 1, limit: int = 10,
+        self,
+        node_id: str,
+        max_depth: int = 1,
+        limit: int = 10,
     ) -> list[dict]:
         """Get nodes connected to a given node via edges (graph traversal).
 
@@ -830,7 +843,8 @@ class SQLiteStore:
         return deleted
 
     async def delete_knowledge_nodes(
-        self, entity_id: str | None = None,
+        self,
+        entity_id: str | None = None,
     ) -> int:
         """Delete knowledge nodes, optionally filtered by entity.
 
@@ -858,7 +872,9 @@ class SQLiteStore:
         return count
 
     async def touch_entity(
-        self, entity_id: str, platform: str,
+        self,
+        entity_id: str,
+        platform: str,
     ) -> None:
         """Create entity profile if it doesn't exist, or update and increment interactions.
 
@@ -1018,7 +1034,9 @@ class SQLiteStore:
             return [dict(zip(cols, row)) for row in rows]
 
     async def update_mention(
-        self, node_id: str, importance_boost: float = 0.05,
+        self,
+        node_id: str,
+        importance_boost: float = 0.05,
     ) -> None:
         """Increment mention count and boost importance for a knowledge node.
 
@@ -1043,7 +1061,9 @@ class SQLiteStore:
         logger.debug(f"Knowledge node mention updated: {node_id}")
 
     async def insert_supersedes_edge(
-        self, new_node_id: str, old_node_id: str,
+        self,
+        new_node_id: str,
+        old_node_id: str,
     ) -> str:
         """Create a 'supersedes' edge from a new node to an old node.
 

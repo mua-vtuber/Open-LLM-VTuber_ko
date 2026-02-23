@@ -62,9 +62,7 @@ class EmbeddingService:
         )
         # Update dimension from actual model
         self._dimension = self._model.get_sentence_embedding_dimension()
-        logger.info(
-            f"Embedding model loaded: dim={self._dimension}"
-        )
+        logger.info(f"Embedding model loaded: dim={self._dimension}")
 
     def encode(self, texts: list[str]) -> list[list[float]]:
         """Encode texts into embedding vectors.
@@ -81,7 +79,9 @@ class EmbeddingService:
         self._ensure_model()
 
         embeddings: np.ndarray = self._model.encode(
-            texts, batch_size=32, show_progress_bar=False,
+            texts,
+            batch_size=32,
+            show_progress_bar=False,
             normalize_embeddings=True,
         )
         return embeddings.tolist()

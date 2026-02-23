@@ -61,7 +61,8 @@ async def memory_service(tmp_path):
     from open_llm_vtuber.umsa.extraction import MemoryExtractor
 
     svc._extractor = MemoryExtractor(
-        llm=None, config=config.extraction,
+        llm=None,
+        config=config.extraction,
     )
 
     # Pre-initialise the store so FK-dependent helpers work immediately.
@@ -72,7 +73,9 @@ async def memory_service(tmp_path):
     await svc.close()
 
 
-async def _ensure_entity(svc: MemoryService, entity_id: str, platform: str = "direct") -> None:
+async def _ensure_entity(
+    svc: MemoryService, entity_id: str, platform: str = "direct"
+) -> None:
     """Create an entity profile so FK constraints on sessions/nodes pass."""
     store = await svc._ensure_store()
     await store.touch_entity(entity_id, platform)
@@ -95,14 +98,17 @@ class TestFullSessionLifecycle:
 
         # -- Start session ---------------------------------------------------
         session_id = await svc.start_session(
-            entity_id="viewer42", platform="youtube",
+            entity_id="viewer42",
+            platform="youtube",
         )
         assert session_id.startswith("session_")
 
         # -- Update stream context -------------------------------------------
         svc.stream_context.current_topic = "Python programming"
         svc.stream_context.update(
-            author="chatter_A", content="Nice stream!", msg_type="chat",
+            author="chatter_A",
+            content="Nice stream!",
+            msg_type="chat",
         )
         svc.stream_context.update(
             author="whale_B",
@@ -138,7 +144,9 @@ class TestFullSessionLifecycle:
         ]
         for user_msg, asst_msg in turns:
             await svc.process_turn(
-                user_msg, asst_msg, entity_id="viewer42",
+                user_msg,
+                asst_msg,
+                entity_id="viewer42",
             )
             svc.increment_session_message_count(session_id)
 
@@ -156,7 +164,10 @@ class TestFullSessionLifecycle:
         )
 
         # System content should include stream context info
-        assert "Stream Status" in ctx.system_content or "stream" in ctx.system_content.lower()
+        assert (
+            "Stream Status" in ctx.system_content
+            or "stream" in ctx.system_content.lower()
+        )
         assert ctx.messages  # Should have fitted messages
 
         # -- End session (triggers episode save, reflection, cleanup) --------
@@ -167,10 +178,7 @@ class TestFullSessionLifecycle:
         episodes = await store.get_stream_episodes(limit=10)
         assert len(episodes) >= 1
 
-        matching = [
-            ep for ep in episodes
-            if ep.get("session_id") == session_id
-        ]
+        matching = [ep for ep in episodes if ep.get("session_id") == session_id]
         assert len(matching) == 1
         episode = matching[0]
         assert episode["summary"]  # Non-empty summary
@@ -184,8 +192,7 @@ class TestFullSessionLifecycle:
         # Regex should have extracted preferences/facts from the turns.
         # Filter out episode/meta_summary nodes that end_session creates.
         extracted = [
-            m for m in all_memories
-            if m["node_type"] not in ("episode", "meta_summary")
+            m for m in all_memories if m["node_type"] not in ("episode", "meta_summary")
         ]
         assert len(extracted) > 0
 
@@ -199,7 +206,8 @@ class TestRegexExtractionPersistsMemories:
     """Verify regex-extracted memories survive in SQLite."""
 
     async def test_english_extraction_persisted(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """English preference extraction is stored in SQLite."""
         svc = memory_service
@@ -221,7 +229,8 @@ class TestRegexExtractionPersistsMemories:
         await svc.end_session(session_id)
 
     async def test_korean_extraction_persisted(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Korean preference extraction is stored in SQLite."""
         svc = memory_service
@@ -247,7 +256,8 @@ class TestRegexExtractionPersistsMemories:
         await svc.end_session(session_id)
 
     async def test_multiple_extractions_accumulate(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Multiple turns accumulate distinct memories."""
         svc = memory_service
@@ -262,7 +272,9 @@ class TestRegexExtractionPersistsMemories:
         )
         await svc.process_turn(
             Message(
-                role="user", content="I live in Seoul", name="user_multi",
+                role="user",
+                content="I live in Seoul",
+                name="user_multi",
             ),
             Message(role="assistant", content="Cool city!"),
             entity_id="user_multi",
@@ -285,29 +297,34 @@ class TestContextIncludesProceduralRules:
     """Verify procedural rules appear in assembled context."""
 
     async def test_loaded_rules_appear_in_context(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Procedural rules loaded via load_rules() appear in system_content."""
         svc = memory_service
 
         # Insert procedural rules into SQLite so start_session loads them
         store = await svc._ensure_store()
-        await store.insert_procedural_rule({
-            "id": "rule_greet",
-            "rule_type": "greeting",
-            "content": "Always greet viewers warmly",
-            "confidence": 0.9,
-            "source": "learned",
-            "active": 1,
-        })
-        await store.insert_procedural_rule({
-            "id": "rule_tone",
-            "rule_type": "tone",
-            "content": "Use casual and friendly tone",
-            "confidence": 0.8,
-            "source": "learned",
-            "active": 1,
-        })
+        await store.insert_procedural_rule(
+            {
+                "id": "rule_greet",
+                "rule_type": "greeting",
+                "content": "Always greet viewers warmly",
+                "confidence": 0.9,
+                "source": "learned",
+                "active": 1,
+            }
+        )
+        await store.insert_procedural_rule(
+            {
+                "id": "rule_tone",
+                "rule_type": "tone",
+                "content": "Use casual and friendly tone",
+                "confidence": 0.8,
+                "source": "learned",
+                "active": 1,
+            }
+        )
 
         # Start session -- this loads procedural rules from SQLite
         # entity_id=None avoids needing an entity profile for FK
@@ -333,7 +350,8 @@ class TestContextIncludesProceduralRules:
         await svc.end_session(session_id)
 
     async def test_no_rules_produces_empty_procedural_section(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """When no rules are loaded, procedural section is absent."""
         svc = memory_service
@@ -363,7 +381,8 @@ class TestStreamContextInBuiltContext:
     """Verify stream context appears in assembled context."""
 
     async def test_stream_info_appears_in_system_content(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Stream topic and events appear in system_content."""
         svc = memory_service
@@ -373,7 +392,9 @@ class TestStreamContextInBuiltContext:
         # Update stream context with topic and events
         svc.stream_context.current_topic = "Gaming night"
         svc.stream_context.update(
-            author="viewer1", content="Nice game!", msg_type="chat",
+            author="viewer1",
+            content="Nice game!",
+            msg_type="chat",
         )
         svc.stream_context.update(
             author="big_donor",
@@ -396,12 +417,16 @@ class TestStreamContextInBuiltContext:
         assert "Gaming night" in ctx.system_content
         assert "Stream Status" in ctx.system_content
         # Should mention active viewers or message count
-        assert "Messages this session" in ctx.system_content or "viewer" in ctx.system_content.lower()
+        assert (
+            "Messages this session" in ctx.system_content
+            or "viewer" in ctx.system_content.lower()
+        )
 
         await svc.end_session(session_id)
 
     async def test_empty_stream_context_still_builds(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Empty stream context does not prevent context building."""
         svc = memory_service
@@ -432,7 +457,8 @@ class TestSessionEndClearsStreamContext:
     """Verify end_session() clears stream context state."""
 
     async def test_stream_context_cleared_after_end(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Stream context message count and state reset after end_session."""
         svc = memory_service
@@ -467,7 +493,8 @@ class TestSessionEndClearsStreamContext:
         assert len(svc.stream_context.recent_events) == 0
 
     async def test_episode_stored_before_clear(
-        self, memory_service: MemoryService,
+        self,
+        memory_service: MemoryService,
     ):
         """Stream episode is persisted before stream context is cleared."""
         svc = memory_service
@@ -477,7 +504,9 @@ class TestSessionEndClearsStreamContext:
 
         svc.stream_context.current_topic = "Cooking"
         svc.stream_context.update(
-            author="chef_fan", content="Yummy!", msg_type="chat",
+            author="chef_fan",
+            content="Yummy!",
+            msg_type="chat",
         )
         svc.increment_session_message_count(session_id)
 
@@ -489,8 +518,8 @@ class TestSessionEndClearsStreamContext:
         # But episode should be stored
         store = await svc._ensure_store()
         episodes = await store.get_stream_episodes(limit=10)
-        matching = [
-            ep for ep in episodes if ep.get("session_id") == session_id
-        ]
+        matching = [ep for ep in episodes if ep.get("session_id") == session_id]
         assert len(matching) == 1
-        assert "Cooking" in matching[0]["summary"] or "Cooking" in (matching[0].get("topics_json") or "")
+        assert "Cooking" in matching[0]["summary"] or "Cooking" in (
+            matching[0].get("topics_json") or ""
+        )

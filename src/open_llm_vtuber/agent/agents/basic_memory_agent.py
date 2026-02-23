@@ -58,9 +58,7 @@ class BasicMemoryAgent(BaseAgent):
         if memory_config and memory_config.enabled:
             wm_tokens = memory_config.context.default_budget_tokens
             self._memory_service = MemoryService(config=memory_config)
-            logger.info(
-                f"UMSA enabled: MemoryService with {wm_tokens} token budget"
-            )
+            logger.info(f"UMSA enabled: MemoryService with {wm_tokens} token budget")
         else:
             wm_tokens = 10_000_000  # Effectively unlimited
             self._memory_service = None
@@ -130,7 +128,7 @@ class BasicMemoryAgent(BaseAgent):
     def set_system(self, system: str):
         """Set the system prompt with interrupt handling."""
         if self.interrupt_method == "user":
-            system = f"{system}\n\nIf you received `[interrupted by user]` signal, you were interrupted." 
+            system = f"{system}\n\nIf you received `[interrupted by user]` signal, you were interrupted."
         super().set_system(system)
 
     def _add_message(
@@ -168,7 +166,9 @@ class BasicMemoryAgent(BaseAgent):
 
         name = display_text.name if display_text and display_text.name else None
         evicted = self._working_memory.add_message(
-            role=role, content=text_content, name=name,
+            role=role,
+            content=text_content,
+            name=name,
         )
         if evicted:
             logger.debug(
@@ -532,7 +532,7 @@ class BasicMemoryAgent(BaseAgent):
                 if not self._tool_executor:
                     logger.error(
                         "OpenAI Tool interaction requested but ToolExecutor/MCPClient is not available."
-                    )  
+                    )
                     yield "[Error: ToolExecutor/MCPClient not configured for OpenAI mode]"
                     continue
 
@@ -618,7 +618,8 @@ class BasicMemoryAgent(BaseAgent):
                     f"Starting Claude tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._claude_tool_interaction_loop(
-                    effective_messages, tools if tools else [],
+                    effective_messages,
+                    tools if tools else [],
                     system_prompt=effective_system,
                 ):
                     yield output
@@ -627,7 +628,8 @@ class BasicMemoryAgent(BaseAgent):
                     f"Starting OpenAI tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._openai_tool_interaction_loop(
-                    effective_messages, tools if tools else [],
+                    effective_messages,
+                    tools if tools else [],
                     system_prompt=effective_system,
                 ):
                     yield output
@@ -654,13 +656,20 @@ class BasicMemoryAgent(BaseAgent):
             # Trigger memory extraction after turn completes
             if self._memory_service and user_text:
                 last_msg = self._working_memory.last_message
-                assistant_text = last_msg.content if last_msg and last_msg.role == "assistant" else ""
+                assistant_text = (
+                    last_msg.content
+                    if last_msg and last_msg.role == "assistant"
+                    else ""
+                )
                 if assistant_text:
                     from ...umsa.models import Message as UMSAMessage
+
                     try:
                         await self._memory_service.process_turn(
                             user_message=UMSAMessage(role="user", content=user_text),
-                            assistant_message=UMSAMessage(role="assistant", content=assistant_text),
+                            assistant_message=UMSAMessage(
+                                role="assistant", content=assistant_text
+                            ),
                             entity_id=None,
                         )
                     except Exception as e:
@@ -686,7 +695,8 @@ class BasicMemoryAgent(BaseAgent):
         if self._memory_service is None:
             return None
         session_id = await self._memory_service.start_session(
-            entity_id=entity_id, platform=platform,
+            entity_id=entity_id,
+            platform=platform,
         )
         self._current_session_id = session_id
         return session_id

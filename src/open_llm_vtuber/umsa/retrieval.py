@@ -79,7 +79,9 @@ class HybridRetriever:
 
         # Merge and deduplicate
         merged = self._merge_results(
-            vector_results, fts_results, graph_results,
+            vector_results,
+            fts_results,
+            graph_results,
         )
 
         # Sort by final score descending and limit
@@ -101,7 +103,9 @@ class HybridRetriever:
         return results
 
     async def _vector_search(
-        self, query: str, entity_id: str | None,
+        self,
+        query: str,
+        entity_id: str | None,
     ) -> list[RetrievalResult]:
         """Search by embedding cosine similarity."""
         try:
@@ -127,7 +131,8 @@ class HybridRetriever:
 
             node_embedding = EmbeddingService.deserialize_embedding(blob)
             relevance = EmbeddingService.cosine_similarity(
-                query_embedding, node_embedding,
+                query_embedding,
+                node_embedding,
             )
 
             recency = self._compute_recency(node.get("last_accessed_at"))
@@ -135,19 +140,23 @@ class HybridRetriever:
 
             score = self._stanford_score(recency, relevance, importance)
 
-            results.append(RetrievalResult(
-                id=node["node_id"],
-                content=node["content"],
-                memory_type="semantic",
-                score=score,
-                source="vector",
-                metadata={"relevance": relevance, "recency": recency},
-            ))
+            results.append(
+                RetrievalResult(
+                    id=node["node_id"],
+                    content=node["content"],
+                    memory_type="semantic",
+                    score=score,
+                    source="vector",
+                    metadata={"relevance": relevance, "recency": recency},
+                )
+            )
 
         return results
 
     async def _fts_search(
-        self, query: str, entity_id: str | None,
+        self,
+        query: str,
+        entity_id: str | None,
     ) -> list[RetrievalResult]:
         """Search using SQLite FTS5."""
         # Sanitize query for FTS5
@@ -157,7 +166,9 @@ class HybridRetriever:
 
         try:
             rows = await self._store.search_fts(
-                fts_query, entity_id, limit=self._config.top_k * 2,
+                fts_query,
+                entity_id,
+                limit=self._config.top_k * 2,
             )
         except Exception as e:
             logger.warning(f"FTS search failed: {e}")
@@ -174,25 +185,30 @@ class HybridRetriever:
 
             score = self._stanford_score(recency, relevance, importance)
 
-            results.append(RetrievalResult(
-                id=row["node_id"],
-                content=row["content"],
-                memory_type="semantic",
-                score=score,
-                source="fts",
-                metadata={"fts_rank": row.get("fts_rank")},
-            ))
+            results.append(
+                RetrievalResult(
+                    id=row["node_id"],
+                    content=row["content"],
+                    memory_type="semantic",
+                    score=score,
+                    source="fts",
+                    metadata={"fts_rank": row.get("fts_rank")},
+                )
+            )
 
         return results
 
     async def _graph_search(
-        self, query: str, entity_id: str | None,
+        self,
+        query: str,
+        entity_id: str | None,
     ) -> list[RetrievalResult]:
         """Search by traversing knowledge graph edges from recent nodes."""
         # Get recently accessed nodes as seed
         try:
             recent_nodes = await self._store.get_knowledge_nodes(
-                entity_id, limit=5,
+                entity_id,
+                limit=5,
             )
         except Exception as e:
             logger.warning(f"Failed to get recent nodes for graph search: {e}")
@@ -207,7 +223,8 @@ class HybridRetriever:
         for seed_node in recent_nodes:
             try:
                 connected = await self._store.get_connected_nodes(
-                    seed_node["node_id"], limit=5,
+                    seed_node["node_id"],
+                    limit=5,
                 )
             except Exception:
                 continue
@@ -225,17 +242,19 @@ class HybridRetriever:
                 # Use edge_strength as relevance proxy for graph results
                 score = self._stanford_score(recency, edge_strength, importance)
 
-                results.append(RetrievalResult(
-                    id=nid,
-                    content=node["content"],
-                    memory_type="semantic",
-                    score=score,
-                    source="graph",
-                    metadata={
-                        "edge_type": node.get("edge_type"),
-                        "edge_strength": edge_strength,
-                    },
-                ))
+                results.append(
+                    RetrievalResult(
+                        id=nid,
+                        content=node["content"],
+                        memory_type="semantic",
+                        score=score,
+                        source="graph",
+                        metadata={
+                            "edge_type": node.get("edge_type"),
+                            "edge_strength": edge_strength,
+                        },
+                    )
+                )
 
         return results
 
@@ -285,7 +304,8 @@ class HybridRetriever:
             )
             # Normalize by sum of active weights
             active_weight = sum(
-                w for w, k in [(vw, "vector"), (fw, "fts"), (gw, "graph")]
+                w
+                for w, k in [(vw, "vector"), (fw, "fts"), (gw, "graph")]
                 if k in scores
             )
             if active_weight > 0:
@@ -299,7 +319,10 @@ class HybridRetriever:
         return merged
 
     def _stanford_score(
-        self, recency: float, relevance: float, importance: float,
+        self,
+        recency: float,
+        relevance: float,
+        importance: float,
     ) -> float:
         """Compute Stanford 3-factor score.
 
@@ -359,5 +382,7 @@ class HybridRetriever:
         if not words:
             return ""
         # Quote each word and join with OR; escape internal double quotes
-        safe_words = [f'"{w.replace(chr(34), chr(34)+chr(34))}"' for w in words if w.strip()]
+        safe_words = [
+            f'"{w.replace(chr(34), chr(34) + chr(34))}"' for w in words if w.strip()
+        ]
         return " OR ".join(safe_words)

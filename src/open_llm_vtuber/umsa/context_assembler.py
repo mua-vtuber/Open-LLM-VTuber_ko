@@ -112,19 +112,13 @@ class ContextAssembler:
         system_parts = []
 
         # 1. System prompt (always present)
-        system_prompt_fitted = self._fit_text(
-            system_prompt, budgets["system_prompt"]
-        )
+        system_prompt_fitted = self._fit_text(system_prompt, budgets["system_prompt"])
         system_parts.append(system_prompt_fitted)
 
         # 2. Stream context (if available)
         if stream_context.strip():
-            stream_fitted = self._fit_text(
-                stream_context, budgets["stream_context"]
-            )
-            system_parts.append(
-                f"\n\n[Current Stream Status]\n{stream_fitted}"
-            )
+            stream_fitted = self._fit_text(stream_context, budgets["stream_context"])
+            system_parts.append(f"\n\n[Current Stream Status]\n{stream_fitted}")
 
         # 3. Entity profile (if available)
         if entity_profile:
@@ -136,9 +130,7 @@ class ContextAssembler:
 
         # 4. Procedural rules (if available) — already formatted by ProceduralMemory
         if procedural_rules.strip():
-            procedural_fitted = self._fit_text(
-                procedural_rules, budgets["procedural"]
-            )
+            procedural_fitted = self._fit_text(procedural_rules, budgets["procedural"])
             system_parts.append(f"\n\n{procedural_fitted}")
 
         # 5. Retrieved memories (if available)
@@ -151,9 +143,7 @@ class ContextAssembler:
 
         # 6. Episodic summary (if available)
         if episodic_summary.strip():
-            episodic_fitted = self._fit_text(
-                episodic_summary, budgets["episodic"]
-            )
+            episodic_fitted = self._fit_text(episodic_summary, budgets["episodic"])
             system_parts.append(f"\n\n[Previous sessions]\n{episodic_fitted}")
 
         system_content = "".join(system_parts)
@@ -286,9 +276,7 @@ class ContextAssembler:
 
         budgets = {
             "system_prompt": int(available_tokens * allocations["system_prompt"]),
-            "stream_context": int(
-                available_tokens * allocations["stream_context"]
-            ),
+            "stream_context": int(available_tokens * allocations["stream_context"]),
             "entity_profile": int(available_tokens * allocations["entity_profile"]),
             "procedural": int(available_tokens * allocations["procedural"]),
             "retrieved_memories": int(
@@ -342,9 +330,7 @@ class ContextAssembler:
 
         return fitted_text
 
-    def _fit_messages(
-        self, messages: list[dict], max_tokens: int
-    ) -> list[dict]:
+    def _fit_messages(self, messages: list[dict], max_tokens: int) -> list[dict]:
         """Fit messages within budget, keeping most recent.
 
         Trims from the beginning to preserve recent conversation context.
@@ -360,9 +346,7 @@ class ContextAssembler:
             return []
 
         # Calculate total tokens
-        total_tokens = sum(
-            self.token_counter.count(msg["content"]) for msg in messages
-        )
+        total_tokens = sum(self.token_counter.count(msg["content"]) for msg in messages)
 
         if total_tokens <= max_tokens:
             return messages
@@ -382,16 +366,12 @@ class ContextAssembler:
                 # Try to fit partial message if it's the first one
                 if not fitted_messages:
                     remaining_tokens = max_tokens - current_tokens
-                    fitted_content = self._fit_text(
-                        msg["content"], remaining_tokens
-                    )
+                    fitted_content = self._fit_text(msg["content"], remaining_tokens)
                     if fitted_content:
                         fitted_messages.insert(
                             0, {"role": msg["role"], "content": fitted_content}
                         )
-                        current_tokens += self.token_counter.count(
-                            fitted_content
-                        )
+                        current_tokens += self.token_counter.count(fitted_content)
                 break
 
         logger.debug(
@@ -401,9 +381,7 @@ class ContextAssembler:
 
         return fitted_messages
 
-    def _format_memories(
-        self, memories: list[RetrievalResult], max_tokens: int
-    ) -> str:
+    def _format_memories(self, memories: list[RetrievalResult], max_tokens: int) -> str:
         """Format retrieved memories as text, fitting within budget.
 
         Memories are formatted with metadata and truncated if needed.
@@ -426,8 +404,7 @@ class ContextAssembler:
             # Format: [Memory N] (type: X, score: Y.YY)
             # Content...
             header = (
-                f"[Memory {i}] (type: {memory.memory_type}, "
-                f"score: {memory.score:.2f})"
+                f"[Memory {i}] (type: {memory.memory_type}, score: {memory.score:.2f})"
             )
             memory_text = f"{header}\n{memory.content}"
 

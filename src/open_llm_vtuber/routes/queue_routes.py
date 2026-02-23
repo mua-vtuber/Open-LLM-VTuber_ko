@@ -25,33 +25,20 @@ class PriorityRulesUpdate(BaseModel):
     priority_mode: Optional[str] = Field(
         None,
         pattern="^(chat_first|voice_first|superchat_priority|balanced)$",
-        description="우선순위 모드"
+        description="우선순위 모드",
     )
     wait_time: Optional[float] = Field(
-        None,
-        ge=0,
-        le=30,
-        description="대기 시간 (0~30초)"
+        None, ge=0, le=30, description="대기 시간 (0~30초)"
     )
-    allow_interruption: Optional[bool] = Field(
-        None,
-        description="중단 허용 여부"
-    )
+    allow_interruption: Optional[bool] = Field(None, description="중단 허용 여부")
     superchat_always_priority: Optional[bool] = Field(
-        None,
-        description="슈퍼챗 항상 우선"
+        None, description="슈퍼챗 항상 우선"
     )
     voice_active_chat_delay: Optional[float] = Field(
-        None,
-        ge=0,
-        le=60,
-        description="음성 활성 시 채팅 지연 (0~60초)"
+        None, ge=0, le=60, description="음성 활성 시 채팅 지연 (0~60초)"
     )
     chat_active_voice_delay: Optional[float] = Field(
-        None,
-        ge=0,
-        le=60,
-        description="채팅 활성 시 음성 지연 (0~60초)"
+        None, ge=0, le=60, description="채팅 활성 시 음성 지연 (0~60초)"
     )
 
 
@@ -99,8 +86,7 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
             return JSONResponse(status, status_code=200)
         except Exception as e:
             return JSONResponse(
-                {"error": f"큐 상태 조회 중 오류 발생: {str(e)}"},
-                status_code=500
+                {"error": f"큐 상태 조회 중 오류 발생: {str(e)}"}, status_code=500
             )
 
     @router.get(
@@ -130,24 +116,19 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
         """
         if minutes < 1 or minutes > 60:
             raise HTTPException(
-                status_code=400,
-                detail="minutes는 1~60 사이여야 합니다"
+                status_code=400, detail="minutes는 1~60 사이여야 합니다"
             )
 
         try:
             history = ws_handler.get_queue_metric_history(minutes)
             return JSONResponse(
-                {
-                    "minutes": minutes,
-                    "data_points": len(history),
-                    "history": history
-                },
-                status_code=200
+                {"minutes": minutes, "data_points": len(history), "history": history},
+                status_code=200,
             )
         except Exception as e:
             return JSONResponse(
                 {"error": f"메트릭 히스토리 조회 중 오류 발생: {str(e)}"},
-                status_code=500
+                status_code=500,
             )
 
     @router.get(
@@ -179,8 +160,7 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
             return JSONResponse(rules, status_code=200)
         except Exception as e:
             return JSONResponse(
-                {"error": f"우선순위 규칙 조회 중 오류 발생: {str(e)}"},
-                status_code=500
+                {"error": f"우선순위 규칙 조회 중 오류 발생: {str(e)}"}, status_code=500
             )
 
     @router.put(
@@ -190,7 +170,10 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
         description="메시지 우선순위 규칙을 업데이트합니다. 부분 업데이트를 지원합니다.",
         response_model=PriorityRulesUpdateResponse,
         responses={
-            200: {"description": "규칙 업데이트 성공", "model": PriorityRulesUpdateResponse},
+            200: {
+                "description": "규칙 업데이트 성공",
+                "model": PriorityRulesUpdateResponse,
+            },
             400: {"description": "잘못된 요청 (필드 누락 또는 검증 실패)"},
             500: {"description": "서버 오류", "model": ErrorResponse},
         },
@@ -215,8 +198,7 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
             update_data = update.model_dump(exclude_none=True)
             if not update_data:
                 raise HTTPException(
-                    status_code=400,
-                    detail="업데이트할 필드가 없습니다"
+                    status_code=400, detail="업데이트할 필드가 없습니다"
                 )
 
             # 규칙 인스턴스 가져오기
@@ -225,20 +207,13 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
             # 규칙 업데이트
             success = rules.update_from_dict(update_data)
             if not success:
-                raise HTTPException(
-                    status_code=400,
-                    detail="우선순위 규칙 검증 실패"
-                )
+                raise HTTPException(status_code=400, detail="우선순위 규칙 검증 실패")
 
             # 변경 사항 브로드캐스트
             await ws_handler.broadcast_priority_rules_update()
 
             return JSONResponse(
-                {
-                    "success": True,
-                    "priority_rules": rules.to_dict()
-                },
-                status_code=200
+                {"success": True, "priority_rules": rules.to_dict()}, status_code=200
             )
 
         except HTTPException:
@@ -246,7 +221,7 @@ def init_queue_routes(ws_handler: WebSocketHandler) -> APIRouter:
         except Exception as e:
             return JSONResponse(
                 {"error": f"우선순위 규칙 업데이트 중 오류 발생: {str(e)}"},
-                status_code=500
+                status_code=500,
             )
 
     return router

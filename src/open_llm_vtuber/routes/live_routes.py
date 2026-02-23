@@ -149,8 +149,7 @@ def init_live_routes(default_context_cache: ServiceContext) -> APIRouter:
             logger.warning("[Chzzk] OAuth callback with expired state parameter")
             return HTMLResponse(
                 content=_get_chzzk_error_html(
-                    "OAuth state has expired. "
-                    "Please restart the authentication flow."
+                    "OAuth state has expired. Please restart the authentication flow."
                 ),
                 status_code=400,
             )

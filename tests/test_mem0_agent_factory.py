@@ -16,6 +16,7 @@ def test_mem0_agent_creation():
     try:
         # agent_factory import
         from src.open_llm_vtuber.agent.agent_factory import AgentFactory
+
         logger.success("✓ AgentFactory import 성공")
 
         # mem0_agent 설정 준비
@@ -34,9 +35,9 @@ def test_mem0_agent_creation():
                             "collection_name": "test_memories",
                             "host": "localhost",
                             "port": 6333,
-                        }
+                        },
                     }
-                }
+                },
             }
         }
 
@@ -65,6 +66,7 @@ def test_mem0_agent_creation():
 
         # AgentInterface 상속 확인
         from src.open_llm_vtuber.agent.agents.agent_interface import AgentInterface
+
         if isinstance(agent, AgentInterface):
             logger.success("✓ agent는 AgentInterface를 올바르게 구현했습니다")
         else:
@@ -72,7 +74,7 @@ def test_mem0_agent_creation():
             return False
 
         # 필수 메서드 존재 확인
-        required_methods = ['chat', 'handle_interrupt', 'set_memory_from_history']
+        required_methods = ["chat", "handle_interrupt", "set_memory_from_history"]
         for method_name in required_methods:
             if hasattr(agent, method_name):
                 logger.success(f"✓ {method_name} 메서드 존재")
@@ -81,11 +83,11 @@ def test_mem0_agent_creation():
                 return False
 
         # 내부 속성 확인
-        if hasattr(agent, '_user_id'):
+        if hasattr(agent, "_user_id"):
             logger.success(f"✓ _user_id 속성 존재: {agent._user_id}")
-        if hasattr(agent, '_system'):
+        if hasattr(agent, "_system"):
             logger.success("✓ _system 속성 존재")
-        if hasattr(agent, '_model'):
+        if hasattr(agent, "_model"):
             logger.success(f"✓ _model 속성 존재: {agent._model}")
 
         logger.success("\n=== 모든 테스트 통과! ===")
@@ -94,6 +96,7 @@ def test_mem0_agent_creation():
     except Exception as e:
         logger.error(f"✗ 테스트 실패: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
         return False
 
@@ -105,7 +108,9 @@ if __name__ == "__main__":
     success = test_mem0_agent_creation()
 
     if success:
-        print("\n✅ 테스트 성공: agent_factory에서 mem0_agent를 정상적으로 생성할 수 있습니다.")
+        print(
+            "\n✅ 테스트 성공: agent_factory에서 mem0_agent를 정상적으로 생성할 수 있습니다."
+        )
         sys.exit(0)
     else:
         print("\n❌ 테스트 실패: 위의 오류를 확인하세요.")

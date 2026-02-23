@@ -12,9 +12,10 @@ from .priority_rules import PriorityRules
 
 class MessagePriority(IntEnum):
     """메시지 우선순위 레벨"""
-    HIGH = 3    # 슈퍼챗, 멤버십 메시지
+
+    HIGH = 3  # 슈퍼챗, 멤버십 메시지
     NORMAL = 2  # 일반 채팅 메시지
-    LOW = 1     # 반복 메시지, 스팸성 메시지
+    LOW = 1  # 반복 메시지, 스팸성 메시지
 
 
 class QueueConfig:
@@ -28,9 +29,7 @@ class QueueConfig:
         """환경변수에서 설정 값을 로드합니다."""
 
         # 최대 큐 사이즈 (기본값: 100)
-        self.max_queue_size: int = int(
-            os.getenv("QUEUE_MAX_SIZE", "100")
-        )
+        self.max_queue_size: int = int(os.getenv("QUEUE_MAX_SIZE", "100"))
 
         # 메시지 처리 간격 (초 단위, 기본값: 0.1초 = 초당 10개)
         self.message_processing_interval: float = float(
@@ -53,9 +52,7 @@ class QueueConfig:
         )
 
         # 큐 워커 수 (기본값: 1, 비동기 처리)
-        self.worker_count: int = int(
-            os.getenv("QUEUE_WORKER_COUNT", "1")
-        )
+        self.worker_count: int = int(os.getenv("QUEUE_WORKER_COUNT", "1"))
 
         # 메트릭 수집 활성화 여부
         self.enable_metrics: bool = os.getenv(

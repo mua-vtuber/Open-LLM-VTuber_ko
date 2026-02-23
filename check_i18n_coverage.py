@@ -34,9 +34,9 @@ from typing import Dict, Set, List
 from collections import defaultdict
 
 # Force UTF-8 encoding for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 
 def load_translations(locales_dir: Path) -> Dict[str, Dict[str, Set[str]]]:
@@ -75,8 +75,7 @@ def load_translations(locales_dir: Path) -> Dict[str, Dict[str, Set[str]]]:
 
 
 def compare_translations(
-    base_lang: str,
-    translations: Dict[str, Dict[str, Set[str]]]
+    base_lang: str, translations: Dict[str, Dict[str, Set[str]]]
 ) -> Dict[str, Dict[str, Dict[str, List[str]]]]:
     """
     Compare all languages against the base language.
@@ -121,15 +120,14 @@ def compare_translations(
             if missing_keys or extra_keys:
                 results[lang_code][namespace] = {
                     "missing": sorted(missing_keys),
-                    "extra": sorted(extra_keys)
+                    "extra": sorted(extra_keys),
                 }
 
     return results
 
 
 def calculate_coverage(
-    base_translations: Dict[str, Set[str]],
-    lang_translations: Dict[str, Set[str]]
+    base_translations: Dict[str, Set[str]], lang_translations: Dict[str, Set[str]]
 ) -> float:
     """
     Calculate translation coverage percentage.
@@ -157,7 +155,7 @@ def print_report(
     base_lang: str,
     translations: Dict[str, Dict[str, Set[str]]],
     comparison: Dict[str, Dict[str, Dict[str, List[str]]]],
-    verbose: bool = False
+    verbose: bool = False,
 ) -> bool:
     """
     Print a detailed coverage report.
@@ -197,10 +195,7 @@ def print_report(
         print("-" * 60)
 
         # Calculate coverage
-        coverage = calculate_coverage(
-            base_translations,
-            translations[lang_code]
-        )
+        coverage = calculate_coverage(base_translations, translations[lang_code])
         print(f"Coverage: {coverage:.1f}%")
 
         if lang_code not in comparison or not comparison[lang_code]:
@@ -254,23 +249,19 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(
-        description="Check i18n translation coverage"
-    )
+    parser = argparse.ArgumentParser(description="Check i18n translation coverage")
     parser.add_argument(
         "--base-lang",
         default="en",
-        help="Base language to compare against (default: en)"
+        help="Base language to compare against (default: en)",
     )
     parser.add_argument(
         "--fail-on-missing",
         action="store_true",
-        help="Exit with code 1 if any missing keys found"
+        help="Exit with code 1 if any missing keys found",
     )
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Show detailed key-by-key comparison"
+        "--verbose", action="store_true", help="Show detailed key-by-key comparison"
     )
 
     args = parser.parse_args()
@@ -299,12 +290,7 @@ def main() -> int:
     comparison = compare_translations(args.base_lang, translations)
 
     # Print report
-    all_complete = print_report(
-        args.base_lang,
-        translations,
-        comparison,
-        args.verbose
-    )
+    all_complete = print_report(args.base_lang, translations, comparison, args.verbose)
 
     # Determine exit code
     if args.fail_on_missing and not all_complete:

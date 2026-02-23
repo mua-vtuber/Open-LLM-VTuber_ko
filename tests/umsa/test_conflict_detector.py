@@ -80,9 +80,7 @@ def test_importance_decay_calculation():
     detector = ConflictDetector()
     result = detector.check(
         new_content="New fact",
-        existing_memories=[
-            {"id": "m1", "content": "Old fact", "importance": 0.8}
-        ],
+        existing_memories=[{"id": "m1", "content": "Old fact", "importance": 0.8}],
         similarity_fn=lambda a, b: 0.7,
     )
     assert result[0]["new_importance_decay"] == pytest.approx(0.56, abs=0.01)

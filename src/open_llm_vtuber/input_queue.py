@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MetricSnapshot:
     """메트릭 스냅샷 데이터클래스"""
+
     timestamp: datetime
     queue_size: int
     processing_rate: float
@@ -35,10 +36,11 @@ class MetricSnapshot:
 
 class InputType(Enum):
     """입력 타입 분류"""
-    CHAT = "chat"           # 채팅 메시지
-    VOICE = "voice"         # 음성 명령
-    SUPERCHAT = "superchat" # 슈퍼챗
-    MEMBERSHIP = "membership" # 멤버십 메시지
+
+    CHAT = "chat"  # 채팅 메시지
+    VOICE = "voice"  # 음성 명령
+    SUPERCHAT = "superchat"  # 슈퍼챗
+    MEMBERSHIP = "membership"  # 멤버십 메시지
 
 
 class InputQueueManager:
@@ -54,7 +56,7 @@ class InputQueueManager:
         self,
         config: Optional[QueueConfig] = None,
         message_handler: Optional[Callable[[Dict[str, Any]], Coroutine]] = None,
-        alert_callback: Optional[Callable[[str, str, str], Coroutine]] = None
+        alert_callback: Optional[Callable[[str, str, str], Coroutine]] = None,
     ):
         """
         입력 큐 매니저를 초기화합니다.
@@ -104,8 +106,7 @@ class InputQueueManager:
         # 워커 시작
         for i in range(self.config.worker_count):
             worker = asyncio.create_task(
-                self._worker(worker_id=i),
-                name=f"input_queue_worker_{i}"
+                self._worker(worker_id=i), name=f"input_queue_worker_{i}"
             )
             self._workers.append(worker)
 
@@ -131,7 +132,7 @@ class InputQueueManager:
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*self._workers, return_exceptions=True),
-                    timeout=timeout
+                    timeout=timeout,
                 )
             except asyncio.TimeoutError:
                 logger.warning("일부 워커가 시간 내에 종료되지 않았습니다")
@@ -159,12 +160,12 @@ class InputQueueManager:
             return False
 
         # 메시지 타입에 따라 우선순위 자동 설정
-        if 'priority' not in message:
-            message['priority'] = self._determine_priority(message)
+        if "priority" not in message:
+            message["priority"] = self._determine_priority(message)
 
         # 메시지에 타임스탬프 추가
-        if 'timestamp' not in message:
-            message['timestamp'] = datetime.now().isoformat()
+        if "timestamp" not in message:
+            message["timestamp"] = datetime.now().isoformat()
 
         # 큐에 추가
         success = await self._queue.put(message)
@@ -174,7 +175,9 @@ class InputQueueManager:
             if self.config.enable_debug_logging:
                 logger.debug(f"메시지 큐에 추가됨: {message.get('type', 'unknown')}")
         else:
-            logger.warning(f"메시지 드롭됨 (큐 오버플로우): {message.get('type', 'unknown')}")
+            logger.warning(
+                f"메시지 드롭됨 (큐 오버플로우): {message.get('type', 'unknown')}"
+            )
 
         return success
 
@@ -262,9 +265,8 @@ class InputQueueManager:
         except Exception as e:
             self._total_failed += 1
             logger.error(
-                f"메시지 처리 실패: {message.get('type', 'unknown')}, "
-                f"에러: {e}",
-                exc_info=True
+                f"메시지 처리 실패: {message.get('type', 'unknown')}, 에러: {e}",
+                exc_info=True,
             )
         finally:
             self._current_message = None
@@ -280,7 +282,7 @@ class InputQueueManager:
         Returns:
             int: 우선순위 값
         """
-        input_type = message.get('type', '')
+        input_type = message.get("type", "")
 
         # 슈퍼챗, 멤버십 메시지는 높은 우선순위
         if input_type in [InputType.SUPERCHAT.value, InputType.MEMBERSHIP.value]:
@@ -307,40 +309,37 @@ class InputQueueManager:
             Dict[str, Any]: 우선순위 규칙이 적용된 메시지 (원본 수정)
         """
         # 메시지 타입을 InputSource로 변환
-        input_type = message.get('type', '')
+        input_type = message.get("type", "")
         input_source = self._convert_to_input_source(input_type)
 
         # 현재 처리 중인 메시지의 소스 확인
         current_source = None
         if self._current_message:
-            current_type = self._current_message.get('type', '')
+            current_type = self._current_message.get("type", "")
             current_source = self._convert_to_input_source(current_type)
 
         # 우선순위 규칙에 따라 우선순위 값 계산
         priority_value = self.config.priority_rules.get_priority_value(
-            source=input_source,
-            is_processing=current_source
+            source=input_source, is_processing=current_source
         )
 
         # 대기 시간 계산
         delay_time = self.config.priority_rules.get_delay_time(
-            source=input_source,
-            is_processing=current_source
+            source=input_source, is_processing=current_source
         )
 
         # 메시지에 계산된 값 적용
-        message['priority'] = priority_value
-        message['delay_time'] = delay_time
+        message["priority"] = priority_value
+        message["delay_time"] = delay_time
 
         # 중단 가능 여부 계산 (현재 처리 중인 메시지가 있을 때)
         if current_source:
             should_interrupt = self.config.priority_rules.should_interrupt(
-                new_source=input_source,
-                current_source=current_source
+                new_source=input_source, current_source=current_source
             )
-            message['should_interrupt'] = should_interrupt
+            message["should_interrupt"] = should_interrupt
         else:
-            message['should_interrupt'] = False
+            message["should_interrupt"] = False
 
         if self.config.enable_debug_logging:
             logger.debug(
@@ -372,10 +371,7 @@ class InputQueueManager:
         # 채팅 메시지는 채팅 소스로 (기본값)
         return InputSource.CHAT
 
-    def set_message_handler(
-        self,
-        handler: Callable[[Dict[str, Any]], Coroutine]
-    ):
+    def set_message_handler(self, handler: Callable[[Dict[str, Any]], Coroutine]):
         """
         메시지 처리 핸들러를 설정합니다.
 
@@ -397,22 +393,24 @@ class InputQueueManager:
         # 평균 처리 시간 계산
         avg_processing_time = 0.0
         if self._processing_times:
-            avg_processing_time = sum(self._processing_times) / len(self._processing_times)
+            avg_processing_time = sum(self._processing_times) / len(
+                self._processing_times
+            )
 
         return {
-            'running': self._running,
-            'worker_count': len(self._workers),
-            'current_message': self._current_message,
-            'queue_size': queue_metrics['current_size'],
-            'queue_max_size': queue_metrics['max_size'],
-            'total_received': self._total_received,
-            'total_processed': self._total_processed,
-            'total_failed': self._total_failed,
-            'total_enqueued': queue_metrics['total_enqueued'],
-            'total_dequeued': queue_metrics['total_dequeued'],
-            'total_dropped': queue_metrics['total_dropped'],
-            'avg_processing_time': avg_processing_time,
-            'processing_rate': self._calculate_processing_rate()
+            "running": self._running,
+            "worker_count": len(self._workers),
+            "current_message": self._current_message,
+            "queue_size": queue_metrics["current_size"],
+            "queue_max_size": queue_metrics["max_size"],
+            "total_received": self._total_received,
+            "total_processed": self._total_processed,
+            "total_failed": self._total_failed,
+            "total_enqueued": queue_metrics["total_enqueued"],
+            "total_dequeued": queue_metrics["total_dequeued"],
+            "total_dropped": queue_metrics["total_dropped"],
+            "avg_processing_time": avg_processing_time,
+            "processing_rate": self._calculate_processing_rate(),
         }
 
     def _calculate_processing_rate(self) -> float:
@@ -458,10 +456,10 @@ class InputQueueManager:
 
         snapshot = MetricSnapshot(
             timestamp=now,
-            queue_size=queue_metrics['current_size'],
+            queue_size=queue_metrics["current_size"],
             processing_rate=self._calculate_processing_rate(),
             avg_processing_time=self._calculate_avg_processing_time(),
-            total_dropped=queue_metrics['total_dropped'],
+            total_dropped=queue_metrics["total_dropped"],
             total_processed=self._total_processed,
         )
 
@@ -481,12 +479,12 @@ class InputQueueManager:
         cutoff = datetime.now() - timedelta(minutes=minutes)
         return [
             {
-                'timestamp': s.timestamp.isoformat(),
-                'queue_size': s.queue_size,
-                'processing_rate': s.processing_rate,
-                'avg_processing_time': s.avg_processing_time,
-                'total_dropped': s.total_dropped,
-                'total_processed': s.total_processed,
+                "timestamp": s.timestamp.isoformat(),
+                "queue_size": s.queue_size,
+                "processing_rate": s.processing_rate,
+                "avg_processing_time": s.avg_processing_time,
+                "total_dropped": s.total_dropped,
+                "total_processed": s.total_processed,
             }
             for s in self._metric_history
             if s.timestamp >= cutoff

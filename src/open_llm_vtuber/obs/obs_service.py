@@ -119,9 +119,7 @@ class OBSService:
                 timeout=self._timeout,
             )
             self._connected = True
-            logger.info(
-                f"Connected to OBS WebSocket at {self._host}:{self._port}"
-            )
+            logger.info(f"Connected to OBS WebSocket at {self._host}:{self._port}")
             return True
         except Exception as e:
             logger.error(f"Failed to connect to OBS WebSocket: {e}")
@@ -174,9 +172,7 @@ class OBSService:
         canvas_height = video_settings.base_height
 
         if canvas_width <= 0 or canvas_height <= 0:
-            logger.warning(
-                f"Invalid canvas size: {canvas_width}x{canvas_height}"
-            )
+            logger.warning(f"Invalid canvas size: {canvas_width}x{canvas_height}")
             return None
 
         # Get current scene name
@@ -249,9 +245,7 @@ class OBSService:
                     f"w={norm_w:.4f}, h={norm_h:.4f}"
                 )
             except Exception as e:
-                logger.warning(
-                    f"Failed to get transform for '{source_name}': {e}"
-                )
+                logger.warning(f"Failed to get transform for '{source_name}': {e}")
                 continue
 
         layout = SceneLayout(
@@ -293,9 +287,7 @@ class OBSService:
             interval: Polling interval in seconds.
         """
         self.stop_layout_polling()
-        self._polling_task = asyncio.create_task(
-            self._poll_layout(callback, interval)
-        )
+        self._polling_task = asyncio.create_task(self._poll_layout(callback, interval))
         logger.info(f"OBS layout polling started (interval: {interval}s)")
 
     def stop_layout_polling(self) -> None:

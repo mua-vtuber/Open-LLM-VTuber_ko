@@ -12,9 +12,9 @@ import io
 import json
 
 # Force UTF-8 encoding for stdout/stderr on Windows
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 from src.open_llm_vtuber.i18n_manager import I18nManager
 
@@ -40,11 +40,7 @@ def test_languages_api():
 
     # Test 3: Verify language label mapping
     print("\n[Test 3] Label mapping verification:")
-    expected_mappings = {
-        "en": "English",
-        "zh": "中文",
-        "ko": "한국어"
-    }
+    expected_mappings = {"en": "English", "zh": "中文", "ko": "한국어"}
 
     all_mappings_correct = True
     for code, expected_label in expected_mappings.items():
@@ -84,7 +80,7 @@ def test_languages_api():
         api_response = {
             "type": "available_languages",
             "count": len(languages_with_labels),
-            "languages": languages_with_labels
+            "languages": languages_with_labels,
         }
         print(json.dumps(api_response, indent=2, ensure_ascii=False))
     else:

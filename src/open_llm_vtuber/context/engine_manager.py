@@ -54,7 +54,9 @@ class EngineManager:
             logger.critical(f"Error initializing Live2D: {e}")
             logger.critical("Try to proceed without Live2D...")
 
-    def init_asr(self, asr_config: ASRConfig, character_config: CharacterConfig) -> None:
+    def init_asr(
+        self, asr_config: ASRConfig, character_config: CharacterConfig
+    ) -> None:
         """Initialize ASR engine."""
         if not self.asr_engine or (character_config.asr_config != asr_config):
             logger.info(f"Initializing ASR: {asr_config.asr_model}")
@@ -66,7 +68,9 @@ class EngineManager:
         else:
             logger.info("ASR already initialized with the same config.")
 
-    def init_tts(self, tts_config: TTSConfig, character_config: CharacterConfig) -> None:
+    def init_tts(
+        self, tts_config: TTSConfig, character_config: CharacterConfig
+    ) -> None:
         """Initialize TTS engine."""
         if not self.tts_engine or (character_config.tts_config != tts_config):
             logger.info(f"Initializing TTS: {tts_config.tts_model}")
@@ -78,7 +82,9 @@ class EngineManager:
         else:
             logger.info("TTS already initialized with the same config.")
 
-    def init_vad(self, vad_config: VADConfig, character_config: CharacterConfig) -> None:
+    def init_vad(
+        self, vad_config: VADConfig, character_config: CharacterConfig
+    ) -> None:
         """Initialize VAD engine."""
         if vad_config.vad_model is None:
             logger.info("VAD is disabled.")

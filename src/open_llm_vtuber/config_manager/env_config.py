@@ -73,13 +73,19 @@ class LLMConfig:
     """LLM service URLs configuration."""
 
     ollama_base_url: str = field(
-        default_factory=lambda: get_env("LLM_OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        default_factory=lambda: get_env(
+            "LLM_OLLAMA_BASE_URL", "http://localhost:11434/v1"
+        )
     )
     lmstudio_base_url: str = field(
-        default_factory=lambda: get_env("LLM_LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+        default_factory=lambda: get_env(
+            "LLM_LMSTUDIO_BASE_URL", "http://localhost:1234/v1"
+        )
     )
     openai_base_url: str = field(
-        default_factory=lambda: get_env("LLM_OPENAI_BASE_URL", "https://api.openai.com/v1")
+        default_factory=lambda: get_env(
+            "LLM_OPENAI_BASE_URL", "https://api.openai.com/v1"
+        )
     )
     gemini_base_url: str = field(
         default_factory=lambda: get_env(
@@ -88,16 +94,24 @@ class LLMConfig:
         )
     )
     mistral_base_url: str = field(
-        default_factory=lambda: get_env("LLM_MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
+        default_factory=lambda: get_env(
+            "LLM_MISTRAL_BASE_URL", "https://api.mistral.ai/v1"
+        )
     )
     deepseek_base_url: str = field(
-        default_factory=lambda: get_env("LLM_DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+        default_factory=lambda: get_env(
+            "LLM_DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
+        )
     )
     groq_base_url: str = field(
-        default_factory=lambda: get_env("LLM_GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+        default_factory=lambda: get_env(
+            "LLM_GROQ_BASE_URL", "https://api.groq.com/openai/v1"
+        )
     )
     anthropic_base_url: str = field(
-        default_factory=lambda: get_env("LLM_ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+        default_factory=lambda: get_env(
+            "LLM_ANTHROPIC_BASE_URL", "https://api.anthropic.com"
+        )
     )
     zhipu_base_url: str = field(
         default_factory=lambda: get_env(
@@ -114,13 +128,19 @@ class TTSConfig:
         default_factory=lambda: get_env("TTS_COSYVOICE_URL", "http://127.0.0.1:50000/")
     )
     gpt_sovits_url: str = field(
-        default_factory=lambda: get_env("TTS_GPT_SOVITS_URL", "http://127.0.0.1:9880/tts")
+        default_factory=lambda: get_env(
+            "TTS_GPT_SOVITS_URL", "http://127.0.0.1:9880/tts"
+        )
     )
     x_tts_url: str = field(
-        default_factory=lambda: get_env("TTS_X_TTS_URL", "http://127.0.0.1:8020/tts_to_audio")
+        default_factory=lambda: get_env(
+            "TTS_X_TTS_URL", "http://127.0.0.1:8020/tts_to_audio"
+        )
     )
     openai_compatible_url: str = field(
-        default_factory=lambda: get_env("TTS_OPENAI_COMPATIBLE_URL", "http://localhost:8880/v1")
+        default_factory=lambda: get_env(
+            "TTS_OPENAI_COMPATIBLE_URL", "http://localhost:8880/v1"
+        )
     )
     spark_url: str = field(
         default_factory=lambda: get_env("TTS_SPARK_URL", "http://127.0.0.1:7860/")
@@ -151,7 +171,9 @@ class ASRConfig:
         default_factory=lambda: get_env("ASR_WHISPER_URL", "http://localhost:8000")
     )
     groq_url: str = field(
-        default_factory=lambda: get_env("ASR_GROQ_URL", "https://api.groq.com/openai/v1")
+        default_factory=lambda: get_env(
+            "ASR_GROQ_URL", "https://api.groq.com/openai/v1"
+        )
     )
 
 
@@ -186,7 +208,9 @@ class AgentConfig:
 class VADConfig:
     """VAD service configuration."""
 
-    host: str = field(default_factory=lambda: get_env("VAD_WEBSOCKET_HOST", "localhost"))
+    host: str = field(
+        default_factory=lambda: get_env("VAD_WEBSOCKET_HOST", "localhost")
+    )
     port: int = field(default_factory=lambda: get_env_int("VAD_WEBSOCKET_PORT", 8765))
 
 

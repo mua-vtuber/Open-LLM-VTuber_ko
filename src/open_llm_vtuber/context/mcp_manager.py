@@ -130,9 +130,7 @@ class MCPManager:
     def _init_mcp_client(self, send_text: Callable, client_uid: str) -> None:
         """Initialize the MCPClient."""
         if self.server_registry:
-            self.mcp_client = MCPClient(
-                self.server_registry, send_text, client_uid
-            )
+            self.mcp_client = MCPClient(self.server_registry, send_text, client_uid)
             logger.info("MCPClient initialized for this session.")
         else:
             logger.error(

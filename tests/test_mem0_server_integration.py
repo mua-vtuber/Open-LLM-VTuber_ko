@@ -3,12 +3,14 @@ mem0_agent 서버 통합 테스트 스크립트
 
 서버를 완전히 시작하지 않고, 설정 로드 및 agent 초기화만 테스트합니다.
 """
+
 import sys
 from pathlib import Path
 
 # 프로젝트 루트를 Python path에 추가
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
 
 def test_config_loading():
     """설정 파일에서 mem0_agent 설정을 제대로 로드하는지 테스트"""
@@ -23,15 +25,18 @@ def test_config_loading():
     agent_choice = config.character_config.agent_config.conversation_agent_choice
     print(f"✓ 선택된 agent: {agent_choice}")
 
-    if agent_choice != 'mem0_agent':
+    if agent_choice != "mem0_agent":
         print(f"✗ 에러: agent_choice가 'mem0_agent'가 아닙니다: {agent_choice}")
         return False
 
     # mem0_agent 설정 확인
     mem0_config = config.character_config.agent_config.agent_settings.mem0_agent
-    print(f"✓ mem0_agent 설정 존재: base_url={mem0_config.base_url}, model={mem0_config.model}")
+    print(
+        f"✓ mem0_agent 설정 존재: base_url={mem0_config.base_url}, model={mem0_config.model}"
+    )
 
     return True
+
 
 def test_agent_factory():
     """AgentFactory가 mem0_agent를 생성할 수 있는지 테스트"""
@@ -57,14 +62,16 @@ def test_agent_factory():
             llm_configs=llm_configs_dict,
             system_prompt=config.character_config.persona_prompt,
             live2d_model=None,
-            user_id='test_user'
+            user_id="test_user",
         )
 
         print(f"✓ Agent 생성 성공: {type(agent).__name__}")
-        print(f"✓ Agent 클래스: {agent.__class__.__module__}.{agent.__class__.__name__}")
+        print(
+            f"✓ Agent 클래스: {agent.__class__.__module__}.{agent.__class__.__name__}"
+        )
 
         # AgentInterface 메서드 확인
-        required_methods = ['chat', 'handle_interrupt', 'set_memory_from_history']
+        required_methods = ["chat", "handle_interrupt", "set_memory_from_history"]
         for method in required_methods:
             if hasattr(agent, method):
                 print(f"✓ {method} 메서드 존재")
@@ -77,8 +84,10 @@ def test_agent_factory():
     except Exception as e:
         print(f"✗ Agent 생성 실패: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 def test_mem0_initialization():
     """mem0 Memory 인스턴스가 초기화되는지 테스트 (Qdrant 없이도 객체 생성 가능한지)"""
@@ -97,6 +106,7 @@ def test_mem0_initialization():
     except Exception as e:
         print(f"✗ mem0 import 실패: {type(e).__name__}: {e}")
         return False
+
 
 def main():
     print("\nmem0_agent 서버 통합 테스트 시작\n")
@@ -134,5 +144,6 @@ def main():
 
     return 0 if all_passed else 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

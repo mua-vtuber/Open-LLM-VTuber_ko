@@ -79,13 +79,11 @@ def _format_validation_error(error: ValidationError) -> str:
             )
         elif error_type == "string_type":
             error_messages.append(
-                f"  - '{location}': 문자열 타입이 필요합니다. "
-                f"현재 값: {input_value}"
+                f"  - '{location}': 문자열 타입이 필요합니다. 현재 값: {input_value}"
             )
         elif error_type == "int_type":
             error_messages.append(
-                f"  - '{location}': 정수 타입이 필요합니다. "
-                f"현재 값: {input_value}"
+                f"  - '{location}': 정수 타입이 필요합니다. 현재 값: {input_value}"
             )
         elif error_type == "bool_type":
             error_messages.append(
@@ -93,17 +91,11 @@ def _format_validation_error(error: ValidationError) -> str:
                 f"현재 값: {input_value}"
             )
         elif error_type == "value_error":
-            error_messages.append(
-                f"  - '{location}': {msg}"
-            )
+            error_messages.append(f"  - '{location}': {msg}")
         elif "greater_than" in error_type or "less_than" in error_type:
-            error_messages.append(
-                f"  - '{location}': 값이 범위를 벗어났습니다. {msg}"
-            )
+            error_messages.append(f"  - '{location}': 값이 범위를 벗어났습니다. {msg}")
         else:
-            error_messages.append(
-                f"  - '{location}': {msg} (타입: {error_type})"
-            )
+            error_messages.append(f"  - '{location}': {msg} (타입: {error_type})")
 
     return "\n".join(error_messages)
 
@@ -202,9 +194,7 @@ def save_config(config: BaseModel, config_path: Union[str, Path]):
 
 
 def save_partial_yaml(
-    section_name: str,
-    section_data: Dict[str, Any],
-    config_path: str = "conf.yaml"
+    section_name: str, section_data: Dict[str, Any], config_path: str = "conf.yaml"
 ):
     """
     conf.yaml의 특정 섹션만 업데이트합니다.
@@ -233,7 +223,7 @@ def save_partial_yaml(
                 f,
                 allow_unicode=True,
                 default_flow_style=False,
-                sort_keys=False
+                sort_keys=False,
             )
         logger.debug(f"설정 섹션 '{section_name}'이 {config_path}에 저장되었습니다")
     except yaml.YAMLError as e:
