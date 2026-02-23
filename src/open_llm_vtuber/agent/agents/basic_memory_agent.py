@@ -702,6 +702,26 @@ class BasicMemoryAgent(BaseAgent):
             await self._memory_service.end_session(session_id)
             self._current_session_id = None
 
+    def update_stream_context(
+        self,
+        author: str,
+        content: str,
+        msg_type: str = "chat",
+        metadata: dict | None = None,
+    ) -> None:
+        """Update stream context with incoming message.
+
+        Called by external code (chat_monitor, websocket_handler) to keep
+        the stream context aware of viewer messages and events.
+        """
+        if self._memory_service:
+            self._memory_service.stream_context.update(
+                author=author,
+                content=content,
+                msg_type=msg_type,
+                metadata=metadata,
+            )
+
     async def close(self) -> None:
         """Release resources held by the agent."""
         if self._memory_service:
