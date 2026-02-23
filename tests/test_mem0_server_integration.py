@@ -87,7 +87,6 @@ def test_mem0_initialization():
     print("=" * 60)
 
     try:
-        from mem0 import Memory
         print("✓ mem0 라이브러리 import 성공")
 
         # 참고: 실제 Qdrant 연결 없이는 Memory 인스턴스 생성이 실패할 수 있음

@@ -34,7 +34,7 @@ def test_languages_api():
     # Test 2: Get available languages with labels (new format)
     print("\n[Test 2] Languages with labels:")
     languages_with_labels = I18nManager.get_available_languages_with_labels()
-    print(f"Languages with labels:")
+    print("Languages with labels:")
     for lang_info in languages_with_labels:
         print(f"  • {lang_info['code']:3s} → {lang_info['label']}")
 

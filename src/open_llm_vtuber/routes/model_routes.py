@@ -15,7 +15,6 @@ from starlette.responses import JSONResponse
 from ..schemas.api import (
     ModelListResponse,
     ExternalFoldersResponse,
-    AddFolderRequest,
     AddFolderResponse,
     RemoveFolderResponse,
     ErrorResponse,
@@ -504,7 +503,6 @@ def init_model_routes(app: "FastAPI") -> APIRouter:
         Returns:
             JSONResponse: 등록 성공 여부와 마운트 경로
         """
-        from ..server import CORSStaticFiles
 
         try:
             data = await request.json()

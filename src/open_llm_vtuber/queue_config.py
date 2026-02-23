@@ -6,7 +6,6 @@
 
 import os
 from enum import IntEnum
-from typing import Optional
 
 from .priority_rules import PriorityRules
 

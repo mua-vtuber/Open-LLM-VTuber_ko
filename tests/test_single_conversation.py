@@ -1,10 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
-import json
 from open_llm_vtuber.conversations.single_conversation import process_single_conversation
 from open_llm_vtuber.service_context import ServiceContext
-from open_llm_vtuber.input_types import TextSource
 
 @pytest.fixture
 def mock_context():
@@ -33,10 +31,10 @@ async def test_process_single_conversation_success(mock_context, mock_websocket_
     
     # Mock ASR response (implicit in process_user_input, but mocking the utility function is easier)
     with patch("open_llm_vtuber.conversations.single_conversation.process_user_input", new_callable=AsyncMock) as mock_process_input, \
-         patch("open_llm_vtuber.conversations.single_conversation.create_batch_input") as mock_create_batch, \
+         patch("open_llm_vtuber.conversations.single_conversation.create_batch_input"), \
          patch("open_llm_vtuber.conversations.single_conversation.store_message") as mock_store_message, \
          patch("open_llm_vtuber.conversations.single_conversation.send_conversation_start_signals", new_callable=AsyncMock) as mock_send_signals, \
-         patch("open_llm_vtuber.conversations.single_conversation.finalize_conversation_turn", new_callable=AsyncMock) as mock_finalize, \
+         patch("open_llm_vtuber.conversations.single_conversation.finalize_conversation_turn", new_callable=AsyncMock), \
          patch("open_llm_vtuber.conversations.single_conversation.cleanup_conversation", new_callable=AsyncMock) as mock_cleanup:
         
         mock_process_input.return_value = "Hello"

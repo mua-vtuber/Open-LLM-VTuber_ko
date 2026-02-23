@@ -30,7 +30,7 @@ def test_i18n_manager():
 
     # Load translations
     I18nManager.load_translations()
-    print(f"[OK] Loaded translations")
+    print("[OK] Loaded translations")
     print(f"  Available languages: {I18nManager.get_available_languages()}\n")
 
     # Test English

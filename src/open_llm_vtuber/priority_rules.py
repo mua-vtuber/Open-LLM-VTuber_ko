@@ -7,9 +7,8 @@
 """
 
 import os
-from enum import Enum, IntEnum
+from enum import Enum
 from typing import Any, Dict, Optional
-from dataclasses import dataclass
 from loguru import logger
 
 
@@ -284,7 +283,7 @@ class PriorityRules:
             if "priority_mode" in data and data["priority_mode"] is not None:
                 try:
                     self.priority_mode = PriorityMode(data["priority_mode"])
-                except ValueError as e:
+                except ValueError:
                     logger.error(f"Invalid priority_mode value: {data['priority_mode']}")
                     return False
 

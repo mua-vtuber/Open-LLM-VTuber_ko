@@ -19,7 +19,6 @@ from ..chat_history_manager import store_message
 from ..service_context import ServiceContext
 
 # Import necessary types from agent outputs
-from ..agent.output_types import SentenceOutput, AudioOutput
 
 
 async def process_single_conversation(

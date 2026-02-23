@@ -84,7 +84,7 @@ def test_mem0_agent_creation():
         if hasattr(agent, '_user_id'):
             logger.success(f"✓ _user_id 속성 존재: {agent._user_id}")
         if hasattr(agent, '_system'):
-            logger.success(f"✓ _system 속성 존재")
+            logger.success("✓ _system 속성 존재")
         if hasattr(agent, '_model'):
             logger.success(f"✓ _model 속성 존재: {agent._model}")
 

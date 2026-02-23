@@ -16,7 +16,6 @@ if sys.platform == 'win32':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 from src.open_llm_vtuber.config_manager.asr import AzureASRConfig, FasterWhisperConfig
-from src.open_llm_vtuber.config_manager.tts import AzureTTSConfig
 from src.open_llm_vtuber.config_manager.character import CharacterConfig
 from src.open_llm_vtuber.config_manager.system import SystemConfig
 

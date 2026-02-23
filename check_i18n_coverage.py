@@ -30,7 +30,7 @@ import sys
 import io
 import argparse
 from pathlib import Path
-from typing import Dict, Set, List, Tuple
+from typing import Dict, Set, List
 from collections import defaultdict
 
 # Force UTF-8 encoding for stdout/stderr on Windows

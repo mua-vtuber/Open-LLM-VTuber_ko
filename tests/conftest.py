@@ -3,7 +3,7 @@ Open-LLM-VTuber Test Fixtures
 공통 테스트 픽스처 및 모킹 유틸리티
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from typing import AsyncIterator
 
 

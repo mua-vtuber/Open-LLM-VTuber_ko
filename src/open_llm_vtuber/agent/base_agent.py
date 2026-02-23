@@ -1,10 +1,9 @@
-from typing import AsyncIterator, List, Dict, Any, Callable, Union, Optional
+from typing import AsyncIterator, Callable
 from abc import abstractmethod
 from loguru import logger
-import numpy as np
 
 from .agents.agent_interface import AgentInterface
-from .output_types import SentenceOutput, DisplayText
+from .output_types import SentenceOutput
 from .input_types import BatchInput, TextSource
 from .transformers import (
     sentence_divider,

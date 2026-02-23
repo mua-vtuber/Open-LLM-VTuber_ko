@@ -1,7 +1,7 @@
 # config_manager/character.py
 from pydantic import Field, field_validator
 from typing import Dict, ClassVar
-from .i18n import I18nMixin, Description
+from .i18n import I18nMixin
 from .asr import ASRConfig
 from .tts import TTSConfig
 from .vad import VADConfig

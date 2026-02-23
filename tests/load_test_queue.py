@@ -7,9 +7,8 @@
 
 import asyncio
 import sys
-import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
 import logging
 
@@ -17,8 +16,8 @@ import logging
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.open_llm_vtuber.input_queue import InputQueueManager, InputType
-from src.open_llm_vtuber.queue_config import QueueConfig, MessagePriority
+from src.open_llm_vtuber.input_queue import InputQueueManager, InputType  # noqa: E402
+from src.open_llm_vtuber.queue_config import QueueConfig, MessagePriority  # noqa: E402
 
 
 # 로깅 설정
@@ -77,7 +76,7 @@ class LoadTestStats:
         logger.info(f"드롭된 메시지: {self.total_dropped}개")
         logger.info(f"테스트 소요 시간: {duration:.2f}초")
         logger.info(f"평균 전송 속도: {msg_per_sec:.2f} messages/sec")
-        logger.info(f"메시지 타입별 분포:")
+        logger.info("메시지 타입별 분포:")
         for msg_type, count in self.message_types.items():
             logger.info(f"  - {msg_type}: {count}개")
         logger.info("=" * 60)

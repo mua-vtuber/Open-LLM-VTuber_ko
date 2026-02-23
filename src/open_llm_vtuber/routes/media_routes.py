@@ -15,7 +15,7 @@ from loguru import logger
 
 from ..service_context import ServiceContext
 from ..constants.audio import WAV_HEADER_SIZE_BYTES, INT16_TO_FLOAT32_DIVISOR
-from ..schemas.api import TranscriptionResponse, TTSResponse, ErrorResponse
+from ..schemas.api import TranscriptionResponse, ErrorResponse
 
 
 def init_media_routes(default_context_cache: ServiceContext) -> APIRouter:
