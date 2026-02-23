@@ -1,4 +1,3 @@
-import pytest
 from open_llm_vtuber.umsa.config import (
     MemoryConfig, StreamContextConfig, ExtractionConfig,
     RetrievalConfig, ConsolidationConfig, BudgetAllocation,

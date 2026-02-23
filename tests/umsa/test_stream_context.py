@@ -1,8 +1,7 @@
 import time
 
-import pytest
 
-from open_llm_vtuber.umsa.stream_context import StreamContext, StreamEvent
+from open_llm_vtuber.umsa.stream_context import StreamContext
 
 
 def test_stream_context_init():

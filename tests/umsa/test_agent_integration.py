@@ -7,13 +7,10 @@ service is not configured.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 from open_llm_vtuber.umsa.config import MemoryConfig
-from open_llm_vtuber.umsa.memory_service import MemoryService
-from open_llm_vtuber.umsa.stream_context import StreamContext
 
 
 def _make_agent(memory_config: MemoryConfig | None = None):
